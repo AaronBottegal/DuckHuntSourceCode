@@ -1,0 +1,13083 @@
+	CLD  ;starts here.
+	SEI 
+WAIT_VBL:
+	LDA PPU_Status ;waits for vbl
+	BPL WAIT_VBL
+	LDX #$00
+	STX PPU_Ctrl
+	STX PPU_Mask
+	DEX 
+	TXS 
+	LDX RNG_0 ;0x5EC - 0x5EF RNG values
+	LDY #$06
+	STY TMP_01
+	LDY #$00
+	STY TMP_00
+	LDA #$00
+CLR_RAM_LOOP:
+	STA (TMP_00),Y
+	DEY 
+	BNE CLR_RAM_LOOP
+	DEC TMP_01
+	BPL CLR_RAM_LOOP
+	TXA 
+	BNE L_002C ;if !0
+	LDX #$5F
+L_002C:
+	STX RNG_0
+	JSR CLEAR_BOTH_SCREENS
+	JSR CLEAR_SPRITES
+	LDY #$00
+	STA PPU_Scroll ;latch was reset in screen clearing
+	STA PPU_Scroll
+	LDY #$01
+	STY IN_MENU_FLAG ;set in-menu to true
+	LDA #$0F
+	STA APU_Status ;enable all except DMC
+	JSR UNK_SUB
+	LDA #$90
+	STA PPU_Ctrl ;sprites from 0x1000, enable NMI.
+	STA PPU_CTRL_RAM ;i personally would reverse these writes.
+	LDA #$02
+	STA PPU_MASK_RAM
+	LDX #$0B
+LOOP_MOVE_DAT:
+	LDA L_25DF,X
+	STA HIGH_SCORES_ARRAY,X
+	DEX 
+	BPL LOOP_MOVE_DAT
+	BMI LOOP_FOREVER
+RUN_FRAME:
+	LDA IN_MENU_FLAG
+	BEQ SOUND_STUFF
+	LDA SWITCH_BACK_TO_MENU_FALSE
+	CMP #$01 ;not 1 by def
+	BNE NO_SOUND_STUFF
+SOUND_STUFF:
+	JSR PLAY_SOUNDS ;play sounds.
+NO_SOUND_STUFF:
+	JSR DEC_TIMERS_2B-2E ;timers
+	JSR READ_CONTROLLERS
+	JSR MAIN_ZAPPER_LOGIC
+	INC FRAME_COUNTER?
+	JSR CLEAR_NMIRAN/PPUSTUFFFLAG
+LOOP_FOREVER:
+	LDA NMI_RAN
+	BNE RUN_FRAME ;run code for frame
+	JSR RNG_ADVANCE
+	JMP LOOP_FOREVER
+NMI:
+	PHP  ;Save stack and whatnot.
+	PHA 
+	TXA 
+	PHA 
+	TYA 
+	PHA 
+	LDA #$00
+	STA PPU_OAM_Addr
+	LDA #$02
+	STA PPU_DMA ;write sprites to screen.
+	LDA PPU_BLOCK_UPDATE_IN_NMI
+	BNE NO_PPU_STUFF ;needs to be 0 to run PPU stuff.
+	JSR PPU_PROCESS_UPDATE_BUF
+	JSR UPLOAD_PALETTE
+	JSR UPDATE_PALATTE_FROM_400_DUR_WHITEBOX
+	JSR SET_PPU_SCROLL
+NO_PPU_STUFF:
+	LDY #$01
+	STY PPU_BLOCK_UPDATE_IN_NMI
+	STY NMI_RAN
+	PLA 
+	TAY 
+	PLA 
+	TAX 
+	PLA 
+	PLP 
+	RTI 
+MAIN_ZAPPER_LOGIC:
+	LDA IN_MENU_FLAG
+	BEQ NOT_IN_MENU ;not in menu go here?
+	JMP IN_MENU
+NOT_IN_MENU:
+	LDA CTRL_HELD
+	AND #$10 ;button start
+	BEQ CLEAR_BLOCK_PAUSE ;started with zapper
+	LDY BLOCK_PAUSE_BTN
+	BNE GOTO_STATE ;true, block.
+	INY 
+	STY BLOCK_PAUSE_BTN ;set flag
+	LDY IN_GAME_STATE ;pausable states?
+	CPY #$10
+	BEQ L_00FF
+	CPY #$03
+	BEQ L_00DF
+	CPY #$04
+	BEQ L_00DF
+	CPY #$0B
+	BEQ L_00DF
+	CPY #$0C
+	BNE GOTO_STATE
+L_00DF:
+	LDX #$05
+L_00E1:
+	LDA TIMER_STATE,X
+	STA 0430_STATE_PREP?,X ;save timers.
+	DEX 
+	BPL L_00E1
+	LDA PPU_MASK_RAM
+	AND #$0E ;Enable BG/SPR in left 8, plus BG in general.
+	STA PPU_Mask
+	STA PPU_MASK_RAM
+	LDA IN_GAME_STATE
+	STA PREV_GAME_STATE?
+	LDA #$10
+	STA IN_GAME_STATE
+	LDA #$07
+	JMP L_0112
+L_00FF:
+	LDA PPU_MASK_RAM
+	ORA #$10 ;enable sprites.
+	STA PPU_Mask
+	STA PPU_MASK_RAM
+	LDA #$11
+	STA IN_GAME_STATE
+	LDA #$30
+	STA GAME_SUBSTATE?
+	LDA #$00
+L_0112:
+	JSR UPDATE_PPU_GROUP
+	JSR SND_SET_F0
+	JSR WAIT_FOR_NMI
+	JMP SND_SET_F1
+CLEAR_BLOCK_PAUSE:
+	LDA #$00
+	STA BLOCK_PAUSE_BTN ;clear flag
+GOTO_STATE:
+	LDA IN_GAME_STATE
+	JSR GOTO_TABLE_PAST_JSR
+	.LOW #$1D
+	.HIGH #$C8 ;setup
+	.LOW #$39
+	.HIGH #$C8 ;ducks
+	.LOW #$54
+	.HIGH #$C8
+	.LOW #$6E
+	.HIGH #$C8 ;ducks 2
+	.LOW #$C9
+	.HIGH #$D2
+	.LOW #$E0
+	.HIGH #$C5
+	.LOW #$79
+	.HIGH #$C7
+	.LOW #$2C
+	.HIGH #$C7
+	.LOW #$4B
+	.HIGH #$D5
+	.LOW #$6A
+	.HIGH #$D5
+	.LOW #$93
+	.HIGH #$D5
+	.LOW #$D2
+	.HIGH #$D5
+	.LOW #$C9
+	.HIGH #$D2
+	.LOW #$EF
+	.HIGH #$C7
+	.LOW #$E0
+	.HIGH #$C5
+	.LOW #$E0
+	.HIGH #$C5
+	.LOW #$E0
+	.HIGH #$C5
+	.LOW #$71
+	.HIGH #$C2
+	.LOW #$25
+	.HIGH #$C6
+IN_MENU:
+	LDA #$00
+	STA ZAPPER_RESULT ;init result
+	LDA #$01
+	STA ZAP_SHOT_ENABLED ;menu always enables zapper.
+	STA SHOTS_REMAINING ;menu always has 1 shot.
+	LDA SWITCH_BACK_TO_MENU_FALSE
+	BEQ SKIP_MENU ;switches screen.
+	JSR ZAP_PROC_TRIGGER ;process zapper trigger
+	JSR PROCESS_ZAPPER ;changes result
+	LDA ZAPPER_RESULT ;menu was hit?
+	CMP #$01 ;was hit
+	BEQ MENU_GOTO_GAME
+	CMP #$02 ;miss
+	BEQ INC_MENU_OPTION
+	LDA CTRL_HELD ;get buttons held
+	AND #$30 ;get select and start
+	CMP #$10 ;comp start
+	BNE START_NOT_PRESSED/ALONE ;not pressed alone
+MENU_GOTO_GAME:
+	LDA #$00 ;go to game here.
+	STA IN_MENU_FLAG ;not in menu now.
+	STA IN_GAME_STATE ;No in-game state?
+	JSR SND_SET_F0 ;disable all sounds
+	JSR NMI_DISABLE_SPRITS/BG ;disable screen
+	LDA #$02
+	STA TIMER_STATE ;play music when back on title screen
+	STA COUNTDOWN_2D ;set to low number.
+	RTS 
+START_NOT_PRESSED/ALONE:
+	LDX SWITCH_BACK_TO_MENU_FALSE ;wait for selection
+	BNE START_NOT_PRESSED/ALONE ;always taken?
+SKIP_MENU:
+	JMP COUNT_DOWN_MENU ;X=0=selected?
+START_NOT_PRESSED/ALONE:
+	CMP #$20 ;select pressed?
+	BNE SELECT_NOT_PRESSED/ALONE ;no press/alone
+	LDA CURSOR_UPDATE_DISALLOWED
+	BNE RESET_COUNTDOWN ;no update without full release
+INC_MENU_OPTION:
+	LDY MENU_OPTION_SELECTING
+	INY 
+	CPY #$03 ;only 0-2 options available
+	BNE WRITE_MENU_OPTION
+	LDY #$00 ;wrap
+WRITE_MENU_OPTION:
+	STY MENU_OPTION_SELECTING
+	JMP DISALLOW_CURSOR_UPDATES
+SELECT_NOT_PRESSED/ALONE:
+	CMP #$00
+	BNE DISALLOW_CURSOR_UPDATES
+	STA CURSOR_UPDATE_DISALLOWED ;allow updates, all released.
+	BEQ NOTHING_PRESSED ;always taken
+DISALLOW_CURSOR_UPDATES:
+	LDA #$01 ;moved cursor, needs full release for next go.
+	STA CURSOR_UPDATE_DISALLOWED
+RESET_COUNTDOWN:
+	LDA #$FF
+	STA COUNTDOWN_2D ;reset countdown for menu music.
+NOTHING_PRESSED:
+	CPX #$01 ;blocking switch?
+	BNE COUNT_DOWN_MENU ;no?
+	LDA #$51 ;loop counter= 5 times, 1 byte each
+	STA PPU_BLOCK_BUF_SETTING
+	LDA #$24 ;blanks
+	LDX #$04
+Write_Data_Loop:
+	STA PPU_UPDATE_BUF,X ;store 505-501
+	DEX 
+	BPL Write_Data_Loop
+	LDA MENU_OPTION_SELECTING ;0-2
+	ASL A ;mul by 2
+	TAX 
+	LDA #$26 ;cursor char
+	STA PPU_UPDATE_BUF,X ;save to row
+	LDX #$26 ;nametable addr starting 2622
+	LDY #$22
+	JSR MAKE_SETUP_PPU_BLOCK ;write blanks
+	LDA MENU_OPTION_SELECTING ;0-2
+	ASL A
+	ASL A ;mul by 4
+	CLC 
+	ADC #$03 ;put at end
+	TAX  ;X=score digit index
+	LDY #$05 ;6 digits to move
+MOVE_DIGITS_FOR_DISP_LOOP:
+	LDA HIGH_SCORES_ARRAY,X
+	AND #$0F ;get digit
+	STA PPU_UPDATE_BUF,Y ;write to update buf
+	DEY 
+	LDA HIGH_SCORES_ARRAY,X
+	LSR A
+	LSR A
+	LSR A
+	LSR A
+	STA PPU_UPDATE_BUF,Y ;again
+	DEX 
+	DEY 
+	BPL MOVE_DIGITS_FOR_DISP_LOOP
+	LDA PPU_UPDATE_BUF ;get top char
+	BNE NO_BLANK_ZERO ;is 0?
+	LDA #$24
+	STA PPU_UPDATE_BUF ;make top 0 space instead
+NO_BLANK_ZERO:
+	LDA #$16 ;setting is 1 group of 6 bytes
+	STA PPU_BLOCK_BUF_SETTING
+	LDX #$12 ;put to PPUADDR 2312
+	LDY #$23
+	JSR MAKE_SETUP_PPU_BLOCK ;make the buffer to upload.
+COUNT_DOWN_MENU:
+	LDA COUNTDOWN_2D ;count down for menu music
+	BNE Switch_State ;dont set music to play
+	JSR SND_SET_F1 ;title sound?
+	LDA #$FF
+	STA COUNTDOWN_2D ;title screen countdown reset
+Switch_State:
+	LDA SWITCH_BACK_TO_MENU_FALSE ;which selected?
+	JSR GOTO_TABLE_PAST_JSR ;1=RTS, 0=UPLOAD FILE
+	.db #$AA
+	.db #$C5 ;selection made?
+	.db #$E0
+	.db #$C5 ;RTS's.
+CLEAR_BOTH_SCREENS:
+	LDA #$02 ;clear screen $2400
+	JSR SETUP_CLEAR_SCREEN ;screen cleared here
+CLEAR_NAMETABLE_$2000:
+	LDA #$01 ;clear screen $2000
+SETUP_CLEAR_SCREEN:
+	STA TMP_01 ;screen updating
+	LDA #$24
+	STA TMP_00 ;tile to clear with.
+	JMP CLEAR_SCREEN
+CLEAR_SPRITES:
+	LDY #$00
+	LDA #$F4 ;Bug maybe: #$FF correct clear value.
+CLR_LOOP:
+	STA $0200,Y
+	INY 
+	INY 
+	INY 
+	INY 
+	BNE CLR_LOOP
+	RTS 
+UPLOAD_PALETTE:
+	LDY PALETTE_UPLOAD
+	BEQ RTS ;none to upload
+	DEY  ;flag is zero'd index?
+	TYA 
+	ASL A ;mul by 2 for index
+	TAY 
+	LDA PALLETE_FILES_LOW,Y ;low
+	LDX PALLETE_FILES_HIGH,Y ;high
+	LDY #$00
+	STY PALETTE_UPLOAD ;clear flag
+PREP_PPU_FILE_PTR:
+	STA TMP_00 ;set up pointers to data
+	STX TMP_01
+	JSR PPU_FILE_TEST_STREAM
+RTS:
+	RTS 
+UPDATE_PALATTE_FROM_400_DUR_WHITEBOX:
+	LDY WHITE_BOX_DISPLAYED
+	BEQ RTS ;no white box displayed
+	LDY #$00 ;could be optim by removing LDY using A
+	STY WHITE_BOX_DISPLAYED ;clear flag.
+	LDA #$00
+	LDX #$04 ;get data from 0x400
+	BNE PREP_PPU_FILE_PTR ;file from RAM.
+	DEC GAME_SUBSTATE?
+	BNE RTS ;leave if more data later.
+	LDX #$05 ;move 6 bytes
+MOVE_LOOP:
+	LDA 0430_STATE_PREP?,X
+	STA TIMER_STATE,X
+	DEX 
+	BPL MOVE_LOOP
+	LDA PREV_GAME_STATE?
+	STA IN_GAME_STATE
+RTS:
+	RTS 
+READ_CONTROLLERS:
+	LDX #$01
+	STX NES_CONTROLLER1
+	DEX 
+	STX NES_CONTROLLER1
+	JSR READ_CTRL_SETUP
+	INX 
+READ_CTRL_SETUP:
+	LDY #$08 ;bits to pull
+READ_CTRL_LOOP:
+	PHA  ;save buttons
+	LDA NES_CONTROLLER1,X ;get data
+	STA TMP_00 ;=a
+	LSR A ;shift off bottom bit.
+	ORA TMP_00 ;get famicom expansion bit+controller bit
+	LSR A ;to carry
+	PLA  ;pull a
+	ROL A ;rotate into a
+	DEY 
+	BNE READ_CTRL_LOOP
+	CMP CTRL_PREV,X
+	BNE READ_CTRL_STORE_PREV ;didn't match prev
+	INC CTRL_SAME,X ;times matched
+	LDY CTRL_SAME,X
+	CPY #$05
+	BCC READ_CTRL_RTS ;Y < 5, RTS
+	STA CTRL_HELD,X ;store held
+	JMP READ_CTRL_CLEAR_SAME
+READ_CTRL_STORE_PREV:
+	STA CTRL_PREV,X ;update new expected buttons
+READ_CTRL_CLEAR_SAME:
+	LDA #$00
+	STA CTRL_SAME,X ;reset counter for held.
+READ_CTRL_RTS:
+	RTS 
+PPU_PROCESS_UPDATE_BUF:
+	LDA PPU_UPDATE_FLAG ;see if updates
+	BEQ RTS ;->RTS
+	LDA #$61 ;ptr to PPU_UPDATE_BUF
+	STA TMP_00
+	LDA #$05
+	STA TMP_01
+	LDA PPU_CTRL_RAM
+	AND #$FB ;make sure vram in by 1
+	STA PPU_Ctrl
+	STA PPU_CTRL_RAM
+	LDX PPU_Status ;reset latch
+	LDY #$00
+	BEQ TEST_PPU_DATA_BUFFER ;always taken
+WRITE_PPU_ADDR:
+	STA PPU_Addr ;store location writing to.
+	INY 
+	LDA (TMP_00),Y
+	STA PPU_Addr ;store low
+	INY 
+	LDA (TMP_00),Y ;length
+	AND #$3F ;make max length
+	TAX 
+PPU_DATA_WRITE_LOOP:
+	INY  ;ptr++
+	LDA (TMP_00),Y ;ptr
+	STA PPU_Data ;write data
+	DEX 
+	BNE PPU_DATA_WRITE_LOOP
+	INY  ;ptr++
+TEST_PPU_DATA_BUFFER:
+	LDA (TMP_00),Y ;see if ppuaddr, will be #$20+
+	BNE WRITE_PPU_ADDR ;!= 0 means update screen
+	LDA #$00
+	STA PPU_UPD8_BUF_INDEX ;init index
+	STA PPU_UPDATE_BUF ;init buffer
+	STA PPU_UPDATE_FLAG ;init index
+RTS:
+	RTS 
+CLEAR_SCREEN:
+	LDA PPU_Status ;reset latch
+	LDA PPU_CTRL_RAM
+	AND #$FB ;1111.1011, vram inc by 1
+	STA PPU_Ctrl
+	STA PPU_CTRL_RAM ;init/store status
+	LDA #$1C
+	CLC 
+COMPUTE_NAMETBL_ADDR_HIGH:
+	ADC #$04
+	DEC TMP_01 ;screen updating?
+	BNE COMPUTE_NAMETBL_ADDR_HIGH
+	STA TMP_02 ;screen addr high
+	STA PPU_Addr ;set screen addr
+	LDA #$00
+	STA PPU_Addr
+	LDX #$04 ;init looping values
+	LDY #$00
+	LDA TMP_00 ;get tile to clear with
+WRITE_NAMETABLE_LOOP:
+	STA PPU_Data
+	DEY 
+	BNE WRITE_NAMETABLE_LOOP
+	DEX 
+	BNE WRITE_NAMETABLE_LOOP
+	LDA TMP_02
+	ADC #$03 ;attribute table
+	STA PPU_Addr
+	LDA #$C0
+	STA PPU_Addr
+	LDY #$40
+	LDA #$00
+WRITE_ATTR_LOOP:
+	STA PPU_Data ;always #$00
+	DEY 
+	BNE WRITE_ATTR_LOOP
+	RTS 
+DEC_TIMERS_2B-2E:
+	LDX #$01 ;2C index
+	DEC TIMER_STATE
+	BPL DEC_TIMER_X ;Only B+C
+	LDA #$0A ;D+E only once every 11 frames
+	STA TIMER_STATE
+	LDX #$03 ;index 2E instead
+DEC_TIMER_X:
+	LDA TIMER_2B,X
+	BEQ ALREADY_0
+	DEC TIMER_2B,X ;dec if not already 0
+ALREADY_0:
+	DEX  ;next timer
+	BPL DEC_TIMER_X
+	RTS 
+GOTO_TABLE_PAST_JSR:
+	STX SAVE_STATE_X ;save x and y
+	STY SAVE_STATE_Y
+	ASL A ;mul by 2 for index
+	TAY 
+	INY  ;go past instruction byte.
+	PLA  ;get location after JSR to us.
+	STA INDIR_JMP_LOW
+	PLA 
+	STA INDIR_JMP_HIGH
+	LDA (INDIR_JMP_LOW),Y ;load which ptr to go to.
+	TAX 
+	INY 
+	LDA (INDIR_JMP_LOW),Y
+	STA INDIR_JMP_HIGH
+	STX INDIR_JMP_LOW
+	LDX SAVE_STATE_X ;load X and Y again.
+	LDY SAVE_STATE_Y
+	JMP (INDIR_JMP_LOW) ;jump to routine.
+PPU_WRITE_FILE:
+	STA PPU_Addr ;store addrs first
+	INY 
+	LDA (TMP_00),Y
+	STA PPU_Addr
+	INY 
+	LDA (TMP_00),Y ;this 3rd byte has flag bits
+	ASL A ;get increment setting
+	PHA  ;save the flag for later
+	LDA PPU_CTRL_RAM
+	ORA #$04 ;Set PPU_CTRL to inc by 32
+	BCS SET_PPUCTRL
+	AND #$FB ;Set PPU_CTRL to inc by 1
+SET_PPUCTRL:
+	STA PPU_Ctrl
+	STA PPU_CTRL_RAM
+	PLA  ;get flags again
+	ASL A ;single block flag
+	BCC DATA_CHUNK ;setting up a chunk
+	ORA #$02 ;single block flag
+	INY  ;move ptr to block data
+DATA_CHUNK:
+	LSR A ;move other parts all back
+	LSR A ;this sets carry to 0:screen, or 1:block
+	TAX  ;X=original bottom bits 0-5, used as counter.
+PPU_DATA_LOOP:
+	BCS SINGLE BLOCK ;if CS, only writing one block type.
+	INY  ;only moves on carry clear
+SINGLE BLOCK:
+	LDA (TMP_00),Y ;get data
+	STA PPU_Data ;store data
+	DEX  ;move bytes
+	BNE PPU_DATA_LOOP ;loop if not done. MAX=64 bytes
+	SEC  ;not sure
+	TYA  ;get ready for maffs
+	ADC TMP_00 ;move pointer
+	STA TMP_00
+	LDA #$00
+	ADC TMP_01
+	STA TMP_01
+PPU_FILE_TEST_STREAM:
+	LDX PPU_Status ;reset latch.
+	LDY #$00 ;start at beginning
+	LDA (TMP_00),Y ;get data at ptr
+	BNE PPU_WRITE_FILE ;0 = EOF, the universal truth.
+SET_PPU_SCROLL:
+	PHA  ;set scroll at end of PPU_ADDR access.
+	LDA PPU_SCROLL_X_RAM
+	STA PPU_Scroll
+	LDA PPU_SCROLL_Y_RAM
+	STA PPU_Scroll
+	PLA  ;good for avoiding bugs. :D
+	RTS 
+PPU_UPDATE_BLOCK:
+	LDA #$01
+	STA PPU_UPDATE_FLAG ;set update flag
+	LDY #$00 ;start at beginning
+	LDA (TMP_02),Y ;setup byte at pointed data
+	AND #$0F
+	STA TMP_05 ;number of bytes in group, upto 15
+	LDA (TMP_02),Y
+	LSR A
+	LSR A
+	LSR A
+	LSR A
+	STA TMP_04 ;number of groups, upto 15
+	LDX PPU_UPD8_BUF_INDEX
+PROCESS_GROUP:
+	LDA TMP_01
+	STA PPU_UPDATE_BUF,X ;store high addr of ppu addr
+	JSR INCREASE_PPU_UPD8_INDEX
+	LDA TMP_00
+	STA PPU_UPDATE_BUF,X ;store low ppu addr
+	JSR INCREASE_PPU_UPD8_INDEX
+	LDA TMP_05
+	STA TMP_06 ;num bytes counter
+	STA PPU_UPDATE_BUF,X ;store to update buf
+MORE_BYTES_IN_GROUP:
+	JSR INCREASE_PPU_UPD8_INDEX
+	INY 
+	LDA (TMP_02),Y
+	STA PPU_UPDATE_BUF,X
+	DEC TMP_06 ;dec num bytes left
+	BNE MORE_BYTES_IN_GROUP
+	JSR INCREASE_PPU_UPD8_INDEX
+	STX PPU_UPD8_BUF_INDEX ;save if leaving
+	CLC 
+	LDA #$20 ;move ppu to next line.
+	ADC TMP_00
+	STA TMP_00
+	LDA #$00
+	ADC TMP_01
+	STA TMP_01
+	DEC TMP_04 ;more groups?
+	BNE PROCESS_GROUP
+	LDA #$00 ;null terminate
+	STA PPU_UPDATE_BUF,X ;end of data
+	RTS 
+INCREASE_PPU_UPD8_INDEX:
+	INX 
+	TXA 
+	CMP #$4F
+	BCC NO_TERM ;if index < 4F
+	LDX PPU_UPD8_BUF_INDEX ;Stop overflow
+	LDA #$00 ;terminate
+	STA PPU_UPDATE_BUF,X
+	PLA  ;leave 2 routines back, wtf?
+	PLA 
+NO_TERM:
+	RTS 
+SCORE_ADD/SUB:
+	CLC 
+	ADC #$01 ;10
+	AND #$0F ;0
+	ASL A
+	ASL A
+	TAX  ;dead code? x always 0 on NES?
+	LDA TMP_04 ;subtract score flag?
+	BEQ L_046A ;dead code maybe?
+	LDA SCORE_LOWER,X
+	BEQ SCORE_GROUP_SUBTRACT
+SCORE_ADD:
+	CLC 
+	LDA SCORE_0000XX,X
+	STA TMP_03 ;digits group scratch
+	LDA TMP_07 ;adding digits 0000XX
+	JSR SCORE_ADD_GROUP
+	STA SCORE_0000XX,X ;store new score.
+	LDA SCORE_00XX00,X ;same as above
+	STA TMP_03 ;digits group scratch
+	LDA TMP_06 ;adding digits 00XX00
+	JSR SCORE_ADD_GROUP
+	STA SCORE_00XX00,X
+	LDA SCORE_XX0000,X ;same as above
+	STA TMP_03 ;digits group scratch
+	LDA TMP_05 ;adding digits 0000XX
+	JSR SCORE_ADD_GROUP
+	STA SCORE_XX0000,X
+	RTS 
+L_046A:
+	LDA SCORE_LOWER,X
+	BEQ SCORE_ADD ;always taken? code below possibly dead.
+SCORE_GROUP_SUBTRACT:
+	SEC 
+	LDA SCORE_0000XX,X
+	STA TMP_03 ;digit groups scratch
+	LDA TMP_07 ;digits subtracting 0000XX
+	JSR SCORE_SUBTRACT_FROM_03
+	STA SCORE_0000XX,X
+	LDA SCORE_00XX00,X
+	STA TMP_03 ;digit groups scratch
+	LDA TMP_06 ;digits subtracting 00XX00
+	JSR SCORE_SUBTRACT_FROM_03
+	STA SCORE_00XX00,X
+	LDA SCORE_XX0000,X
+	STA TMP_03 ;digit groups scratch
+	LDA TMP_05 ;digits subtracting XX0000
+	JSR SCORE_SUBTRACT_FROM_03
+	STA SCORE_XX0000,X
+	LDA SCORE_XX0000,X ;why load what we just stored?
+	BNE L_049C
+	LDA SCORE_00XX00,X
+	BNE L_049C
+	LDA SCORE_0000XX,X
+	BEQ L_04A2 ;if zero skip
+L_049C:
+	BCS L_04BE
+	LDA SCORE_LOWER,X ;invert C3
+	EOR #$FF
+L_04A2:
+	STA SCORE_LOWER,X ;store c3
+	SEC 
+	LDA #$00
+	STA TMP_03
+	LDA SCORE_0000XX,X
+	JSR SCORE_SUBTRACT_FROM_03
+	STA SCORE_0000XX,X
+	LDA SCORE_00XX00,X
+	JSR SCORE_SUBTRACT_FROM_03
+	STA SCORE_00XX00,X
+	LDA SCORE_XX0000,X
+	JSR SCORE_SUBTRACT_FROM_03
+	STA SCORE_XX0000,X
+L_04BE:
+	RTS 
+SCORE_ADD_GROUP:
+	JSR SETUP_RAM,RET_LOW_DIGIT ;A=value to add to base.
+	ADC TMP_01
+	CMP #$0A ;see if above 9
+	BCC NO_ROLLOVER
+	ADC #$05 ;roll first digit, carry important.
+NO_ROLLOVER:
+	CLC 
+	ADC TMP_02 ;add high digit
+	STA TMP_02 ;stores whole value.
+	LDA TMP_03
+	AND #$F0
+	ADC TMP_02
+	BCC L_04DB
+L_04D7:
+	ADC #$5F ;adds #$60 because c always set.
+	SEC  ;unneeded because it should always roll.
+	RTS 
+L_04DB:
+	CMP #$A0
+	BCS L_04D7 ;roll
+	RTS  ;no roll, leave alone
+SCORE_SUBTRACT_FROM_03:
+	JSR SETUP_RAM,RET_LOW_DIGIT
+	SBC TMP_01 ;subtract low digit
+	STA TMP_01
+	BCS SCORE_SUB_NOUNDER
+	ADC #$0A ;put digit 0-9 range, carry set after
+	STA TMP_01
+	LDA TMP_02 ;load high digit
+	ADC #$0F ;adds 10
+	STA TMP_02 ;store back
+SCORE_SUB_NOUNDER:
+	LDA TMP_03 ;score digit high
+	AND #$F0 ;get high digit
+	SEC 
+	SBC TMP_02
+	BCS NO_UNDERFLOW
+	ADC #$A0 ;put top in 0-9 range
+	CLC  ;underflow next jsr
+NO_UNDERFLOW:
+	ORA TMP_01 ;combine digits
+	RTS  ;done subbing
+SETUP_RAM,RET_LOW_DIGIT:
+	PHA  ;A=add/sub value
+	AND #$0F
+	STA TMP_01 ;store lower digit
+	PLA 
+	AND #$F0
+	STA TMP_02 ;store higher digit
+	LDA TMP_03 ;add/sub from these digits
+	AND #$0F ;get lower digplayed digits
+	RTS  ;ret lower digit.
+MOVE_HIGHER_TO_SCORE:
+	LDA #$00
+	STA TMP_04 ;clear
+	CLC 
+	LDA TMP_00 ;F0
+	ADC #$10 ;put into range
+	AND #$F0 ;mask bits
+	LSR A
+	LSR A ;>> 2
+	TAY  ;Y=0
+	LDA TMP_00
+	AND #$07
+	ASL A
+	ASL A ;<< 2
+	TAX  ;X=0
+LOOP_ALL_X_INDEXES:
+	LDA SCORE_LOWER,Y ;wrong addr mode lol.
+	BEQ ACCESS_NO_VAL
+	LDA SCORE_ACCESS_CPY,X
+	BEQ SET_SCORE_CPY
+SUBTRACT_CPY_FROM_SCORE:
+	SEC 
+	LDA SCORE_0000XX,Y ;wrong addr modes here
+	STA TMP_03
+	LDA SCORE_CPY_0000XX,X
+	JSR SCORE_SUBTRACT_FROM_03
+	LDA SCORE_00XX00,Y ;again
+	STA TMP_03
+	LDA SCORE_CPY_00XX00,X
+	JSR SCORE_SUBTRACT_FROM_03
+	LDA SCORE_XX0000,Y ;again
+	STA TMP_03
+	LDA SCORE_CPY_XX0000,X
+	JSR SCORE_SUBTRACT_FROM_03
+	BCS SCORE_LOWER ;>= ?
+	LDA SCORE_LOWER,Y ;again
+	BNE SCORE_HIGHER ;always taken?
+SET_SCORE_CPY:
+	LDA #$FF
+	STA TMP_04 ;which higher flag?
+	SEC 
+SCORE_WRITE_CPY_LOWER:
+	TYA 
+	BNE RTS ;don't write if Y not 0
+	BCC SKIP_COPY ;skip on no carry
+	LDA SCORE_ACCESS_CPY,X
+	STA SCORE_LOWER
+	LDA SCORE_CPY_XX0000,X
+	STA SCORE_XX0000
+	LDA SCORE_CPY_00XX00,X
+	STA SCORE_00XX00
+	LDA SCORE_CPY_0000XX,X
+	STA SCORE_0000XX
+SKIP_COPY:
+	LDA TMP_00
+	AND #$08
+	BEQ RTS
+	DEX 
+	DEX 
+	DEX 
+	DEX 
+	BPL LOOP_ALL_X_INDEXES
+RTS:
+	RTS 
+ACCESS_NO_VAL:
+	LDA SCORE_ACCESS_CPY,X ;see if cpy has value
+	BEQ SUBTRACT_CPY_FROM_SCORE ;both are empty, sub.
+SCORE_LOWER:
+	LDA SCORE_LOWER,Y
+	BNE SET_SCORE_CPY
+SCORE_HIGHER:
+	CLC 
+	BCC SCORE_WRITE_CPY_LOWER
+RNG_ADVANCE:
+	LDA RNG_0 ;LFSR between 0-2,1-2
+	AND #$02
+	STA TMP_07 ;either #$02 or #$00
+	LDA RNG_1
+	AND #$02
+	EOR TMP_07 ;if match, C=0, otherwise C=1
+	CLC 
+	BEQ RNG_ROTATE
+	SEC 
+RNG_ROTATE:
+	ROR RNG_0
+	ROR RNG_1
+	ROR RNG_2
+	ROR RNG_3
+	LDA RNG_0
+	RTS 
+MENU_INDIRECT_JUMP:
+	JSR NMI_DISABLE_SPRITS/BG ;JUMPS TO FROM MENU SELECTION
+	JSR CLEAR_NAMETABLE_$2000 ;clears nametable
+	JSR WAIT_FOR_NMI ;wait for nmi.
+	LDA #$02
+	STA TMP_01 ;nametable $2400 to clear
+	LDA #$50
+	STA TMP_00 ;tile to clear with
+	JSR CLEAR_SCREEN
+	JSR CLEAR_SPRITES
+	JSR WAIT_FOR_NMI
+	LDX #$04
+	LDY #$E4 ;upload file from E404
+	JSR UPLOAD_PPU_FILE
+	LDA #$01
+	STA PALETTE_UPLOAD
+	LDA #$01
+	STA CURSOR_UPDATE_DISALLOWED
+	INC SWITCH_BACK_TO_MENU_FALSE
+	JMP PPU_ENABLE_SPRITES/BG
+WAIT_FOR_NMI:
+	JSR CLEAR_NMIRAN/PPUSTUFFFLAG ;waited always clears current.
+WAIT_FOR_NMI_LOOP:
+	LDA NMI_RAN
+	BEQ WAIT_FOR_NMI_LOOP
+	RTS  ;Jumped to from somewhere else.
+NMI_DISABLE_SPRITS/BG:
+	JSR WAIT_FOR_NMI
+	LDA PPU_MASK_RAM
+	AND #$E7
+STORE_PPUMASK:
+	STA PPU_MASK_RAM
+	STA PPU_Mask
+	RTS 
+PPU_ENABLE_SPRITES/BG:
+	JSR WAIT_FOR_NMI
+	LDA PPU_MASK_RAM
+	ORA #$18 ;set sprits/bg
+	BNE STORE_PPUMASK
+MOVE_$50B_FROM_$3XX_TO_$30,XX=Y:
+	STY MV_FROM_300_LOCATION ;save for move back later
+	LDX #$00
+Loopy:
+	LDA TRGT1_TYPE,Y
+	STA $30,X
+	INY 
+	INX 
+	CPX #$50
+	BNE Loopy
+	RTS 
+MOVE_$50B_BACK:
+	LDY MV_FROM_300_LOCATION
+	LDX #$00
+Loopy:
+	LDA $30,X
+	STA TRGT1_TYPE,Y
+	INY 
+	INX 
+	CPX #$50
+	BNE Loopy
+	RTS 
+UPLOAD_PPU_FILE:
+	STX TMP_00
+	STY TMP_01
+	JMP PPU_FILE_TEST_STREAM
+CLEAR_NMIRAN/PPUSTUFFFLAG:
+	LDA #$00
+	STA NMI_RAN ;NMI not ran.
+	STA PPU_BLOCK_UPDATE_IN_NMI ;dont block ppu stuff.
+	RTS  ;return.
+	LDA COUNTDOWN_2D ;dead code?
+	BNE L_062D
+	LDA $1E
+	STA IN_GAME_STATE
+L_062D:
+	RTS 
+L_062E:
+	STX $1E
+	STA COUNTDOWN_2D
+	LDA #$12
+	STA IN_GAME_STATE
+	RTS 
+CLEAR_0300-03FF:
+	LDY #$00
+	TYA 
+more_data:
+	STA TRGT1_TYPE,Y
+	INY 
+	BNE more_data
+	RTS 
+CLEAR_RAM_0030+:
+	LDA #$00
+	LDX #$30
+MoreToDo:
+	STA TMP_00,X
+	INX 
+	BNE MoreToDo
+	RTS 
+CLEAR_0040_00BF:
+	LDA #$00
+	LDX #$7F
+MORE_CLEAR:
+	STA $40,X
+	DEX 
+	BPL MORE_CLEAR
+	RTS 
+L_0655:
+	LDX #$03
+	LDY #$05
+L_0659:
+	LDA SCORE_LOWER,X
+	AND #$0F
+	STA PPU_UPDATE_BUF,Y
+	DEY 
+	LDA SCORE_LOWER,X
+	LSR A
+	LSR A
+	LSR A
+	LSR A
+	STA PPU_UPDATE_BUF,Y
+	DEX 
+	DEY 
+	BPL L_0659
+	LDA #$16
+	STA PPU_BLOCK_BUF_SETTING
+	LDX L_25DC
+	LDY L_25DB
+	JMP MAKE_SETUP_PPU_BLOCK
+L_067C:
+	LDA TMP_0C?BONUS_HIGH?
+	ASL A
+	TAY 
+	LDA L_2B30,Y
+	STA $10
+	LDA L_2B31,Y
+	STA $11
+	LDY #$00
+	LDX #$00
+L_068E:
+	LDA ($10),Y
+	CMP #$AA
+	BNE L_0695
+RTS:
+	RTS 
+L_0695:
+	CLC 
+	ADC $B1
+	CMP #$A8
+	BCC L_069E
+	LDA #$F4
+L_069E:
+	STA BONUS_LOW?
+	INY 
+	LDA ($10),Y
+	CLC 
+	ADC $B2
+	STA $0E
+	INY 
+	LDA BONUS_LOW?
+	STA $0200,X
+	INX 
+	LDA #$56
+	STA $0200,X
+	INX 
+	LDA #$00
+	STA $0200,X
+	INX 
+	LDA $0E
+	STA $0200,X
+	INX 
+	JMP L_068E
+PPU_DISP_SOMETHING:
+	LDA FLAG_AD
+	BEQ RTS ;not set
+	LDA #$00
+	STA FLAG_AD ;clear flag
+L_06CC:
+	LDA #$D6
+	LDY GAME_MODE_IN
+	CPY #$02
+	BNE DUCKS_GAME ;is ducks game
+	LDA #$D4 ;pigeons
+DUCKS_GAME:
+	STA TMP_0C?BONUS_HIGH?
+	LDX #$09
+L_06DA:
+	LDY TMP_0C?BONUS_HIGH?
+	LDA $03F0,X
+	BEQ L_06E2
+	DEY 
+L_06E2:
+	TYA 
+	STA PPU_UPDATE_BUF,X
+	DEX 
+	BPL L_06DA
+L_06E9:
+	LDA #$1A ;1 group, 10 things.
+	STA PPU_BLOCK_BUF_SETTING
+	LDX #$4C
+	LDY #$23
+	JMP MAKE_SETUP_PPU_BLOCK
+PPU_DISP_SHOTS_LEFT:
+	LDA SHOT_FIRED
+	BEQ RTS ;no shot fired.
+	LDA #$00
+	STA SHOT_FIRED ;clear fired.
+	LDX SHOTS_REMAINING
+	LDY #$00 ;setup index.
+DECIDE_LOOP:
+	CPX #$00
+	BEQ NO_SHOTS_REMAINING
+	DEX  ;1 less shot.
+	LDA #$D9 ;bullet tile
+	BNE L_070C
+NO_SHOTS_REMAINING:
+	LDA #$B7 ;blank shot tile.
+L_070C:
+	STA PPU_UPDATE_BUF,Y ;store to spot.
+	INY  ;next spot.
+	CPY #$03 ;check for 3 bullets.
+	BNE DECIDE_LOOP
+	LDA #$13 ;1 group of 3
+	STA PPU_BLOCK_BUF_SETTING
+	LDX #$43 ;put where they go.
+	LDY #$23
+MAKE_SETUP_PPU_BLOCK:
+	STX TMP_00 ;low ppu addr
+	STY TMP_01 ;high ppu addr
+	LDX #$00
+	LDY #$05
+	STX TMP_02
+	STY TMP_03 ;setup ram pointer
+	JMP PPU_UPDATE_BLOCK ;WARNING-2RTS'S POSSIBLE
+	LDA COUNTDOWN_2D ;dead code?
+	BEQ SCORE_SOMETHING
+	LDA GAME_MODE_IN
+	CMP #$02
+	BEQ RTS
+	JMP FORWARD_TARGET_3
+RTS:
+	RTS 
+SCORE_SOMETHING:
+	LDX #$03 ;score digits loop counter
+SCORE_TO_C7:
+	LDA SCORE_LOWER,X
+	STA SCORE_ACCESS_CPY,X
+	DEX 
+	BPL SCORE_TO_C7
+	LDA GAME_MODE_IN
+	ASL A
+	ASL A ;mul game mode by 4
+	TAY  ;index
+	STY TMP_0F ;score index
+	LDX #$00 ;ugh counting up
+LOOP_MOVE_HIGHSCORE_TO_CURR:
+	LDA HIGH_SCORES_ARRAY,Y
+	STA SCORE_LOWER,X
+	INY 
+	INX 
+	CPX #$04 ;moved 4 bytes?
+	BNE LOOP_MOVE_HIGHSCORE_TO_CURR ;move more
+	LDA #$F0 ;looking at
+	STA TMP_00
+	JSR MOVE_HIGHER_TO_SCORE
+	LDY TMP_0F
+	LDX #$00
+WRITE_HIGH_SCORE:
+	LDA SCORE_LOWER,X
+	STA HIGH_SCORES_ARRAY,Y
+	INY 
+	INX 
+	CPX #$04
+	BNE WRITE_HIGH_SCORE
+	LDY #$00
+	STY ZAPPER_TRIG_RELEASED
+	STY SWITCH_BACK_TO_MENU_FALSE
+	INY 
+	STY IN_MENU_FLAG
+	JMP NMI_DISABLE_SPRITS/BG
+	JSR SND_SET_F1
+	JSR WAIT_FOR_NMI
+	JSR SND_SET_F0
+	LDA #$01
+	STA TRGT3_TYPE
+	STA TRGT3_STATE
+	LDA #$07
+	STA IN_GAME_STATE
+	LDA #$15
+	STA COUNTDOWN_2D
+	RTS 
+MAKE_DISP_BUF_REQUIRED:
+	LDX #$0A
+WRITE_NEEDED_LINE:
+	CPX HITS_REQUIRED_RAM
+	BCC REQUIRED_BLOCK ;X >= HITS_REQD
+	BEQ REQUIRED_BLOCK ;never gotten to. Bad code.
+	LDA #$B7 ;Display blank.
+	BNE WRITE_SETTING
+REQUIRED_BLOCK:
+	LDA #$D7 ;Display required lines.
+WRITE_SETTING:
+	STA PPU_BLOCK_BUF_SETTING,X ;store blank/lines
+	DEX 
+	BNE WRITE_NEEDED_LINE
+	LDA #$1A ;1 group, 10 chars
+	STA PPU_BLOCK_BUF_SETTING
+	LDX #$6C
+	LDY #$23 ;PPU ADDR
+	JMP MAKE_SETUP_PPU_BLOCK ;make update block
+MAKE_DISP_BUF_LEVEL:
+	LDA LEVEL
+	STA TMP_03
+	LDA #$01
+	CLC 
+	JSR SCORE_ADD_GROUP ;inc level
+	STA LEVEL
+	LDA #$12 ;1 group of 2 bytes
+	STA PPU_BLOCK_BUF_SETTING
+	LDX #$DD ;PIGEONS DEFAULT ROUND CHR
+	LDA GAME_MODE_IN
+	CMP #$02
+	BEQ WRITE_TILE
+	LDX #$50 ;DUCK DEFAULT ROUND CHR
+WRITE_TILE:
+	STX PPU_UPDATE_BUF+1 ;Always blank just in case.
+	LDX #$00 ;set chr writing
+	LDA LEVEL
+	AND #$F0
+	BEQ WRITE_DIGIT ;Write only 1 digit if taken.
+	LSR A
+	LSR A
+	LSR A
+	LSR A
+	STA PPU_UPDATE_BUF,X ;store high digit
+	INX  ;next digit
+WRITE_DIGIT:
+	LDA LEVEL
+	AND #$0F
+	STA PPU_UPDATE_BUF,X ;store low digit
+	LDX #$05
+	LDY #$23 ;PPU ADDR for update
+	JMP MAKE_SETUP_PPU_BLOCK ;make buffer.
+	LDA FLAG_9D_INDEX
+	BEQ 9D_IS_ZERO
+	JMP TIMER_2B_FROM_9D_STUFF
+9D_IS_ZERO:
+	LDA #$0A
+	STA IN_GAME_STATE ;new state
+	RTS 
+TIMER_2B_FROM_9D_STUFF:
+	LDA TIMER_2B
+	BNE RTS ;rts if timer !0
+	LDY FLAG_9D_INDEX
+	BEQ RTS ;rts if flag clear.
+	LDA TIMER_9D_STUFF?,Y
+	CMP #$AA
+	BEQ WAS_AA ;clear 9D if loaded?
+	PHA 
+	INY 
+	LDA TIMER_9D_STUFF?,Y ;get next byte.
+	STA TIMER_2B ;set timer.
+	INY 
+	STY FLAG_9D_INDEX ;save.
+	PLA 
+	JMP L_146C
+WAS_AA:
+	LDA #$00
+	STA FLAG_9D_INDEX
+RTS:
+	RTS 
+GAME_STATE_INDIR_0:
+	JSR CLEAR_RAM_0030+
+	JSR WAIT_FOR_NMI
+	JSR CLEAR_BOTH_SCREENS
+	JSR Clear_Memories ;clear sprites, $3XX, and 40-BF
+	LDX #$01 ;ducks.
+	LDA MENU_OPTION_SELECTING
+	STA GAME_MODE_IN ;0-1 = ducks, 2 = pigeons
+	CMP #$02
+	BCC GAME_MODE_<2 ;bne should work too.
+	LDX #$08 ;pigeons.
+GAME_MODE_<2:
+	STX IN_GAME_STATE ;now either 1 or 8.
+	RTS 
+GAME_STATE_INDIR_1:
+	JSR WAIT_FOR_NMI ;set up game for ducks.
+	LDX #$42
+	LDY #$E0
+	JSR UPLOAD_PPU_FILE ;upload file for screen?
+	LDA #$02
+	STA PALETTE_UPLOAD ;game palette
+	LDA #$02
+	STA IN_GAME_STATE ;next game state
+	JSR SET_PPU_SCROLL ;set scroll
+	JSR PPU_ENABLE_SPRITES/BG ;turn on screeen
+	JMP SND_SET_F1 ;set a sound
+	JSR Clear_Memories
+	JSR SETUP_HITSREQD_TARGETS_OTHER
+	JSR MAKE_DISP_BUF_REQUIRED
+	JSR MAKE_DISP_BUF_LEVEL
+	NOP 
+	NOP 
+	NOP 
+	LDA #$00
+	STA ZAPPER_TRIG_RELEASED
+	STA FLAG_9D_INDEX ;cleared above, so wtf?
+	LDA #$03
+	STA IN_GAME_STATE ;switch state
+	RTS 
+GAME_STATE_INDIR_3:
+	JSR ZAP_PROC_TRIGGER
+	JSR PROCESS_ZAPPER
+	JSR FORWARD_TARGET_3 ;forwards another state
+	JSR FORWARD_TARGETS_1+2
+	JSR PPU_DISP_SHOTS_LEFT
+	JSR KILL_TARGET?
+	JSR PPU_DISP_SOMETHING
+	JSR PROCESS_SPRITES_UNK
+	JSR PPU_DISP_BLINK_WORD_SHOT
+	JSR TIMER_2B_FROM_9D_STUFF
+	NOP 
+	NOP 
+	NOP 
+	RTS  ;return.
+FORWARD_TARGETS_1+2:
+	LDA TRGT1_TYPE
+	BEQ FORWARD_TARGET_2 ;not active
+	LDY #$00
+	STY TARGET_DATA_ORIGIN ;where obj came from?
+	JSR MOVE_$50B_FROM_$3XX_TO_$30,XX=Y
+	JSR PROCESS_OBJ_STATE
+	JSR MOVE_$50B_BACK
+FORWARD_TARGET_2:
+	LDA TRGT2_TYPE
+	BEQ Zapper_shot? ;not active
+	LDY #$50
+	INC TARGET_DATA_ORIGIN
+	JSR MOVE_$50B_FROM_$3XX_TO_$30,XX=Y
+	JSR PROCESS_OBJ_STATE
+	JSR MOVE_$50B_BACK
+Zapper_shot?:
+	LDA ZAP_SHOT_ENABLED
+	BEQ RTS ;Zapper shot disabled.
+	LDY DEACTIVATE_SHOOTING_COUNDOWN?
+	BNE WRITE_COUNTDOWN ;count down
+	LDY #$41 ;set value
+	LDA SHOTS_REMAINING
+	BNE WRITE_COUNTDOWN ;if has shots.
+	LDY #$15 ;otherwise, this value if no shots.
+WRITE_COUNTDOWN:
+	DEY 
+	STY DEACTIVATE_SHOOTING_COUNDOWN?
+	LDA UNK_BC
+	BNE DEC_A6 ;bc_exists
+	LDA TRGT1_STATE
+	BNE RTS ;in state, rts
+	LDA TRGT2_STATE
+	BNE RTS ;in state, rts
+	LDA TIMER_2B
+	BNE RTS ;has time, rts
+	LDA #$0A ;state
+	LDY #$07 ;palette
+	LDX UNK_BD
+	BEQ BD_IS_0
+	LDA #$0C ;state
+	LDY #$02 ;palette
+BD_IS_0:
+	STA TRGT3_STATE
+	STY PALETTE_UPLOAD
+	JSR WAIT_FOR_NMI
+	JSR PPU_DISP_SHOT_TEXT
+	LDA #$40
+	STA TIMER_2B ;store timer
+	LDA #$00
+	STA ZAP_SHOT_ENABLED ;disable shots
+	JMP UPDATE_PPU_GROUP
+DEC_A6:
+	LDA UNK_A6
+	BEQ RTS
+	DEC UNK_A6 ;if not zero, dec.
+RTS:
+	RTS 
+PROCESS_OBJ_STATE:
+	LDA TRGT_STATE_PROCESS
+	JSR GOTO_TABLE_PAST_JSR
+	.db #$E0
+	.db #$C5 ;RTS
+	.db #$19
+	.db #$C9
+	.db #$32
+	.db #$C9
+	.db #$19
+	.db #$CA
+	.db #$1F
+	.db #$CC
+	.db #$3D
+	.db #$CC
+	.db #$4F
+	.db #$CC
+	.db #$7C
+	.db #$CC
+	.db #$8B
+	.db #$CC
+	.db #$A2
+	.db #$1F
+LOOP:
+	LDA UNK_DATA,X
+	STA $30,X
+	DEX 
+	BPL LOOP
+	LDA TARGET_DATA_ORIGIN
+	BEQ L_092F
+	LDA #$40
+	STA $36
+	LDA #$7F
+	STA $37
+L_092F:
+	INC TRGT_STATE_PROCESS
+RTS:
+	RTS 
+	LDA ZAP_SHOT_ENABLED ;is zapper enabled?
+	BEQ RTS ;leave if not enabled
+	LDA UNK_A6
+	BNE RTS ;if equal leave
+	JSR RNG_ADVANCE
+	AND #$0F
+	LDY GAME_MODE_IN
+	BNE Don't Add 10
+	CLC 
+	ADC #$10
+Don't Add 10:
+	CMP UNK_9C
+	BNE L_0958
+	CLC 
+	ADC #$01
+	CMP #$10
+	BEQ L_0955
+	CMP #$20
+	BNE L_0958
+L_0955:
+	SEC 
+	SBC #$10
+L_0958:
+	STA UNK_9C
+	ASL A
+	TAX 
+	LDA L_260B,X
+	STA $44
+	LDA L_260C,X
+	STA $45
+	JSR RNG_ADVANCE
+	AND #$3F
+	TAY 
+	INY 
+	STY UNK_A6
+	LDY #$00
+	LDA ($44),Y
+	INY 
+	STY $47
+	STA $33
+	LDY #$00
+	LDX $99
+	BEQ L_0980
+	LDY #$02
+L_0980:
+	STY $3C
+	INC $99
+	LDX $98
+	LDA L_2766,X
+	CPY #$00
+	BEQ L_0992
+	AND #$0F
+	JMP L_0996
+L_0992:
+	LSR A
+	LSR A
+	LSR A
+	LSR A
+L_0996:
+	STA DUCK_COLOR_SHOT
+	LDX LEVEL
+	LDA GAME_MODE_IN
+	BNE L_09B9
+	LDA #$0B
+	CPX #$12
+	BCS L_09B2
+	LDA #$0A
+	CPX #$11
+	BCS L_09B2
+	LDA #$09
+	CPX #$10
+	BCS L_09B2
+	DEX 
+	TXA 
+L_09B2:
+	TAX 
+	LDA L_275A,X
+	JMP L_09D0
+L_09B9:
+	LDA #$1B
+	LDX LEVEL
+	CPX #$10
+	BCS L_09C9
+	DEX 
+	TXA 
+	STA TMP_0C?BONUS_HIGH?
+	ASL A
+	CLC 
+	ADC TMP_0C?BONUS_HIGH?
+L_09C9:
+	CLC 
+	ADC DUCK_COLOR_SHOT
+	TAX 
+	LDA L_273C,X
+L_09D0:
+	STA $5E
+	LDX LEVEL
+	LDA #$0B
+	CPX #$27
+	BCS L_09E2
+	LDA #$0A
+	CPX #$24
+	BCS L_09E2
+	LDA #$09
+L_09E2:
+	STA $3A
+	LDA #$00
+	STA $46
+	STA $42
+	STA $4E
+	STA $4F
+	LDA #$01
+	STA $4B
+	STA $AE
+	LDA GAME_MODE_IN
+	BNE L_0A0E
+	LDX LEVEL
+	LDA #$7D
+	CPX #$11
+	BCC L_0A08
+	LDA #$5D
+	CPX #$20
+	BCC L_0A08
+	LDA #$3E
+L_0A08:
+	STA $4C
+	LDA #$00
+	STA $AF
+L_0A0E:
+	INC UNK_BB
+	LDA UNK_BB
+	STA $3B
+	DEC UNK_BC
+	INC TRGT_STATE_PROCESS
+	RTS 
+	LDA FRAME_COUNTER?
+	AND #$07
+	BNE L_0A22
+	JSR SND_SET_F0
+L_0A22:
+	LDA DEACTIVATE_SHOOTING_COUNDOWN?
+	BNE L_0A29
+	JSR L_152C
+L_0A29:
+	LDA SHOTS_REMAINING
+	BNE L_0A3E
+	LDA $4E
+	BNE L_0A3E
+	LDA #$01
+	STA $4E
+	LDA #$F0
+	STA $46
+	LDA #$00
+	JMP L_0B77
+L_0A3E:
+	LDA GAME_MODE_IN
+	BEQ L_0A45
+L_0A42:
+	JMP L_0B59
+L_0A45:
+	LDA $4B
+	BEQ L_0A53
+	LDA $32
+	CMP #$88
+	BCS L_0A42
+	LDA #$00
+	STA $4B
+L_0A53:
+	LDX #$01
+	LDA $4C
+	BEQ L_0A70
+	LDA SHOTS_REMAINING
+	BNE L_0A66
+	STA $4C
+L_0A5F:
+	JSR L_0F96
+	LDX #$01
+	BNE L_0A70
+L_0A66:
+	DEX 
+	LDA FRAME_COUNTER?
+	LSR A
+	BCC L_0A70
+	DEC $4C
+	BEQ L_0A5F
+L_0A70:
+	STX $AE
+	CPX #$01
+	BEQ L_0A8A
+	LDA CTRL_HELD
+	AND #$0F
+	BNE L_0AA8
+	LDA $17
+	AND #$0F
+	BNE L_0AA8
+	LDA #$00
+	STA $AF
+	LDA $AE
+	BEQ L_0A8D
+L_0A8A:
+	JMP L_0F16
+L_0A8D:
+	LDA $32
+	CMP #$20
+	BCC L_0AD1
+	CMP #$90
+	BCS L_0AD7
+	LDX #$00
+	LDA $33
+	CMP #$10
+	BCC L_0AE3
+	LDX #$08
+	CMP #$F0
+	BCS L_0AE9
+L_0AA5:
+	JMP L_0BC3
+L_0AA8:
+	CMP $AF
+	BEQ L_0A8A
+	STA $AF
+	LDX #$35
+	LSR A
+	BCS L_0ABF
+	LDX #$DB
+	LSR A
+	BCS L_0ABF
+	LDX #$79
+	LSR A
+	BCS L_0ABF
+	LDX #$1F
+L_0ABF:
+	LDA FRAME_COUNTER?
+	LSR A
+	TXA 
+	BCC L_0ACA
+	AND #$0F
+	JMP L_0B56
+L_0ACA:
+	LSR A
+	LSR A
+	LSR A
+	LSR A
+	JMP L_0B56
+L_0AD1:
+	INC $32
+	LDY #$00
+	BEQ L_0ADB
+L_0AD7:
+	DEC $32
+	LDY #$02
+L_0ADB:
+	LDA $48
+	AND #$08
+	TAX 
+	JMP L_0AED
+L_0AE3:
+	INC $33
+	LDY #$04
+	BNE L_0AED
+L_0AE9:
+	DEC $33
+	LDY #$02
+L_0AED:
+	STX TMP_0C?BONUS_HIGH?
+	STY TMP_0F
+	LDA $48
+	AND #$07
+	EOR #$07
+	ORA TMP_0C?BONUS_HIGH?
+	STA TMP_0C?BONUS_HIGH?
+	JSR RNG_ADVANCE
+	AND #$03
+	CMP #$03
+	BNE L_0B06
+	LDA #$02
+L_0B06:
+	CLC 
+	ADC TMP_0C?BONUS_HIGH?
+	STA $0E
+	LDY TMP_0F
+	CMP #$00
+	BNE L_0B1B
+	CPY #$01
+	BEQ L_0B4B
+	CPY #$02
+	BEQ L_0B45
+	BNE L_0B50
+L_0B1B:
+	CMP #$04
+	BNE L_0B29
+	CPY #$00
+	BEQ L_0B50
+	CPY #$02
+	BEQ L_0B4B
+	BNE L_0B45
+L_0B29:
+	CMP #$08
+	BNE L_0B37
+	CPY #$00
+	BEQ L_0B45
+	CPY #$01
+	BEQ L_0B50
+	BNE L_0B4B
+L_0B37:
+	CMP #$0C
+	BNE L_0B52
+	CPY #$00
+	BEQ L_0B4B
+	CPY #$01
+	BEQ L_0B45
+	BNE L_0B50
+L_0B45:
+	JSR RNG_ADVANCE
+	ASL A
+	BCS L_0B50
+L_0B4B:
+	DEC $0E
+	JMP L_0B52
+L_0B50:
+	INC $0E
+L_0B52:
+	LDA $0E
+	AND #$0F
+L_0B56:
+	JMP L_0B77
+L_0B59:
+	LDA $46
+	BNE L_0BC3
+	LDY $47
+	LDA ($44),Y
+	INY 
+	CMP #$FF
+	BNE L_0B70
+	LDA ($44),Y
+	INY 
+	STA TRGT_STATE_PROCESS
+	LDA ($44),Y
+	STA $42
+	RTS 
+L_0B70:
+	STA $46
+	LDA ($44),Y
+	INY 
+	STY $47
+L_0B77:
+	STA $48
+	TAX 
+	LDA L_264B,X
+	STA $49
+	STA $4A
+	LDA #$00
+	STA $34
+	LDA $48
+	CMP #$11
+	BCC L_0BA2
+	TAX 
+	LDA #$00
+	CPX #$15
+	BEQ L_0BBC
+	CPX #$14
+	BEQ L_0BB0
+	CPX #$13
+	BEQ L_0BA8
+	INC $34
+	CPX #$12
+	BEQ L_0BB0
+	BNE L_0BBC
+L_0BA2:
+	CMP #$08
+	BCC L_0BA8
+	INC $34
+L_0BA8:
+	LDX #$0C
+	LDY #$E7
+	AND #$07
+	BEQ L_0BC0
+L_0BB0:
+	LDX #$05
+	LDY #$E7
+	CMP #$03
+	BCC L_0BC0
+	CMP #$06
+	BCS L_0BC0
+L_0BBC:
+	LDX #$1D
+	LDY #$E7
+L_0BC0:
+	JSR L_0F0B
+L_0BC3:
+	JSR L_181B
+L_0BC6:
+	PHA 
+	LDA $32
+	CMP #$F0
+	BCC L_0BD1
+	PLA 
+	JMP L_0F2A
+L_0BD1:
+	LDA $46
+	BEQ L_0BD7
+	DEC $46
+L_0BD7:
+	LDY $49
+L_0BD9:
+	LDA L_2661,Y
+	INY 
+	CMP #$AA
+	BNE L_0BE6
+	LDY $4A
+	JMP L_0BD9
+L_0BE6:
+	CLC 
+	ADC $32
+	LDX $4B
+	BNE L_0BF9
+	LDX $AE
+	BNE L_0BF9
+	CMP #$1E
+	BCC L_0BFB
+	CMP #$92
+	BCS L_0BFB
+L_0BF9:
+	STA $32
+L_0BFB:
+	LDA L_2661,Y
+	INY 
+	STY $49
+	CLC 
+	ADC $33
+	LDX $4B
+	BNE L_0C14
+	LDX $AE
+	BNE L_0C14
+	CMP #$0E
+	BCC L_0C16
+	CMP #$F2
+	BCS L_0C16
+L_0C14:
+	STA $33
+L_0C16:
+	PLA 
+	SEC 
+	SBC #$01
+	BNE L_0BC6
+	JMP L_0E4D
+	LDX $3B
+	LDA #$01
+	STA $03EF,X
+	LDA #$01
+	STA FLAG_AD
+	STA $5E
+	LDA #$12
+	STA $4D
+	JSR L_0F68
+	LDX #$13
+	LDY #$E7
+L_0C37:
+	JSR L_0F0B
+	INC TRGT_STATE_PROCESS
+	RTS 
+	LDA $4D
+	BEQ L_0C4C
+	DEC $4D
+	AND #$0F
+	CMP #$0A
+	BNE L_0C4C
+	JSR L_152C
+L_0C4C:
+	JMP L_0E4D
+	JSR L_0FF9
+	JSR SND_SET_F0
+	LDA $33
+	LDX #$48
+	CMP #$48
+	BCC L_0C64
+	LDX #$A0
+	CMP #$A0
+	BCS L_0C64
+	TAX 
+L_0C64:
+	STX $03A3
+	LDA #$01
+	STA $4B
+	LDX #$10
+	STX $48
+	LDA L_264B,X
+	STA $49
+	STA $4A
+	LDX #$18
+	LDY #$E7
+	BNE L_0C37
+	LDA $32
+	CMP #$B0
+	BCS L_0C85
+	JMP L_0BC3
+L_0C85:
+	JSR L_1534
+	INC TRGT_STATE_PROCESS
+	RTS 
+	LDA #$00
+	STA TRGT_STATE_PROCESS
+	LDX $36
+	JMP L_1042
+FORWARD_TARGET_3:
+	LDA TRGT3_TYPE
+	BEQ RTS ;deativated?
+	LDA #$02
+	STA TARGET_DATA_ORIGIN ;unk
+	LDY #$A0
+	JSR MOVE_$50B_FROM_$3XX_TO_$30,XX=Y ;move object to $30
+	JSR GOTO_STATE_31
+	JSR MOVE_$50B_BACK ;put into high RAM
+RTS:
+	RTS 
+GOTO_STATE_31:
+	LDA TRGT_STATE_PROCESS
+	JSR GOTO_TABLE_PAST_JSR
+	.db #$E0
+	.db #$C5
+	.db #$D4
+	.db #$CC
+	.db #$16
+	.db #$CD
+	.db #$1D
+	.db #$CD
+	.db #$3C
+	.db #$CD
+	.db #$4D
+	.db #$CE
+	.db #$4C
+	.db #$CD
+	.db #$4D
+	.db #$CE
+	.db #$52
+	.db #$CD
+	.db #$5C
+	.db #$CD
+	.db #$6C
+	.db #$CD
+	.db #$4D
+	.db #$CE
+	.db #$80
+	.db #$CD
+	.db #$4D
+	.db #$CE
+	.db #$9A
+	.db #$CD
+	.db #$18
+	.db #$CE
+	.db #$2E
+	.db #$CE
+	.db #$4D
+	.db #$CE
+	.db #$40
+	.db #$CE
+	LDX #$1F
+L_0CD6:
+	.db #$BD
+	.db #$6E
+	.db #$E7
+	STA $30,X
+	DEX 
+	BPL L_0CD6
+	LDA #$03
+	STA SHOTS_REMAINING
+	LDA #$01
+	STA SHOT_FIRED
+	STA FLAG_AD
+	LDA #$02
+	STA PALETTE_UPLOAD
+	LDA IN_GAME_STATE
+	CMP #$07
+	BNE L_0CF7
+	LDA #$10
+	STA TRGT_STATE_PROCESS
+	RTS 
+L_0CF7:
+	LDA LEVEL
+	LDY #$18
+	LDX #$00
+	CMP #$01
+	BEQ L_0D05
+	LDY #$50
+	LDX #$18
+L_0D05:
+	STY $33
+	STX $44
+	LDA #$01
+	STA FLAG_9D_INDEX
+	JSR WAIT_FOR_NMI
+	JSR PLAY_SOUNDS
+	INC TRGT_STATE_PROCESS
+	RTS 
+	LDX #$8E
+	LDY #$E7
+	JMP L_0D44
+	LDA $35
+	CMP #$0C
+	BNE L_0D2E
+	INC $44
+	LDA $44
+	CMP #$20
+	BCC L_0D2E
+	INC TRGT_STATE_PROCESS
+L_0D2D:
+	RTS 
+L_0D2E:
+	JSR L_0E4D
+	LDA $33
+	CMP $45
+	BNE L_0D2D
+	LDA #$06
+	STA TRGT_STATE_PROCESS
+	RTS 
+	LDA #$00
+	STA $44
+	LDX #$98
+	LDY #$E7
+L_0D44:
+	JSR L_0F0B
+	INC TRGT_STATE_PROCESS
+	JMP L_0E4D
+	LDX #$A7
+	LDY #$E7
+	BNE L_0D44
+	LDA #$04
+	STA $9E
+	LDX #$AC
+	LDY #$E7
+	BNE L_0D44
+	DEC $9E
+	LDA $9E
+	BNE L_0D69
+	LDA #$10
+	STA $9E
+	JSR L_1528
+L_0D69:
+	JMP L_0E4D
+	LDA TIMER_2B
+	BNE L_0D2D
+	JSR SND_SET_F0
+	LDA #$80
+	STA $33
+	JSR L_0F39
+	LDX #$46
+	LDY #$E8
+	BNE L_0D44
+	LDA TIMER_2B
+	BNE L_0D2D
+	JSR SND_SET_F1
+	JSR L_0F39
+	LDX #$94
+	LDY #$E8
+	LDA UNK_BD
+	CMP #$01
+	BEQ L_0D44
+	LDX #$A3
+	LDY #$E8
+	BNE L_0D44
+	LDA #$30
+	STA UNK_A6
+	LDA #$01
+	STA ZAP_SHOT_ENABLED
+	LDA #$03
+	STA SHOTS_REMAINING
+	LDA #$01
+	STA SHOT_FIRED
+	LDA #$00
+	STA UNK_BD
+	LDA #$02
+	LDY #$01
+	LDX GAME_MODE_IN
+	BNE L_0DBA
+	LDA #$01
+	LDY #$00
+L_0DBA:
+	STA UNK_BC
+	STY TRGT2_TYPE
+	STY TRGT2_STATE
+	LDA #$01
+	STA TRGT1_TYPE
+	STA TRGT1_STATE
+	JSR RNG_ADVANCE
+	STA TMP_0C?BONUS_HIGH?
+	LDA #$03
+	LDY LEVEL
+	CPY #$01
+	BEQ L_0DD9
+	LDA #$07
+L_0DD9:
+	AND TMP_0C?BONUS_HIGH?
+	STA $98
+	LDY #$00
+	STY $99
+	TAX 
+	LDA L_2766,X
+	STA TMP_0C?BONUS_HIGH?
+	AND #$F0
+	LSR A
+	LDY #$00
+	JSR L_0F44
+	LDA TMP_0C?BONUS_HIGH?
+	AND #$0F
+	ASL A
+	ASL A
+	ASL A
+	JSR L_0F44
+	LDA #$3F
+	STA $0400
+	LDA #$10
+	STA $0401
+	STA $0402
+	LDA #$00
+	STA $0413
+	LDA #$01
+	STA WHITE_BOX_DISPLAYED
+	LDA #$12
+	STA TRGT_STATE_PROCESS
+	LDA #$00
+	STA $42
+	RTS 
+	LDA UNK_BB
+	CMP #$0A
+	BNE L_0E29
+	LDA #$00
+	STA $A9
+	LDA #$04
+	STA IN_GAME_STATE
+	JMP CLEAR_SPRITES
+L_0E29:
+	LDA #$0E
+	STA TRGT_STATE_PROCESS
+	RTS 
+	LDA #$80
+	STA $33
+	LDA #$01
+	STA $38
+	JSR L_0F39
+	LDX #$B2
+	LDY #$E8
+	JMP L_0D44
+	LDA $42
+	BNE L_0E4D
+	LDA #$00
+	STA TRGT_STATE_PROCESS
+	LDX $36
+	JMP L_1042
+L_0E4D:
+	LDA $42
+	BEQ L_0E56
+	DEC $42
+	JMP L_101B
+L_0E56:
+	LDY $43
+	LDA ($40),Y
+	CMP #$FA
+	BCC L_0E72
+	INC $43
+	SEC 
+	SBC #$FA
+	JSR GOTO_TABLE_PAST_JSR
+	.db #$E0
+	.db #$C5
+	.db #$E0
+	.db #$C5
+	.db #$07
+	.db #$CF
+	.db #$00
+	.db #$CF
+	.db #$F9
+	.db #$CE
+	.db #$ED
+	.db #$CE
+L_0E72:
+	LDY $43
+	LDX TARGET_DATA_ORIGIN
+	CPX #$02
+	BNE L_0EE6
+	LDX TRGT_STATE_PROCESS
+	CPX #$09
+	BEQ L_0EAD
+	CPX #$0B
+	BEQ L_0E8C
+	CPX #$0D
+	BEQ L_0E8C
+	CPX #$11
+	BNE L_0ED4
+L_0E8C:
+	LDX $46
+	BEQ L_0E9C
+	DEC $46
+	LDA $47
+	CLC 
+	ADC $32
+	STA $32
+	JMP L_101B
+L_0E9C:
+	STA $46
+	INY 
+	LDA ($40),Y
+	BPL L_0EA8
+	AND #$7F
+	JSR L_112B
+L_0EA8:
+	STA $47
+	JMP L_0EC9
+L_0EAD:
+	TAX 
+	BPL L_0EB5
+	AND #$7F
+	JSR L_112B
+L_0EB5:
+	CLC 
+	ADC $32
+	STA $32
+	INY 
+	LDA ($40),Y
+	LDX $34
+	BEQ L_0EC4
+	JSR L_112B
+L_0EC4:
+	CLC 
+	ADC $33
+	STA $33
+L_0EC9:
+	INY 
+	LDA ($40),Y
+	STA $35
+	INY 
+	STY $43
+	JMP L_101B
+L_0ED4:
+	CPX #$03
+	BNE L_0EE6
+	LDA #$02
+	LDX $34
+	BEQ L_0EE1
+	JSR L_112B
+L_0EE1:
+	CLC 
+	ADC $33
+	STA $33
+L_0EE6:
+	LDA ($40),Y
+	STA $42
+	JMP L_0EC9
+	LDY $43
+	LDA ($40),Y
+	STA TRGT_STATE_PROCESS
+	INY 
+	LDA ($40),Y
+	STA $42
+	RTS 
+	LDA #$00
+L_0EFB:
+	STA $43
+	JMP L_0E56
+	LDA #$01
+	STA $38
+	JMP L_0E56
+	LDA #$1E
+	BNE L_0EFB
+L_0F0B:
+	STX $40
+	STY $41
+	LDA #$00
+	STA $43
+	STA $42
+	RTS 
+L_0F16:
+	LDA $32
+	CMP #$08
+	BCC L_0F2A
+	CMP #$90
+	BCS L_0F33
+	LDA $33
+	CMP #$0C
+	BCC L_0F2A
+	CMP #$F4
+	BCC L_0F36
+L_0F2A:
+	LDA #$08
+	STA TRGT_STATE_PROCESS
+	LDA #$00
+	STA $42
+	RTS 
+L_0F33:
+	JMP L_0AD7
+L_0F36:
+	JMP L_0AA5
+L_0F39:
+	LDA #$00
+	STA $46
+	STA $47
+	LDA #$AC
+	STA $32
+	RTS 
+L_0F44:
+	TAX 
+	LDA #$08
+	STA BONUS_LOW?
+L_0F49:
+	LDA L_2724,X
+	STA $0403,Y
+	INX 
+	INY 
+	DEC BONUS_LOW?
+	BNE L_0F49
+	RTS 
+L_0F56:
+	LDA LEVEL
+	LDY #$02
+	CMP #$06
+	BCC L_0F7F
+	LDY #$03
+	CMP #$11
+	BCC L_0F7F
+	LDY #$05
+	BNE L_0F7F
+L_0F68:
+	LDX LEVEL
+	LDA #$00
+	CPX #$06 ;increase score at level 6
+	BCC L_0F78
+	LDA #$03
+	CPX #$11 ;increase score at level 11
+	BCC L_0F78
+	LDA #$06
+L_0F78:
+	CLC 
+	ADC DUCK_COLOR_SHOT
+	TAX 
+	LDY TBL_DUCK_INDEXES,X
+L_0F7F:
+	STY TMP_DUCK_INDEX? ;unknown why saved.
+	LDA TBL_DUCK_SCORES,Y
+	STA TMP_06 ;score adding 00XX00
+	LDA #$00
+	STA TMP_04 ;add/subtract flag.
+	STA TMP_05 ;score adding 00XX00
+	STA TMP_07 ;adding digits 0000XX
+	LDA #$0F ;jsr setup
+	JSR SCORE_ADD/SUB
+	JMP L_0655
+L_0F96:
+	LDA UNK_BD
+	BNE L_0FB9
+	LDA #$06
+	JSR UPDATE_PPU_GROUP
+	LDA #$30
+	STA TIMER_2B
+	LDA #$06
+	STA PALETTE_UPLOAD
+	LDA #$01
+	STA WHITE_BOX_DISPLAYED
+	LDA #$36
+	STA $0403
+	STA $0407
+	STA $040B
+	STA $040F
+L_0FB9:
+	RTS 
+PROCESS_SPRITES_UNK:
+	LDX #$00 ;obj 0
+	LDY #$00 ;spr slot 0
+	JSR ANIMATE_SOMETHING
+	LDX #$04 ;obj 1
+	LDY #$08 ;spr slot 2
+ANIMATE_SOMETHING:
+	LDA SPR_ANIM_CTR,X
+	BEQ RTS ;already ended.
+	DEC SPR_ANIM_CTR,X ;Dec counter
+	BNE KEEP_ON_SCREEN
+	LDA #$F4 ;Sprite Y value, removed from screen
+	STA SPR_OBJ_Y,X
+	STA SPR_OBJ_X,X
+KEEP_ON_SCREEN:
+	LDA SPR_OBJ_Y,X
+	STA $02F0,Y
+	STA $02F4,Y ;Store Y
+	LDA SPR_OBJ_TILE,X ;get tile
+	STA $02F1,Y ;store tile
+	LDA #$FF
+	STA $02F5,Y ;2nd blank?
+	LDA #$00 ;no attributes.
+	STA $02F2,Y
+	STA $02F6,Y
+	LDA SPR_OBJ_X,X ;get x pos
+	STA $02F3,Y ;store.
+	CLC 
+	ADC #$08
+	STA $02F7,Y ;store +8
+RTS:
+	RTS 
+L_0FF9:
+	LDX #$00
+	LDA SPR_ANIM_CTR,X
+	BEQ L_1001
+	LDX #$04
+L_1001:
+	LDA $32
+	SEC 
+	SBC #$04
+	STA SPR_OBJ_Y,X
+	LDA $33
+	SEC 
+	SBC #$08
+	STA SPR_OBJ_X,X
+	LDA TMP_DUCK_INDEX?
+	CLC 
+	ADC #$F7
+	STA SPR_OBJ_TILE,X
+	LDA #$30
+	STA SPR_ANIM_CTR,X
+	RTS 
+L_101B:
+	LDA $36
+	STA $B4
+	LDA $35
+	ASL A
+	TAY 
+	LDA #$C5
+	STA $12
+	LDA #$DA
+	STA $13
+	LDA ($12),Y
+	STA $10
+	INY 
+	LDA ($12),Y
+	STA $11
+	LDY #$00
+	STY $1A
+L_1038:
+	LDY $1A
+	LDA ($10),Y
+	CMP #$00
+	BNE L_1050
+	LDX $B4
+L_1042:
+	LDA #$F4
+L_1044:
+	CPX $37
+	BEQ L_104F
+	STA $0200,X
+	INX 
+	JMP L_1044
+L_104F:
+	RTS 
+L_1050:
+	STA $13
+	INY 
+	LDA ($10),Y
+	INY 
+	STA $12
+	LDA ($10),Y
+	INY 
+	CLC 
+	ADC $32
+	STA $B1
+	LDA ($10),Y
+	INY 
+	LDX $34
+	BEQ L_106D
+	JSR L_112B
+	SEC 
+	SBC #$08
+L_106D:
+	CLC 
+	ADC $33
+	STA $B2
+	STY $1A
+	LDY #$00
+	LDA ($12),Y
+	LDX #$00
+	CMP #$00
+	BEQ L_108C
+	LDX #$10
+	CMP #$01
+	BEQ L_108C
+	LDX #$38
+	CMP #$02
+	BEQ L_108C
+	LDX #$44
+L_108C:
+	STX UPDATE_GROUP?
+L_108E:
+	INY 
+L_108F:
+	LDA ($12),Y
+	CMP #$FF
+	BEQ L_1038
+	CMP #$FE
+	BNE L_10A0
+	INC UPDATE_GROUP?
+	INC UPDATE_GROUP?
+	JMP L_108E
+L_10A0:
+	CMP #$FD
+	BNE L_10B9
+	INY 
+	LDA ($12),Y
+	CLC 
+	ADC $3C
+	STA $B3
+	LDA $38
+	BEQ L_108E
+	LDA $B3
+	ORA #$20
+	STA $B3
+	JMP L_108E
+L_10B9:
+	LDX UPDATE_GROUP?
+	LDA L_1CC0,X
+	INC UPDATE_GROUP?
+	CLC 
+	ADC $B1
+	JSR L_110E
+	LDX $B4
+	STA $0200,X
+	INC $B4
+	LDA ($12),Y
+	INY 
+	LDX $B4
+	STA $0200,X
+	INC $B4
+	LDA $B3
+	LDX $34
+	BEQ L_10E9
+	AND #$BF
+	STA TMP_0C?BONUS_HIGH?
+	LDA $B3
+	AND #$40
+	EOR #$40
+	ORA TMP_0C?BONUS_HIGH?
+L_10E9:
+	LDX $B4
+	STA $0200,X
+	INC $B4
+	LDX UPDATE_GROUP?
+	LDA L_1CC0,X
+	INC UPDATE_GROUP?
+	LDX $34
+	BEQ L_10FE
+	JSR L_112B
+L_10FE:
+	CLC 
+	ADC $B2
+	JSR L_1114
+	LDX $B4
+	STA $0200,X
+	INC $B4
+	JMP L_108F
+L_110E:
+	PHA 
+	LDA $32
+	JMP L_1117
+L_1114:
+	PHA 
+	LDA $33
+L_1117:
+	STA TMP_0F
+	PLA 
+	PHA 
+	SEC 
+	SBC TMP_0F
+	BCS L_1123
+	JSR L_112B
+L_1123:
+	CMP #$30
+	PLA 
+	BCC L_112A
+	LDA #$FF
+L_112A:
+	RTS 
+L_112B:
+	EOR #$FF
+	CLC 
+	ADC #$01
+	RTS 
+ZAP_PROC_TRIGGER:
+	LDA APU_FRAMECOUNTER ;zapper input
+	AND #$10 ;read trigger
+	CMP ZAP_PREVIOUS_STATE ;see if match
+	BEQ INT_STATE_MATCH
+	STA ZAP_PREVIOUS_STATE ;save state
+INT_ZERO_MATCH_CNT:
+	LDA #$00
+	STA ZAP_STATE_COUNT ;clear on change.
+RTS:
+	RTS 
+INT_STATE_MATCH:
+	INC ZAP_STATE_COUNT ;trig in same state as prev
+	LDY ZAP_STATE_COUNT
+	CPY #$01
+	BNE RTS ;leave on not first match
+	AND #$10 ;A=zapper state
+	BEQ INT_ZAP_TRIG_UNPRESSED ;not pressed
+	LDA #$01
+	STA ZAPPER_PRESSED ;state pressed
+	BNE INT_ZERO_MATCH_CNT
+INT_ZAP_TRIG_UNPRESSED:
+	LDA ZAPPER_PRESSED
+	BEQ INT_ZERO_MATCH_CNT ;not marked as matched, just clear count
+	LDY #$00
+	STY ZAPPER_PRESSED ;clear pressed.
+	INY 
+	STY ZAPPER_TRIG_RELEASED ;set unpressed. used to not carry pulls?
+	BNE INT_ZERO_MATCH_CNT ;always taken
+PROCESS_ZAPPER:
+	LDA ZAP_SHOT_ENABLED
+	BNE SHOOTING_ENABLED ;has to be enabled.
+TRIG_NO_RELEASE:
+	LDA #$00 ;not enabled/dont release.
+	STA ZAPPER_TRIG_RELEASED
+RTS:
+	RTS 
+SHOOTING_ENABLED:
+	LDA ZAPPER_TRIG_RELEASED
+	BEQ RTS ;wait for release to do anything.
+	LDA SHOTS_REMAINING
+	BEQ TRIG_NO_RELEASE ;never release if no shot
+	DEC SHOTS_REMAINING ;1 less shot, if in game.
+	LDA #$01
+	STA SHOT_FIRED
+	LDA #$00
+	STA ZAPPER_TRIG_RELEASED ;clear released.
+	JSR SND_SET_F0 ;init
+	LDA #$04 ;palette 03 for whole screen
+	STA PALETTE_UPLOAD ;pallet of all black bg, white sprite 0
+	JSR CLEAR_SPRITES ;clear all sprites.
+	JSR NMI_DISABLE_SPRITS/BG ;waits for nmi
+	LDA IN_MENU_FLAG
+	BEQ IN-GAME
+	JSR SND_SET_F0 ;disable all regs
+	JSR PLAY_SOUNDS
+	JSR SND_SET_F0 ;init noise+dmc?
+	LDA #$02
+	STA LIGHT_STEP ;set
+	LDA #$FF ;why not set ppuctrl? hmm
+	STA PPU_SCROLL_X_RAM ;set scroll to 2nd table.
+	BNE ZAPPER_TEST_HIT_SCREEN
+IN-GAME:
+	LDA #$05 ;palette 04
+	STA PALETTE_UPLOAD ;game palette.
+	LDA #$00
+	STA LIGHT_STEP
+	LDY #$00
+	LDA TRGT1_TYPE
+	BEQ L_11B5
+	LDA TRGT1_STATE
+	CMP #$03
+	BEQ L_11C7
+L_11B5:
+	LDA #$01
+	STA LIGHT_STEP
+	LDY #$50
+	LDA TRGT2_TYPE
+	BEQ L_11DD
+	LDA TRGT2_STATE
+	CMP #$03
+	BNE L_11DD
+L_11C7:
+	JSR L_1292
+ZAPPER_TEST_HIT_SCREEN:
+	JSR CLEAR_NMIRAN/PPUSTUFFFLAG
+WAIT_NO_LIGHT:
+	LDA NMI_RAN
+	BNE TEST_NEW_LIGHT ;taken if 1 frame no light.
+	LDA APU_FRAMECOUNTER ;get zapper state
+	AND #$08 ;does it see light
+	BNE WAIT_NO_LIGHT ;no,wait
+	LDA LIGHT_STEP ;detected light when not supposed to
+	JMP LIGHT_INVALID ;needs more work done later.
+L_11DD:
+	LDA GAME_MODE_IN
+	CMP #$02
+	BNE UPLOAD_PALETTE_1
+	JMP L_1266
+UPLOAD_PALETTE_1:
+	LDY #$02
+	STY PALETTE_UPLOAD ;palette 1
+	JSR WAIT_FOR_NMI ;wait until palette updated.
+	LDY #$01
+	STY WHITE_BOX_DISPLAYED ;set flag
+	JMP DISP_WHITE_BOX ;displays the white box.
+TEST_NEW_LIGHT:
+	JSR CLEAR_NMIRAN/PPUSTUFFFLAG ;previous test passed.
+	LDA PPU_MASK_RAM ;disable sprites/bg
+	AND #$E7
+	STA PPU_MASK_RAM
+	LDA #$08 ;enable BG
+	LDY LIGHT_STEP
+	CPY #$02 ;on menu?
+	BEQ WRITE_PPU_MASK ;if so, enable BG.
+	LDA #$10 ;otherwise, sprites.
+WRITE_PPU_MASK:
+	ORA PPU_MASK_RAM
+	STA PPU_MASK_RAM
+	STA PPU_Mask ;write enable.
+	JSR CLEAR_SPRITES
+	LDA TRGT2_TYPE
+	BEQ TEST_LIGHT_LOOP ;doesn't exist.
+	LDA TRGT2_STATE
+	CMP #$03 ;state active
+	BNE TEST_LIGHT_LOOP ;not valid rn
+	LDY #$50 ;valid target, do something...
+	JSR L_1292 ;display box?
+TEST_LIGHT_LOOP:
+	LDA NMI_RAN
+	BNE NO_HIT_LIGHT
+	LDA APU_FRAMECOUNTER
+	AND #$08
+	BNE TEST_LIGHT_LOOP ;not detected, loop.
+	LDA LIGHT_STEP ;detected, hit target.
+	CMP #$02
+	BNE GAME_HIT
+	LDA #$01 ;menu hit
+WRITE_RESULT_FROM_A:
+	STA ZAPPER_RESULT ;hit=1,miss=2
+	LDA #$01 ;upload palette 0
+	STA PALETTE_UPLOAD
+	LDA #$00 ;back to screen.
+	STA PPU_SCROLL_X_RAM
+	JSR WAIT_FOR_NMI
+	JMP PPU_ENABLE_SPRITES/BG ;RTS's here, screen back.
+GAME_HIT:
+	INC TARGETS_IN_LEVEL
+	INC UNK_BD
+	LDX #$04
+	LDA LIGHT_STEP
+	BNE L_1256
+	STX TRGT1_STATE
+	JMP L_1259
+L_1256:
+	STX TRGT2_STATE
+L_1259:
+	LDA GAME_MODE_IN
+	CMP #$02
+	BEQ L_1266 ;not sure about any of this.
+	LDY #$01
+	STY WHITE_BOX_DISPLAYED
+	INY 
+	BNE UPLOAD_PALETTE_NO_HIT
+L_1266:
+	LDY #$03
+UPLOAD_PALETTE_NO_HIT:
+	STY PALETTE_UPLOAD
+DISP_WHITE_BOX:
+	JSR CLEAR_SPRITES
+	JMP PPU_ENABLE_SPRITES/BG
+NO_HIT_LIGHT:
+	LDA LIGHT_STEP
+	BNE LIGHT_INVALID
+	LDA TRGT2_TYPE
+	BEQ L_1259
+	LDA TRGT2_STATE
+	CMP #$03
+	BNE L_1259
+	LDA #$01
+	STA LIGHT_STEP
+	JSR CLEAR_NMIRAN/PPUSTUFFFLAG
+	JMP TEST_LIGHT_LOOP
+LIGHT_INVALID:
+	CMP #$02 ;compare to menu
+	BNE L_1259 ;not on menu
+	LDA #$02 ;else, menu is miss.
+	BNE WRITE_RESULT_FROM_A
+L_1292:
+	LDA TRGT1_Y_COORD,Y
+	STA $B1
+	LDA TRGT1_X_COORD,Y
+	STA $B2
+	LDA TRGT1_UNKATTR,Y
+	STA TMP_0C?BONUS_HIGH?
+	JMP L_067C
+SETUP_HITSREQD_TARGETS_OTHER:
+	LDY HITS_REQUIRED_RAM_INDEX
+RELOAD_HITS_REQD:
+	LDA HITS_REQUIRED_FOR_LEVEL,Y
+	CMP #$FF ;if at end
+	BNE L_12B1
+	LDY #$13 ;range to end.
+	BNE RELOAD_HITS_REQD ;load again
+L_12B1:
+	INY  ;inc for next level.
+	STY HITS_REQUIRED_RAM_INDEX ;store back current index.
+	STA HITS_REQUIRED_RAM
+	LDA #$00
+	STA UNK_BB
+	STA TARGETS_IN_LEVEL
+	LDA #$01
+	STA TRGT3_TYPE ;duck type
+	STA TRGT3_STATE ;disabled state?
+	LDA #$FF
+	STA UNK_9C
+	RTS 
+	LDA $A9
+	JSR GOTO_TABLE_PAST_JSR
+	.db #$D6
+	.db #$D2
+	.db #$DD
+	.db #$D2
+	.db #$3D
+	.db #$D3
+	.db #$C9
+	.db #$D3
+	LDA #$10
+	STA TIMER_2B
+	INC $A9
+	RTS 
+	LDA TIMER_2B
+	BNE L_132A
+	LDY #$00
+	LDX #$01
+L_12E5:
+	LDA $03F0,X
+	BEQ L_12F7
+	LDA $03EF,X
+	BNE L_12F7
+	INC $03EF,X
+	DEC $03F0,X
+	LDY #$01
+L_12F7:
+	INX 
+	CPX #$0A
+	BNE L_12E5
+	DEY 
+	BNE L_1309
+	LDA #$00
+	STA $A9
+	JSR SND_SET_F1
+	JMP L_06CC
+L_1309:
+	LDA TARGETS_IN_LEVEL
+	CMP HITS_REQUIRED_RAM
+	BCC L_132B
+	JSR SND_SET_F1
+	LDA #$00
+	STA SHOT_FIRED
+	LDA #$10
+	STA TIMER_2B
+	INC $A9
+	LDA LEVEL
+	AND #$0F
+	BNE L_132A
+	JSR CLEAR_SPRITES
+	LDA #$04
+	JMP UPDATE_PPU_GROUP
+L_132A:
+	RTS 
+L_132B:
+	JSR CLEAR_SPRITES
+	LDA #$08
+	JSR UPDATE_PPU_GROUP
+	JSR L_1544
+	LDX #$06
+	LDA #$0C
+	JMP L_062E
+	LDA TIMER_2B
+	BNE L_132A
+	LDA #$10
+	STA TIMER_2B
+	INC SHOT_FIRED
+	LDA SHOT_FIRED
+	CMP #$0F
+	BNE L_13AD
+	LDA TARGETS_IN_LEVEL
+	CMP #$0A
+	BNE L_1399
+	JSR L_1538
+	LDA LEVEL
+	LDX #$00
+	CMP #$11
+	BCC L_1369
+	INX 
+	CMP #$16
+	BCC L_1369
+	INX 
+	CMP #$21
+	BCC L_1369
+	INX 
+L_1369:
+	LDA TBL_BONUS_SCORES_HIGH,X
+	STA TMP_05
+	STA TMP_0C?BONUS_HIGH?
+	LDA TBL_BONUS_SCORES_LOW,X
+	STA TMP_06
+	LSR A
+	LSR A
+	LSR A
+	LSR A
+	STA BONUS_LOW?
+	LDA #$00
+	STA TMP_04
+	STA TMP_07
+	LDA #$0F
+	JSR SCORE_ADD/SUB
+	JSR L_0655
+	LDA #$03
+	STA $A9
+	LDA #$A0
+	STA TIMER_2B
+	JSR CLEAR_SPRITES
+	LDA #$05
+	JMP UPDATE_PPU_GROUP
+L_1399:
+	LDA #$00
+L_139B:
+	LDX #$02
+	LDY GAME_MODE_IN
+	CPY #$02
+	BNE L_13A5
+	LDX #$09
+L_13A5:
+	JSR L_062E
+	LDA #$00
+	JMP UPDATE_PPU_GROUP
+L_13AD:
+	AND #$01
+	BNE L_13B4
+	JMP L_06CC
+L_13B4:
+	LDX #$09
+	LDA #$D6
+	LDY GAME_MODE_IN
+	CPY #$02
+	BNE L_13C0
+	LDA #$D4
+L_13C0:
+	STA PPU_UPDATE_BUF,X
+	DEX 
+	BPL L_13C0
+	JMP L_06E9
+	LDA TIMER_2B
+	BNE L_13D1
+	LDA #$04
+	BNE L_139B
+L_13D1:
+	RTS 
+KILL_TARGET?:
+	LDA WHITE_BOX_DISPLAYED
+	BNE RTS ;white box displayed, ret.
+	INC UNK_9B
+	LDY #$00 ;index, target 1 first.
+	JSR PROCESS_TARGET
+	LDY #$50 ;target 2
+PROCESS_TARGET:
+	LDA TRGT1_TYPE,Y
+	BEQ RTS ;no target
+	LDA TRGT1_STATE,Y
+	CMP #$03 ;state active?
+	BEQ L_13FB
+	CMP #$08 ;state killed?
+	BNE RTS ;not killed, rts.
+	LDX $030B,Y ;TRGT_INDEX_B = Animation?
+	LDA $03EF,X
+	BEQ L_1409
+	LDX #$D3
+	BNE L_140B ;always taken
+L_13FB:
+	LDA UNK_9B
+	AND #$0F
+	BNE RTS
+	LDX #$B7
+	LDA UNK_9B
+	AND #$10
+	BEQ L_1413
+L_1409:
+	LDX #$D4
+L_140B:
+	LDA GAME_MODE_IN
+	CMP #$02
+	BEQ L_1413
+	INX 
+	INX 
+L_1413:
+	STX PPU_UPDATE_BUF
+	LDX #$11
+	STX PPU_BLOCK_BUF_SETTING
+	LDA $030B,Y
+	CLC 
+	ADC #$4B
+	TAX 
+	LDY #$23
+	JMP MAKE_SETUP_PPU_BLOCK
+RTS:
+	RTS 
+PPU_DISP_BLINK_WORD_SHOT:
+	LDA ZAP_SHOT_ENABLED
+	BEQ RTS ;shots disabled
+	LDA SHOTS_REMAINING
+	BNE RTS ;none remaining
+	LDA SHOT_BLINK_COUNTER
+	AND #$07
+	BNE INC_9A ;if bottom bits set.
+	LDA WHITE_BOX_DISPLAYED
+	BNE RTS ;if white box, rts
+	LDA SHOT_BLINK_COUNTER
+	AND #$08
+	BEQ PPU_DISP_SHOT_TEXT
+	LDA #$B7 ;blank shot text with tile.
+	TAX 
+	TAY 
+	BNE AXY_TO_UPDATEBUF_3BYTES
+PPU_DISP_SHOT_TEXT:
+	LDA #$DA ;SHOT text
+	LDX #$DB
+	LDY #$DC
+AXY_TO_UPDATEBUF_3BYTES:
+	STA PPU_UPDATE_BUF
+	STX PPU_UPDATE_BUF+1
+	STY PPU_UPDATE_BUF+2
+	LDA #$13 ;1 group, 3 bytes.
+	STA PPU_BLOCK_BUF_SETTING
+	LDX #$63
+	LDY #$23 ;store to 2363
+	JSR MAKE_SETUP_PPU_BLOCK
+INC_9A:
+	INC SHOT_BLINK_COUNTER
+	RTS 
+UPDATE_PPU_GROUP:
+	PHA 
+	JSR WAIT_FOR_NMI
+	JSR PLAY_SOUNDS
+	PLA 
+L_146C:
+	STA UPDATE_GROUP?
+	BEQ L_14BC ;not doing something diff...hmm...
+	ASL A
+	TAX  ;X is now index.
+	LDA L_2C38,X
+	STA INDIR_JMP_LOW
+	LDA L_2C39,X
+	STA INDIR_JMP_HIGH
+	LDY #$01
+	LDA (INDIR_JMP_LOW),Y
+	STA TMP_0F
+	LDX #$00
+	INY 
+MORE_BYTES_IN_BLOCK:
+	LDA (INDIR_JMP_LOW),Y
+	STA PPU_BLOCK_BUF_SETTING,X
+	INY 
+	INX 
+	DEC TMP_0F
+	BNE MORE_BYTES_IN_BLOCK
+	LDA UPDATE_GROUP?
+	CMP #$01 ;level group?
+	BNE NO_LEVEL_IN_UPDATE
+	LDA LEVEL
+	LSR A
+	LSR A
+	LSR A
+	LSR A
+	BEQ ONLY_ONE_DIGIT
+	STA $0518 ;upper level digit if exists.
+ONLY_ONE_DIGIT:
+	LDA LEVEL
+	AND #$0F ;bottom level digit
+	STA $0519
+	JMP NO_BONUS?
+NO_LEVEL_IN_UPDATE:
+	CMP #$05 ;perfect level bonus?
+	BNE NO_BONUS?
+	LDA TMP_0C?BONUS_HIGH? ;bonus score for level?
+	STA $0521
+	LDA BONUS_LOW?
+	STA $0522
+	JMP NO_BONUS?
+L_14BC:
+	LDX #$44
+	LDA #$24
+L_14C0:
+	STA PPU_UPDATE_BUF,X
+	DEX 
+	BPL L_14C0
+	LDA #$6B
+	STA PPU_BLOCK_BUF_SETTING
+	LDX #$CB
+	BNE L_14D4
+NO_BONUS?:
+	LDY #$00
+	LDA (INDIR_JMP_LOW),Y
+	TAX  ;get ppu high addr
+L_14D4:
+	LDY #$20
+	JMP MAKE_SETUP_PPU_BLOCK
+Clear_Memories:
+	JSR CLEAR_SPRITES
+	JSR CLEAR_0040_00BF
+	JMP CLEAR_0300-03FF
+SND_SET_F0:
+	LDA #$01 ;disable all registers.
+	BNE SND_F0
+SND_SET_F0:
+	LDA #$02 ;NOISE+DMC INIT.
+	BNE SND_F0
+SND_SET_F0:
+	LDA #$04
+	BNE SND_F0
+SND_SET_F0:
+	LDA #$08
+	BNE SND_F0
+SND_SET_F0:
+	LDA #$10
+	BNE SND_F0
+SND_SET_F0:
+	LDA #$20
+	BNE SND_F0
+SND_SET_F0:
+	LDA #$40
+	BNE SND_F0
+SND_SET_F0:
+	LDA #$80
+SND_F0:
+	ORA SND_PLAY_F0
+	STA SND_PLAY_F0
+	RTS 
+SND_SET_F1:
+	LDA #$01
+	BNE SND_SET_F1
+SND_SET_F1:
+	LDA #$02 ;title sound?
+	BNE SND_SET_F1
+SND_SET_F1:
+	LDA #$04
+	BNE SND_SET_F1
+SND_SET_F1:
+	LDA #$08
+	BNE SND_SET_F1
+SND_SET_F1:
+	LDA #$10
+	BNE SND_SET_F1
+SND_SET_F1:
+	LDA #$20
+	BNE SND_SET_F1
+SND_SET_F1:
+	LDA #$40
+	BNE SND_SET_F1
+SND_SET_F1:
+	LDA #$80
+SND_SET_F1:
+	ORA SND_PLAY_F1
+	STA SND_PLAY_F1
+	RTS 
+L_1528:
+	LDA #$01
+	BNE L_1546
+L_152C:
+	LDA #$02
+	BNE L_1546
+	LDA #$04
+	BNE L_1546
+L_1534:
+	LDA #$08
+	BNE L_1546
+L_1538:
+	LDA #$10
+	BNE L_1546
+L_153C:
+	LDA #$20
+	BNE L_1546
+	LDA #$40
+	BNE L_1546
+L_1544:
+	LDA #$80
+L_1546:
+	ORA SND_PLAY_F2
+	STA SND_PLAY_F2
+	RTS 
+	JSR WAIT_FOR_NMI
+	LDX #$6C
+	LDY #$E2
+	JSR UPLOAD_PPU_FILE
+	LDA #$03
+	STA PALETTE_UPLOAD
+	LDA #$00
+	STA FLAG_9D_INDEX
+	LDA #$09
+	STA IN_GAME_STATE
+	JSR SET_PPU_SCROLL
+	JSR PPU_ENABLE_SPRITES/BG
+	JMP SND_SET_F1
+	JSR Clear_Memories
+	JSR SETUP_HITSREQD_TARGETS_OTHER
+	JSR MAKE_DISP_BUF_REQUIRED
+	JSR MAKE_DISP_BUF_LEVEL
+	JSR WAIT_FOR_NMI
+	JSR PLAY_SOUNDS
+	LDA #$01
+	STA SHOT_FIRED
+	LDA #$03
+	STA SHOTS_REMAINING
+	JSR PPU_DISP_SHOTS_LEFT
+	JSR L_06CC
+	LDA #$06
+	STA FLAG_9D_INDEX
+	LDA #$0D
+	STA IN_GAME_STATE
+	RTS 
+	LDA #$01
+	STA TRGT1_TYPE
+	STA TRGT2_TYPE
+	STA TRGT1_STATE
+	STA TRGT2_STATE
+	LDA #$30
+	LDX LEVEL
+	CPX #$10
+	BCS L_15AD
+	DEX 
+	LDA L_2C17,X
+L_15AD:
+	STA $A8
+	LDA #$80
+	STA UNK_A6
+	LDA #$01
+	STA SHOT_FIRED
+	LDA #$03
+	STA SHOTS_REMAINING
+	LDA #$02
+	STA UNK_BC
+	LDA #$00
+	STA ZAPPER_TRIG_RELEASED
+	STA ZAP_SHOT_ENABLED
+	STA UNK_BD
+	JSR PPU_DISP_SHOTS_LEFT
+	JSR L_06CC
+	LDA #$0B
+	STA IN_GAME_STATE
+	RTS 
+	JSR ZAP_PROC_TRIGGER
+	JSR PROCESS_ZAPPER
+	JSR L_15EE
+	JSR PPU_DISP_SHOTS_LEFT
+	JSR KILL_TARGET?
+	JSR PPU_DISP_SOMETHING
+	JSR PROCESS_SPRITES_UNK
+	JSR PPU_DISP_BLINK_WORD_SHOT
+	NOP 
+	NOP 
+	NOP 
+	RTS 
+L_15EE:
+	LDA TRGT1_TYPE
+	BEQ L_1600
+	LDY #$00
+	STY TARGET_DATA_ORIGIN
+	JSR MOVE_$50B_FROM_$3XX_TO_$30,XX=Y
+	JSR HANDLE_TARGET_STATE
+	JSR MOVE_$50B_BACK
+L_1600:
+	LDA TRGT2_TYPE
+	BEQ L_1612
+	LDY #$50
+	INC TARGET_DATA_ORIGIN
+	JSR MOVE_$50B_FROM_$3XX_TO_$30,XX=Y
+	JSR HANDLE_TARGET_STATE
+	JSR MOVE_$50B_BACK
+L_1612:
+	LDA UNK_BC
+	BNE L_164B
+	LDX TRGT1_STATE
+	LDY TRGT2_STATE
+	CPX #$03
+	BEQ L_1627
+	CPY #$03
+	BEQ L_1627
+	JSR SND_SET_F0
+L_1627:
+	CPX #$00
+	BNE L_1651
+	CPY #$00
+	BNE L_1651
+	JSR PPU_DISP_SHOT_TEXT
+	LDA #$00
+	STA ZAP_SHOT_ENABLED
+	LDA UNK_BB
+	CMP #$0A
+	BEQ L_1640
+	LDA #$0A
+	BNE L_1646
+L_1640:
+	LDA #$00
+	STA $A9
+	LDA #$0C
+L_1646:
+	STA IN_GAME_STATE
+	JMP CLEAR_SPRITES
+L_164B:
+	LDA UNK_A6
+	BEQ L_1651
+	DEC UNK_A6
+L_1651:
+	RTS 
+HANDLE_TARGET_STATE:
+	.db #$A5 ;target states.
+	.db #$31
+	.db #$20
+	.db #$5E
+	.db #$C3
+	.db #$E0
+	.db #$C5
+	.db #$69
+	.db #$D6
+	.db #$78
+	.db #$D6
+	.db #$D5
+	.db #$D6
+	.db #$52
+	.db #$D7
+	.db #$8F
+	.db #$D7
+	.db #$E0
+	.db #$C5
+	.db #$E0
+	.db #$C5
+	.db #$C5
+	.db #$D7
+1657_STATE_1:
+	LDX #$4F
+L_166B:
+	LDA L_28DA,X
+	STA $30,X
+	DEX 
+	BPL L_166B
+	LDA #$01
+	STA $A7
+	RTS 
+	LDA UNK_A6
+	BNE L_16D4
+	LDA #$01
+	STA ZAP_SHOT_ENABLED
+	JSR RNG_ADVANCE
+	AND #$3F
+	TAY 
+	INY 
+	STY UNK_A6
+	JSR RNG_ADVANCE
+	AND #$0F
+	CMP UNK_9C
+	BNE L_1697
+	CLC 
+	ADC #$01
+	AND #$0F
+L_1697:
+	STA UNK_9C
+	ASL A
+	STA TMP_0C?BONUS_HIGH?
+	ASL A
+	CLC 
+	ADC TMP_0C?BONUS_HIGH?
+	TAX 
+	LDA L_2968,X
+	STA $44
+	LDA L_2969,X
+	STA $43
+	LDA L_296A,X
+	STA $4A
+	LDA L_296B,X
+	STA $42
+	LDA L_296C,X
+	STA $47
+	LDA L_296D,X
+	STA $4C
+	INC UNK_BB
+	LDA UNK_BB
+	STA $3B
+	DEC UNK_BC
+	LDA #$FF
+	STA $5F
+	JSR L_153C
+	LDA #$05
+	STA $58
+	INC TRGT_STATE_PROCESS
+L_16D4:
+	RTS 
+	LDA $58
+	BEQ L_16E0
+	DEC $58
+	BNE L_16E0
+	JSR SND_SET_F0
+L_16E0:
+	LDA $4C
+	BMI L_16EC
+	LDA $49
+	LSR A
+	LSR A
+	CMP #$07
+	BCC L_16EE
+L_16EC:
+	LDA #$07
+L_16EE:
+	CMP $5F
+	BEQ L_16FD
+	STA $5F
+	CLC 
+	ADC $A8
+	TAX 
+	LDA L_29C8,X
+	STA $5E
+L_16FD:
+	JSR L_181B
+L_1700:
+	PHA 
+	JSR L_18AE
+	PLA 
+	SEC 
+	SBC #$01
+	BNE L_1700
+	LDA $4E
+	BMI L_174D
+	LDA $49
+	CMP #$30
+	BCS L_174D
+	JSR L_182F
+	LDA $32
+	SEC 
+	SBC #$40
+	STA $32
+	LDA $49
+	LSR A
+	TAX 
+	LDA L_292A,X
+	STA $35
+	STX TMP_0C?BONUS_HIGH?
+	SEC 
+	SBC #$18
+	STA $56
+	LDX LEVEL
+	LDA #$00
+	CPX #$12
+	BCC L_173E
+	LDA #$03
+	CPX #$23
+	BCC L_173E
+	LDA #$06
+L_173E:
+	CLC 
+	ADC TMP_0C?BONUS_HIGH?
+	TAX 
+	LDA L_2944,X
+	STA $3A
+	JSR L_1805
+	JMP L_101B
+L_174D:
+	LDA #$08
+	STA TRGT_STATE_PROCESS
+	RTS 
+	LDX $3B
+	LDA #$01
+	STA $03EF,X
+	STA FLAG_AD
+	LDA $56
+	ASL A
+	ASL A
+	TAX 
+	LDY #$00
+L_1762:
+	LDA L_2AF2,X
+	STA $0050,Y
+	INX 
+	INY 
+	CPY #$04
+	BNE L_1762
+	LDA #$00
+	STA $57
+	LDX #$00
+L_1774:
+	LDA $32
+	JSR L_1AA5
+	LDA $33
+	JSR L_1AB5
+	INX 
+	INX 
+	CPX #$20
+	BNE L_1774
+	JSR L_0F56
+	LDX $36
+	JSR L_1042
+	INC TRGT_STATE_PROCESS
+	RTS 
+	JSR L_1805
+	JSR L_193A
+	LDA $36
+	STA $B4
+	LDY $50
+	INY 
+	BEQ L_17A7
+	LDX #$00
+	LDY #$0C
+	LDA $54
+	JSR L_17CE
+L_17A7:
+	LDY $53
+	INY 
+	BEQ L_17B5
+	LDX #$10
+	LDY #$20
+	LDA $55
+	JSR L_17CE
+L_17B5:
+	LDA $57
+	CMP #$02
+	BNE L_17BE
+	JSR SND_SET_F0
+L_17BE:
+	LDA #$00
+	STA $54
+	STA $55
+	RTS 
+	LDA #$00
+	STA TRGT_STATE_PROCESS
+	LDX $36
+	JMP L_1042
+L_17CE:
+	STA BONUS_LOW?
+	STY TMP_0C?BONUS_HIGH?
+	LDY $B4
+L_17D4:
+	LDA BONUS_LOW?
+	BNE L_17DC
+	LDA $60,X
+	BNE L_17E0
+L_17DC:
+	INX 
+	JMP L_17F9
+L_17E0:
+	STA $0200,Y
+	INY 
+	LDA L_2A30,X
+	STA $0200,Y
+	INY 
+	INX 
+	LDA L_2A30,X
+	STA $0200,Y
+	INY 
+	LDA $60,X
+	STA $0200,Y
+	INY 
+L_17F9:
+	INX 
+	CPX TMP_0C?BONUS_HIGH?
+	BNE L_17D4
+	STY $B4
+	TYA 
+	TAX 
+	JMP L_1042
+L_1805:
+	LDA $A7
+	BEQ L_181A
+	LDA #$00
+	STA $A7
+	LDX $36
+	JSR L_1042
+	LDA #$50
+	STA $36
+	LDA #$9F
+	STA $37
+L_181A:
+	RTS 
+L_181B:
+	LDX $5E
+	LDA L_2A00,X
+	PHA 
+	INX 
+	TXA 
+	AND #$03
+	BNE L_182B
+	DEX 
+	DEX 
+	DEX 
+	DEX 
+L_182B:
+	STX $5E
+	PLA 
+	RTS 
+L_182F:
+	LDA $4D
+	SEC 
+	SBC #$00
+	TAY 
+	LDA $4E
+	SBC #$10
+	TAX 
+	LDA #$3B
+	JSR L_18DB
+	STY INDIR_JMP_LOW
+	STX INDIR_JMP_HIGH
+	LDA $4D
+	SEC 
+	SBC #$00
+	TAY 
+	LDA $4E
+	SBC #$10
+	TAX 
+	LDA #$E7
+	JSR L_18DB
+	STY $12
+	STX $13
+	LDA $48
+	SEC 
+	SBC #$00
+	TAY 
+	LDA $49
+	SBC #$18
+	TAX 
+	LDA #$7F
+	JSR L_18DB
+	CLC 
+	TYA 
+	ADC #$4F
+	TAY 
+	TXA 
+	ADC #$23
+	TAX 
+	TYA 
+	SEC 
+	SBC INDIR_JMP_LOW
+	STA $93
+	TXA 
+	SBC INDIR_JMP_HIGH
+	CMP #$50
+	ROR A
+	STA $94
+	ROR $93
+	LDY $91
+	LDX $92
+	LDA #$6C
+	JSR L_18DB
+	CLC 
+	TYA 
+	ADC $12
+	TAY 
+	TXA 
+	ADC $13
+	TAX 
+	JSR L_1907
+	SBC #$00
+	EOR #$7F
+	STA $32
+	LDA $43
+	SEC 
+	SBC #$00
+	TAY 
+	LDA $44
+	SBC #$09
+	TAX 
+	JSR L_1907
+	EOR #$80
+	STA $33
+	RTS 
+L_18AE:
+	LDA #$0F
+L_18B0:
+	SEC 
+	SBC #$05
+	TAX 
+	LDY #$00
+	LDA $40,X
+	BPL L_18BB
+	DEY 
+L_18BB:
+	CLC 
+	ADC $41,X
+	STA $41,X
+	STA INDIR_JMP_HIGH
+	TYA 
+	LDY #$00
+	ADC $42,X
+	STA $42,X
+	BPL L_18CC
+	DEY 
+L_18CC:
+	ASL INDIR_JMP_HIGH
+	ADC $43,X
+	STA $43,X
+	TYA 
+	ADC $44,X
+	STA $44,X
+	TXA 
+	BNE L_18B0
+	RTS 
+L_18DB:
+	STY $10
+	STX $11
+	STA $95
+	LDA #$00
+	STA $96
+	STA $97
+	LDX #$08
+L_18E9:
+	ROR $95
+	BCC L_18FA
+	CLC 
+	LDA $96
+	ADC $10
+	STA $96
+	LDA $97
+	ADC $11
+	STA $97
+L_18FA:
+	ASL A
+	ROR $97
+	ROR $96
+	DEX 
+	BNE L_18E9
+	LDY $96
+	LDX $97
+	RTS 
+L_1907:
+	STY $96
+	STX $97
+	LDA #$00
+	STA $95
+	LDX #$07
+	CLC 
+	LDA $96
+	ADC $93
+	TAY 
+	LDA $97
+	ADC $94
+L_191B:
+	BCC L_1921
+	STY $96
+	STA $97
+L_1921:
+	ROL $95
+	ROL $96
+	ROL $97
+	SEC 
+	LDA $96
+	SBC $93
+	TAY 
+	LDA $97
+	SBC $94
+	DEX 
+	BPL L_191B
+	BCS L_1937
+	DEX 
+L_1937:
+	LDA $95
+	RTS 
+L_193A:
+	INC $57
+	LDY $50
+	CPY #$FF
+	BEQ L_1977
+	INC $50
+	LDA L_2A50,Y
+	STA TMP_0C?BONUS_HIGH?
+	STA TMP_0F
+	CMP #$AA
+	BEQ L_19B3
+	CMP #$BB
+	BEQ L_19BA
+	LDA $57
+	CMP $51
+	BEQ L_19C7
+L_1959:
+	LDX #$00
+L_195B:
+	STX BONUS_LOW?
+	LDA L_2B22,X
+	STA $0E
+	TXA 
+	ASL A
+	TAX 
+	LDA $60,X
+	BEQ L_1970
+	LDA $61,X
+	BEQ L_1970
+	JSR L_19F6
+L_1970:
+	LDX BONUS_LOW?
+	INX 
+	CPX #$06
+	BNE L_195B
+L_1977:
+	LDY $53
+	CPY #$FF
+	BEQ L_19E2
+	INC $53
+	LDA L_2A8F,Y
+	STA TMP_0C?BONUS_HIGH?
+	CMP #$AA
+	BEQ L_19CE
+	CMP #$BB
+	BEQ L_19D5
+	LDA L_2AC2,Y
+	STA TMP_0F
+L_1991:
+	LDX #$00
+L_1993:
+	STX BONUS_LOW?
+	LDA L_2B28,X
+	STA $0E
+	TXA 
+	ASL A
+	CLC 
+	ADC #$10
+	TAX 
+	LDA $60,X
+	BEQ L_19AB
+	LDA $61,X
+	BEQ L_19AB
+	JSR L_19F6
+L_19AB:
+	LDX BONUS_LOW?
+	INX 
+	CPX #$08
+	BNE L_1993
+	RTS 
+L_19B3:
+	LDA #$FF
+	STA $50
+	JMP L_1977
+L_19BA:
+	LDA #$01
+	STA $54
+	LDA #$00
+	STA TMP_0C?BONUS_HIGH?
+	STA TMP_0F
+	JMP L_1959
+L_19C7:
+	LDA $52
+	STA $53
+	JMP L_1959
+L_19CE:
+	LDA #$FF
+	STA $53
+	JMP L_19E2
+L_19D5:
+	LDA #$01
+	STA $55
+	LDA #$00
+	STA TMP_0C?BONUS_HIGH?
+	STA TMP_0F
+	JMP L_1991
+L_19E2:
+	LDA $50
+	CMP #$FF
+	BNE L_19F5
+	LDA $53
+	CMP #$FF
+	BNE L_19F5
+	JSR L_0FF9
+	LDA #$08
+	STA TRGT_STATE_PROCESS
+L_19F5:
+	RTS 
+L_19F6:
+	LDA $57
+	AND #$03
+	STA UPDATE_GROUP?
+	LDA $0E
+	JSR GOTO_TABLE_PAST_JSR
+	.db #$E0
+	.db #$C5
+	.db #$21
+	.db #$DA
+	.db #$2E
+	.db #$DA
+	.db #$38
+	.db #$DA
+	.db #$40
+	.db #$DA
+	.db #$45
+	.db #$DA
+	.db #$4D
+	.db #$DA
+	.db #$57
+	.db #$DA
+	.db #$E0
+	.db #$C5
+	.db #$61
+	.db #$DA
+	.db #$6C
+	.db #$DA
+	.db #$7D
+	.db #$DA
+	.db #$75
+	.db #$DA
+	.db #$85
+	.db #$DA
+	.db #$90
+	.db #$DA
+	.db #$9A
+	.db #$DA
+	LDA TMP_0F
+	JSR L_1AB5
+L_1A26:
+	LDA TMP_0C?BONUS_HIGH?
+	JSR L_112B
+	JMP L_1AA5
+	LDA UPDATE_GROUP?
+	BEQ L_1A26
+	JSR L_1A26
+	JMP L_1A40
+	LDA TMP_0F
+	JSR L_112B
+	JSR L_1AA5
+L_1A40:
+	LDA TMP_0C?BONUS_HIGH?
+	JMP L_1AB5
+	JSR L_1A40
+L_1A48:
+	LDA TMP_0F
+	JMP L_1AA5
+	LDA UPDATE_GROUP?
+	BEQ L_1A48
+	JSR L_1A5C
+	JMP L_1A40
+	LDA TMP_0F
+	JSR L_1AB5
+L_1A5C:
+	LDA TMP_0C?BONUS_HIGH?
+	JMP L_1AA5
+	LDA TMP_0F
+	JSR L_112B
+	JSR L_1AB5
+	JMP L_1A5C
+	LDA UPDATE_GROUP?
+	BEQ L_1A48
+	LDA TMP_0C?BONUS_HIGH?
+	JSR L_1AA5
+L_1A75:
+	LDA TMP_0C?BONUS_HIGH?
+	JSR L_112B
+	JMP L_1AB5
+	LDA TMP_0F
+	JSR L_1AA5
+	JMP L_1A75
+	JSR L_1A75
+L_1A88:
+	LDA TMP_0F
+	JSR L_112B
+	JMP L_1AA5
+	LDA UPDATE_GROUP?
+	BEQ L_1A88
+	JSR L_1A75
+	JMP L_1A26
+	LDA TMP_0F
+	JSR L_112B
+	JSR L_1AB5
+	JMP L_1A26
+L_1AA5:
+	CLC 
+	ADC $60,X
+	CMP #$07
+	BCC L_1AB0
+	CMP #$C7
+	BCC L_1AB2
+L_1AB0:
+	LDA #$00
+L_1AB2:
+	STA $60,X
+	RTS 
+L_1AB5:
+	CLC 
+	ADC $61,X
+	CMP #$07
+	BCC L_1AC0
+	CMP #$F8
+	BCC L_1AC2
+L_1AC0:
+	LDA #$00
+L_1AC2:
+	STA $61,X
+	RTS 
+	.db #$0F
+	.db #$DB
+	.db #$14
+	.db #$DB
+	.db #$1D
+	.db #$DB
+	.db #$26
+	.db #$DB
+	.db #$2F
+	.db #$DB
+	.db #$38
+	.db #$DB
+	.db #$41
+	.db #$DB
+	.db #$4A
+	.db #$DB
+	.db #$5B
+	.db #$DB
+	.db #$86
+	.db #$DB
+	.db #$6C
+	.db #$DB
+	.db #$79
+	.db #$DB
+	.db #$8F
+	.db #$DB
+	.db #$9C
+	.db #$DB
+	.db #$A9
+	.db #$DB
+	.db #$B6
+	.db #$DB
+	.db #$C3
+	.db #$DB
+	.db #$3A
+	.db #$DC
+	.db #$FA
+	.db #$DB
+	.db #$07
+	.db #$DC
+	.db #$0C
+	.db #$DC
+	.db #$25
+	.db #$DC
+	.db #$D0
+	.db #$DB
+	.db #$E5
+	.db #$DB
+	.db #$4B
+	.db #$DC
+	.db #$50
+	.db #$DC
+	.db #$61
+	.db #$DC
+	.db #$72
+	.db #$DC
+	.db #$7B
+	.db #$DC
+	.db #$88
+	.db #$DC
+	.db #$91
+	.db #$DC
+	.db #$9A
+	.db #$DC
+	.db #$9F
+	.db #$DC
+	.db #$A8
+	.db #$DC
+	.db #$AD
+	.db #$DC
+	.db #$B6
+	.db #$DC
+	.db #$BB
+	.db #$DC
+	.db #$DD
+	.db #$0C
+	.db #$F0
+	.db #$F0
+	.db #$00
+	.db #$DD
+	.db #$24
+	.db #$F0
+	.db #$F0
+	.db #$DD
+	.db #$E1
+	.db #$EF
+	.db #$08
+	.db #$00
+	.db #$DD
+	.db #$3A
+	.db #$F0
+	.db #$F0
+	.db #$DD
+	.db #$E1
+	.db #$EE
+	.db #$08
+	.db #$00
+	.db #$DD
+	.db #$53
+	.db #$F0
+	.db #$F8
+	.db #$DD
+	.db #$65
+	.db #$F4
+	.db #$F0
+	.db #$00
+	.db #$DD
+	.db #$6F
+	.db #$F0
+	.db #$F8
+	.db #$DD
+	.db #$81
+	.db #$FC
+	.db #$F0
+	.db #$00
+	.db #$DD
+	.db #$8A
+	.db #$F0
+	.db #$F8
+	.db #$DD
+	.db #$9C
+	.db #$04
+	.db #$F0
+	.db #$00
+	.db #$DD
+	.db #$C3
+	.db #$F0
+	.db #$F0
+	.db #$DD
+	.db #$D7
+	.db #$FC
+	.db #$10
+	.db #$00
+	.db #$DD
+	.db #$E6
+	.db #$F8
+	.db #$F8
+	.db #$DD
+	.db #$EF
+	.db #$FF
+	.db #$F0
+	.db #$DD
+	.db #$F4
+	.db #$F7
+	.db #$08
+	.db #$DD
+	.db #$DC
+	.db #$FB
+	.db #$10
+	.db #$00
+	.db #$DD
+	.db #$FA
+	.db #$F8
+	.db #$F8
+	.db #$DD
+	.db #$EF
+	.db #$FE
+	.db #$F0
+	.db #$DD
+	.db #$F4
+	.db #$F6
+	.db #$08
+	.db #$DD
+	.db #$D7
+	.db #$FA
+	.db #$10
+	.db #$00
+	.db #$DE
+	.db #$04
+	.db #$F0
+	.db #$F4
+	.db #$DE
+	.db #$12
+	.db #$F4
+	.db #$04
+	.db #$DE
+	.db #$17
+	.db #$08
+	.db #$04
+	.db #$00
+	.db #$DE
+	.db #$1C
+	.db #$F0
+	.db #$FC
+	.db #$DE
+	.db #$2A
+	.db #$F4
+	.db #$F4
+	.db #$DE
+	.db #$2F
+	.db #$08
+	.db #$F4
+	.db #$00
+	.db #$DD
+	.db #$A5
+	.db #$F0
+	.db #$F0
+	.db #$DD
+	.db #$BD
+	.db #$08
+	.db #$FA
+	.db #$00
+	.db #$DE
+	.db #$90
+	.db #$F8
+	.db #$10
+	.db #$DE
+	.db #$34
+	.db #$F0
+	.db #$E8
+	.db #$DF
+	.db #$ED
+	.db #$E8
+	.db #$EA
+	.db #$00
+	.db #$DE
+	.db #$90
+	.db #$F8
+	.db #$10
+	.db #$DE
+	.db #$4B
+	.db #$F0
+	.db #$E8
+	.db #$DF
+	.db #$F2
+	.db #$E0
+	.db #$F0
+	.db #$00
+	.db #$DE
+	.db #$90
+	.db #$F8
+	.db #$10
+	.db #$DE
+	.db #$62
+	.db #$F0
+	.db #$E8
+	.db #$DF
+	.db #$ED
+	.db #$E8
+	.db #$EA
+	.db #$00
+	.db #$DE
+	.db #$90
+	.db #$F8
+	.db #$10
+	.db #$DE
+	.db #$79
+	.db #$F0
+	.db #$E8
+	.db #$DF
+	.db #$F2
+	.db #$E0
+	.db #$F0
+	.db #$00
+	.db #$DE
+	.db #$9A
+	.db #$F8
+	.db #$10
+	.db #$DE
+	.db #$34
+	.db #$F0
+	.db #$E8
+	.db #$DF
+	.db #$ED
+	.db #$E8
+	.db #$EA
+	.db #$00
+	.db #$DE
+	.db #$A4
+	.db #$F0
+	.db #$F8
+	.db #$DE
+	.db #$B8
+	.db #$10
+	.db #$F8
+	.db #$DE
+	.db #$C0
+	.db #$ED
+	.db #$F0
+	.db #$DE
+	.db #$C6
+	.db #$F0
+	.db #$08
+	.db #$DE
+	.db #$CB
+	.db #$FE
+	.db #$F0
+	.db #$00
+	.db #$DE
+	.db #$D3
+	.db #$F0
+	.db #$F8
+	.db #$DE
+	.db #$E7
+	.db #$10
+	.db #$F8
+	.db #$DE
+	.db #$EF
+	.db #$ED
+	.db #$F0
+	.db #$DE
+	.db #$F5
+	.db #$F0
+	.db #$08
+	.db #$DE
+	.db #$FA
+	.db #$FE
+	.db #$F0
+	.db #$00
+	.db #$DF
+	.db #$02
+	.db #$E0
+	.db #$00
+	.db #$DF
+	.db #$0B
+	.db #$F0
+	.db #$10
+	.db #$DF
+	.db #$10
+	.db #$F0
+	.db #$F0
+	.db #$00
+	.db #$DF
+	.db #$29
+	.db #$F0
+	.db #$F0
+	.db #$00
+	.db #$DF
+	.db #$3F
+	.db #$ED
+	.db #$F0
+	.db #$DF
+	.db #$45
+	.db #$03
+	.db #$F0
+	.db #$DF
+	.db #$4B
+	.db #$F0
+	.db #$F8
+	.db #$DF
+	.db #$55
+	.db #$10
+	.db #$F8
+	.db #$DF
+	.db #$5D
+	.db #$F0
+	.db #$00
+	.db #$DF
+	.db #$80
+	.db #$04
+	.db #$18
+	.db #$00
+	.db #$DF
+	.db #$85
+	.db #$F0
+	.db #$E0
+	.db #$DF
+	.db #$5D
+	.db #$F0
+	.db #$00
+	.db #$DF
+	.db #$AB
+	.db #$04
+	.db #$E0
+	.db #$DF
+	.db #$B0
+	.db #$04
+	.db #$18
+	.db #$DF
+	.db #$55
+	.db #$10
+	.db #$F8
+	.db #$00
+	.db #$DF
+	.db #$B5
+	.db #$E0
+	.db #$00
+	.db #$DF
+	.db #$CB
+	.db #$00
+	.db #$00
+	.db #$DF
+	.db #$DA
+	.db #$F0
+	.db #$E8
+	.db #$DF
+	.db #$F8
+	.db #$E0
+	.db #$F0
+	.db #$00
+	.db #$DF
+	.db #$FE
+	.db #$F8
+	.db #$F4
+	.db #$00
+	.db #$E0
+	.db #$0F
+	.db #$FC
+	.db #$F5
+	.db #$E0
+	.db #$14
+	.db #$FC
+	.db #$03
+	.db #$E0
+	.db #$19
+	.db #$F9
+	.db #$FC
+	.db #$E0
+	.db #$1E
+	.db #$FE
+	.db #$FC
+	.db #$00
+	.db #$E0
+	.db #$0F
+	.db #$FC
+	.db #$F7
+	.db #$E0
+	.db #$14
+	.db #$FC
+	.db #$01
+	.db #$E0
+	.db #$19
+	.db #$FA
+	.db #$FC
+	.db #$E0
+	.db #$1E
+	.db #$FD
+	.db #$FC
+	.db #$00
+	.db #$E0
+	.db #$0F
+	.db #$FC
+	.db #$F8
+	.db #$E0
+	.db #$14
+	.db #$FC
+	.db #$00
+	.db #$00
+	.db #$E0
+	.db #$23
+	.db #$FC
+	.db #$F7
+	.db #$E0
+	.db #$23
+	.db #$FC
+	.db #$F9
+	.db #$E0
+	.db #$28
+	.db #$FC
+	.db #$01
+	.db #$00
+	.db #$E0
+	.db #$23
+	.db #$FC
+	.db #$F8
+	.db #$E0
+	.db #$28
+	.db #$FC
+	.db #$00
+	.db #$00
+	.db #$E0
+	.db #$23
+	.db #$FC
+	.db #$F9
+	.db #$E0
+	.db #$28
+	.db #$FC
+	.db #$FF
+	.db #$00
+	.db #$E0
+	.db #$2D
+	.db #$FC
+	.db #$FC
+	.db #$00
+	.db #$E0
+	.db #$32
+	.db #$FC
+	.db #$FC
+	.db #$E0
+	.db #$32
+	.db #$FC
+	.db #$FB
+	.db #$00
+	.db #$E0
+	.db #$32
+	.db #$FC
+	.db #$FC
+	.db #$00
+	.db #$E0
+	.db #$37
+	.db #$FC
+	.db #$FC
+	.db #$E0
+	.db #$37
+	.db #$FC
+	.db #$FD
+	.db #$00
+	.db #$E0
+	.db #$37
+	.db #$FC
+	.db #$FC
+	.db #$00
+	.db #$E0
+	.db #$3C
+	.db #$FC
+	.db #$F8
+	.db #$00
+L_1CC0:
+	.db #$00
+	.db #$00
+	.db #$08
+	.db #$00
+	.db #$10
+	.db #$00
+	.db #$18
+	.db #$00
+	.db #$00
+	.db #$08
+	.db #$08
+	.db #$08
+	.db #$10
+	.db #$08
+	.db #$18
+	.db #$08
+	.db #$00
+	.db #$00
+	.db #$00
+	.db #$08
+	.db #$00
+	.db #$10
+	.db #$00
+	.db #$18
+	.db #$08
+	.db #$00
+	.db #$08
+	.db #$08
+	.db #$08
+	.db #$10
+	.db #$08
+	.db #$18
+	.db #$10
+	.db #$00
+	.db #$10
+	.db #$08
+	.db #$10
+	.db #$10
+	.db #$10
+	.db #$18
+	.db #$18
+	.db #$00
+	.db #$18
+	.db #$08
+	.db #$18
+	.db #$10
+	.db #$18
+	.db #$18
+	.db #$08
+	.db #$20
+	.db #$10
+	.db #$20
+	.db #$18
+	.db #$20
+	.db #$18
+	.db #$20
+	.db #$00
+	.db #$00
+	.db #$08
+	.db #$00
+	.db #$10
+	.db #$00
+	.db #$00
+	.db #$08
+	.db #$08
+	.db #$08
+	.db #$10
+	.db #$08
+	.db #$00
+	.db #$00
+	.db #$08
+	.db #$00
+	.db #$00
+	.db #$18
+	.db #$08
+	.db #$18
+	.db #$01
+	.db #$FD
+	.db #$00
+	.db #$00
+	.db #$01
+	.db #$02
+	.db #$FD
+	.db #$01
+	.db #$03
+	.db #$FD
+	.db #$00
+	.db #$04
+	.db #$05
+	.db #$06
+	.db #$07
+	.db #$08
+	.db #$09
+	.db #$0A
+	.db #$FE
+	.db #$FD
+	.db #$01
+	.db #$0B
+	.db #$0C
+	.db #$FF
+	.db #$01
+	.db #$FD
+	.db #$00
+	.db #$FE
+	.db #$FE
+	.db #$0D
+	.db #$FE
+	.db #$FD
+	.db #$00
+	.db #$0F
+	.db #$10
+	.db #$11
+	.db #$FE
+	.db #$12
+	.db #$13
+	.db #$14
+	.db #$15
+	.db #$FD
+	.db #$01
+	.db #$16
+	.db #$17
+	.db #$FF
+	.db #$01
+	.db #$FD
+	.db #$00
+	.db #$FE
+	.db #$FE
+	.db #$18
+	.db #$FE
+	.db #$FD
+	.db #$00
+	.db #$1A
+	.db #$1B
+	.db #$1C
+	.db #$FE
+	.db #$1D
+	.db #$1E
+	.db #$1F
+	.db #$FE
+	.db #$FD
+	.db #$01
+	.db #$20
+	.db #$21
+	.db #$FD
+	.db #$00
+	.db #$22
+	.db #$FF
+	.db #$00
+	.db #$FD
+	.db #$00
+	.db #$25
+	.db #$26
+	.db #$27
+	.db #$FD
+	.db #$01
+	.db #$28
+	.db #$FD
+	.db #$40
+	.db #$25
+	.db #$26
+	.db #$27
+	.db #$FD
+	.db #$41
+	.db #$28
+	.db #$FF
+	.db #$03
+	.db #$FD
+	.db #$00
+	.db #$23
+	.db #$24
+	.db #$FD
+	.db #$40
+	.db #$23
+	.db #$24
+	.db #$FF
+	.db #$00
+	.db #$FD
+	.db #$00
+	.db #$2A
+	.db #$2B
+	.db #$2C
+	.db #$FD
+	.db #$01
+	.db #$2D
+	.db #$FD
+	.db #$40
+	.db #$2A
+	.db #$2B
+	.db #$2C
+	.db #$FD
+	.db #$41
+	.db #$2D
+	.db #$FF
+	.db #$03
+	.db #$FD
+	.db #$00
+	.db #$29
+	.db #$FE
+	.db #$FD
+	.db #$40
+	.db #$29
+	.db #$FF
+	.db #$00
+	.db #$FD
+	.db #$00
+	.db #$2F
+	.db #$30
+	.db #$31
+	.db #$FD
+	.db #$01
+	.db #$32
+	.db #$FD
+	.db #$40
+	.db #$2F
+	.db #$30
+	.db #$31
+	.db #$FD
+	.db #$41
+	.db #$32
+	.db #$FF
+	.db #$03
+	.db #$FD
+	.db #$00
+	.db #$2E
+	.db #$FE
+	.db #$FD
+	.db #$40
+	.db #$2E
+	.db #$FF
+	.db #$01
+	.db #$FD
+	.db #$00
+	.db #$33
+	.db #$34
+	.db #$35
+	.db #$FD
+	.db #$01
+	.db #$36
+	.db #$FD
+	.db #$00
+	.db #$37
+	.db #$38
+	.db #$39
+	.db #$FD
+	.db #$01
+	.db #$3A
+	.db #$FD
+	.db #$00
+	.db #$FE
+	.db #$3B
+	.db #$3C
+	.db #$3D
+	.db #$FF
+	.db #$01
+	.db #$FD
+	.db #$01
+	.db #$3E
+	.db #$3F
+	.db #$FF
+	.db #$01
+	.db #$FD
+	.db #$00
+	.db #$FE
+	.db #$40
+	.db #$41
+	.db #$FE
+	.db #$FE
+	.db #$42
+	.db #$43
+	.db #$44
+	.db #$45
+	.db #$46
+	.db #$47
+	.db #$48
+	.db #$FE
+	.db #$FD
+	.db #$01
+	.db #$49
+	.db #$FF
+	.db #$00
+	.db #$FD
+	.db #$01
+	.db #$4A
+	.db #$FF
+	.db #$00
+	.db #$FD
+	.db #$01
+	.db #$F6
+	.db #$FF
+	.db #$00
+	.db #$FD
+	.db #$01
+	.db #$03
+	.db #$FF
+	.db #$02
+	.db #$FD
+	.db #$01
+	.db #$9F
+	.db #$A0
+	.db #$A1
+	.db #$A2
+	.db #$A3
+	.db #$FF
+	.db #$00
+	.db #$FD
+	.db #$01
+	.db #$45
+	.db #$FF
+	.db #$00
+	.db #$FD
+	.db #$00
+	.db #$44
+	.db #$48
+	.db #$FF
+	.db #$02
+	.db #$FD
+	.db #$01
+	.db #$A4
+	.db #$A5
+	.db #$A6
+	.db #$A7
+	.db #$A8
+	.db #$A9
+	.db #$FF
+	.db #$00
+	.db #$FD
+	.db #$01
+	.db #$AB
+	.db #$AC
+	.db #$FE
+	.db #$FE
+	.db #$0E
+	.db #$19
+	.db #$AA
+	.db #$FD
+	.db #$80
+	.db #$E5
+	.db #$FF
+	.db #$00
+	.db #$FD
+	.db #$81
+	.db #$EA
+	.db #$FF
+	.db #$00
+	.db #$FD
+	.db #$81
+	.db #$E9
+	.db #$FF
+	.db #$00
+	.db #$FD
+	.db #$41
+	.db #$0E
+	.db #$19
+	.db #$AA
+	.db #$FD
+	.db #$C0
+	.db #$E5
+	.db #$FD
+	.db #$41
+	.db #$AB
+	.db #$AC
+	.db #$FF
+	.db #$00
+	.db #$FD
+	.db #$C1
+	.db #$EA
+	.db #$FF
+	.db #$00
+	.db #$FD
+	.db #$C1
+	.db #$E9
+	.db #$FF
+	.db #$01
+	.db #$FD
+	.db #$03
+	.db #$52
+	.db #$53
+	.db #$54
+	.db #$FE
+	.db #$55
+	.db #$56
+	.db #$56
+	.db #$57
+	.db #$5A
+	.db #$5B
+	.db #$5C
+	.db #$5D
+	.db #$61
+	.db #$62
+	.db #$63
+	.db #$64
+	.db #$58
+	.db #$5E
+	.db #$65
+	.db #$FF
+	.db #$01
+	.db #$FD
+	.db #$03
+	.db #$52
+	.db #$6A
+	.db #$54
+	.db #$FE
+	.db #$55
+	.db #$6B
+	.db #$56
+	.db #$57
+	.db #$6C
+	.db #$6D
+	.db #$6E
+	.db #$6F
+	.db #$70
+	.db #$71
+	.db #$72
+	.db #$73
+	.db #$58
+	.db #$5E
+	.db #$74
+	.db #$FF
+	.db #$01
+	.db #$FD
+	.db #$03
+	.db #$75
+	.db #$53
+	.db #$54
+	.db #$FE
+	.db #$76
+	.db #$56
+	.db #$56
+	.db #$57
+	.db #$77
+	.db #$78
+	.db #$79
+	.db #$7A
+	.db #$7B
+	.db #$7C
+	.db #$7D
+	.db #$7E
+	.db #$58
+	.db #$5E
+	.db #$7F
+	.db #$FF
+	.db #$01
+	.db #$FD
+	.db #$03
+	.db #$52
+	.db #$6A
+	.db #$54
+	.db #$FE
+	.db #$76
+	.db #$6B
+	.db #$56
+	.db #$57
+	.db #$80
+	.db #$81
+	.db #$82
+	.db #$83
+	.db #$85
+	.db #$86
+	.db #$87
+	.db #$88
+	.db #$58
+	.db #$84
+	.db #$89
+	.db #$FF
+	.db #$02
+	.db #$FD
+	.db #$02
+	.db #$59
+	.db #$5F
+	.db #$66
+	.db #$FE
+	.db #$60
+	.db #$67
+	.db #$FF
+	.db #$02
+	.db #$FD
+	.db #$02
+	.db #$4B
+	.db #$4C
+	.db #$4D
+	.db #$4E
+	.db #$4F
+	.db #$50
+	.db #$FF
+	.db #$00
+	.db #$FD
+	.db #$02
+	.db #$CD
+	.db #$CE
+	.db #$CF
+	.db #$FD
+	.db #$03
+	.db #$D0
+	.db #$FD
+	.db #$42
+	.db #$CD
+	.db #$CE
+	.db #$FD
+	.db #$02
+	.db #$D2
+	.db #$FD
+	.db #$03
+	.db #$D3
+	.db #$FF
+	.db #$01
+	.db #$FD
+	.db #$03
+	.db #$D1
+	.db #$FD
+	.db #$43
+	.db #$D1
+	.db #$FF
+	.db #$03
+	.db #$FD
+	.db #$02
+	.db #$C9
+	.db #$CA
+	.db #$FF
+	.db #$00
+	.db #$FD
+	.db #$02
+	.db #$D4
+	.db #$FF
+	.db #$03
+	.db #$FD
+	.db #$03
+	.db #$CB
+	.db #$CC
+	.db #$D5
+	.db #$D6
+	.db #$FF
+	.db #$00
+	.db #$FD
+	.db #$02
+	.db #$D7
+	.db #$D8
+	.db #$D9
+	.db #$FD
+	.db #$03
+	.db #$D0
+	.db #$FD
+	.db #$42
+	.db #$D7
+	.db #$D8
+	.db #$FD
+	.db #$02
+	.db #$DA
+	.db #$FD
+	.db #$03
+	.db #$D3
+	.db #$FF
+	.db #$01
+	.db #$FD
+	.db #$03
+	.db #$D1
+	.db #$FD
+	.db #$43
+	.db #$D1
+	.db #$FF
+	.db #$03
+	.db #$FD
+	.db #$02
+	.db #$C9
+	.db #$CA
+	.db #$FF
+	.db #$00
+	.db #$FD
+	.db #$02
+	.db #$D4
+	.db #$FF
+	.db #$03
+	.db #$FD
+	.db #$03
+	.db #$CB
+	.db #$CC
+	.db #$D5
+	.db #$D6
+	.db #$FF
+	.db #$02
+	.db #$FD
+	.db #$03
+	.db #$B3
+	.db #$B4
+	.db #$FE
+	.db #$B9
+	.db #$BA
+	.db #$FF
+	.db #$00
+	.db #$FD
+	.db #$02
+	.db #$BF
+	.db #$FF
+	.db #$01
+	.db #$FD
+	.db #$03
+	.db #$FE
+	.db #$AF
+	.db #$B5
+	.db #$FD
+	.db #$02
+	.db #$BB
+	.db #$FD
+	.db #$03
+	.db #$FE
+	.db #$B0
+	.db #$B6
+	.db #$BC
+	.db #$AD
+	.db #$B1
+	.db #$B7
+	.db #$BD
+	.db #$AE
+	.db #$B2
+	.db #$B8
+	.db #$BE
+	.db #$C0
+	.db #$FF
+	.db #$01
+	.db #$FD
+	.db #$03
+	.db #$FE
+	.db #$FE
+	.db #$C1
+	.db #$C2
+	.db #$C3
+	.db #$C4
+	.db #$C5
+	.db #$C6
+	.db #$AD
+	.db #$B1
+	.db #$B7
+	.db #$C7
+	.db #$AE
+	.db #$B2
+	.db #$B8
+	.db #$BE
+	.db #$FE
+	.db #$C8
+	.db #$FF
+	.db #$00
+	.db #$FD
+	.db #$02
+	.db #$C9
+	.db #$CA
+	.db #$FF
+	.db #$00
+	.db #$FD
+	.db #$03
+	.db #$DB
+	.db #$DC
+	.db #$FF
+	.db #$00
+	.db #$FD
+	.db #$02
+	.db #$DD
+	.db #$DE
+	.db #$FD
+	.db #$03
+	.db #$DF
+	.db #$E0
+	.db #$FF
+	.db #$01
+	.db #$FD
+	.db #$03
+	.db #$D1
+	.db #$FD
+	.db #$43
+	.db #$D1
+	.db #$FF
+	.db #$01
+	.db #$FD
+	.db #$42
+	.db #$DD
+	.db #$FD
+	.db #$02
+	.db #$D4
+	.db #$FD
+	.db #$00
+	.db #$E5
+	.db #$FD
+	.db #$01
+	.db #$E9
+	.db #$FD
+	.db #$42
+	.db #$DE
+	.db #$FD
+	.db #$03
+	.db #$E2
+	.db #$E6
+	.db #$FE
+	.db #$E1
+	.db #$E3
+	.db #$FD
+	.db #$01
+	.db #$E7
+	.db #$FE
+	.db #$FD
+	.db #$43
+	.db #$E0
+	.db #$FD
+	.db #$01
+	.db #$E4
+	.db #$E8
+	.db #$FF
+	.db #$00
+	.db #$FD
+	.db #$01
+	.db #$EA
+	.db #$FF
+	.db #$01
+	.db #$FD
+	.db #$41
+	.db #$E9
+	.db #$FD
+	.db #$40
+	.db #$E5
+	.db #$FD
+	.db #$42
+	.db #$D4
+	.db #$FD
+	.db #$02
+	.db #$DD
+	.db #$FE
+	.db #$FD
+	.db #$43
+	.db #$E6
+	.db #$E2
+	.db #$FD
+	.db #$02
+	.db #$DE
+	.db #$FE
+	.db #$FD
+	.db #$41
+	.db #$E7
+	.db #$FD
+	.db #$43
+	.db #$E3
+	.db #$E1
+	.db #$FE
+	.db #$FD
+	.db #$41
+	.db #$E8
+	.db #$E4
+	.db #$FD
+	.db #$03
+	.db #$E0
+	.db #$FF
+	.db #$00
+	.db #$FD
+	.db #$41
+	.db #$EA
+	.db #$FF
+	.db #$00
+	.db #$FD
+	.db #$01
+	.db #$EA
+	.db #$FF
+	.db #$01
+	.db #$FD
+	.db #$03
+	.db #$8A
+	.db #$8B
+	.db #$FE
+	.db #$FE
+	.db #$8C
+	.db #$FD
+	.db #$02
+	.db #$8D
+	.db #$8E
+	.db #$FE
+	.db #$8F
+	.db #$90
+	.db #$91
+	.db #$92
+	.db #$93
+	.db #$94
+	.db #$95
+	.db #$96
+	.db #$FF
+	.db #$01
+	.db #$FD
+	.db #$03
+	.db #$97
+	.db #$FD
+	.db #$02
+	.db #$98
+	.db #$FD
+	.db #$03
+	.db #$99
+	.db #$FE
+	.db #$9A
+	.db #$9B
+	.db #$9C
+	.db #$FF
+	.db #$01
+	.db #$FD
+	.db #$03
+	.db #$52
+	.db #$53
+	.db #$54
+	.db #$FE
+	.db #$55
+	.db #$56
+	.db #$56
+	.db #$FE
+	.db #$5A
+	.db #$5B
+	.db #$5C
+	.db #$FE
+	.db #$61
+	.db #$62
+	.db #$63
+	.db #$FF
+	.db #$01
+	.db #$FD
+	.db #$03
+	.db #$51
+	.db #$FF
+	.db #$02
+	.db #$FD
+	.db #$03
+	.db #$68
+	.db #$69
+	.db #$FF
+	.db #$00
+	.db #$FD
+	.db #$03
+	.db #$9D
+	.db #$9E
+	.db #$FF
+	.db #$01
+	.db #$FD
+	.db #$00
+	.db #$F2
+	.db #$F3
+	.db #$FD
+	.db #$40
+	.db #$F2
+	.db #$FE
+	.db #$FD
+	.db #$00
+	.db #$F4
+	.db #$F5
+	.db #$FD
+	.db #$40
+	.db #$F4
+	.db #$FF
+	.db #$00
+	.db #$FD
+	.db #$00
+	.db #$EB
+	.db #$FF
+	.db #$00
+	.db #$FD
+	.db #$40
+	.db #$EB
+	.db #$FF
+	.db #$00
+	.db #$FD
+	.db #$00
+	.db #$F3
+	.db #$FF
+	.db #$00
+	.db #$FD
+	.db #$00
+	.db #$F5
+	.db #$FF
+	.db #$01
+	.db #$FD
+	.db #$00
+	.db #$EC
+	.db #$FF
+	.db #$01
+	.db #$FD
+	.db #$40
+	.db #$EC
+	.db #$FF
+	.db #$01
+	.db #$FD
+	.db #$00
+	.db #$EF
+	.db #$FF
+	.db #$00
+	.db #$FD
+	.db #$00
+	.db #$F0
+	.db #$FF
+	.db #$00
+	.db #$FD
+	.db #$00
+	.db #$F1
+	.db #$FF
+	.db #$01
+	.db #$FD
+	.db #$00
+	.db #$ED
+	.db #$EE
+	.db #$FF
+DUCK_HUNT_PPU_FILE:
+	.db #$23
+	.db #$00
+	.db #$60
+	.db #$50
+	.db #$23
+	.db #$20
+	.db #$60
+	.db #$50
+	.db #$23
+	.db #$40
+	.db #$60
+	.db #$50
+	.db #$23
+	.db #$60
+	.db #$60
+	.db #$50
+	.db #$23
+	.db #$80
+	.db #$60
+	.db #$50
+	.db #$23
+	.db #$A0
+	.db #$60
+	.db #$50
+	.db #$22
+	.db #$40
+	.db #$20
+	.db #$3D
+	.db #$3E
+	.db #$3F
+	.db #$40
+	.db #$56
+	.db #$57
+	.db #$D1
+	.db #$D2
+	.db #$3A
+	.db #$3B
+	.db #$3C
+	.db #$3D
+	.db #$3E
+	.db #$3F
+	.db #$40
+	.db #$39
+	.db #$3A
+	.db #$3B
+	.db #$3C
+	.db #$3D
+	.db #$3E
+	.db #$3F
+	.db #$40
+	.db #$D2
+	.db #$30
+	.db #$31
+	.db #$32
+	.db #$33
+	.db #$39
+	.db #$3A
+	.db #$3B
+	.db #$3C
+	.db #$22
+	.db #$60
+	.db #$20
+	.db #$95
+	.db #$96
+	.db #$97
+	.db #$98
+	.db #$58
+	.db #$59
+	.db #$5A
+	.db #$5B
+	.db #$92
+	.db #$93
+	.db #$94
+	.db #$95
+	.db #$96
+	.db #$97
+	.db #$98
+	.db #$91
+	.db #$92
+	.db #$93
+	.db #$94
+	.db #$95
+	.db #$96
+	.db #$97
+	.db #$98
+	.db #$5B
+	.db #$34
+	.db #$35
+	.db #$36
+	.db #$37
+	.db #$91
+	.db #$92
+	.db #$93
+	.db #$94
+	.db #$22
+	.db #$80
+	.db #$20
+	.db #$46
+	.db #$45
+	.db #$48
+	.db #$46
+	.db #$46
+	.db #$45
+	.db #$46
+	.db #$48
+	.db #$42
+	.db #$43
+	.db #$44
+	.db #$46
+	.db #$45
+	.db #$48
+	.db #$46
+	.db #$41
+	.db #$42
+	.db #$43
+	.db #$44
+	.db #$46
+	.db #$45
+	.db #$48
+	.db #$46
+	.db #$48
+	.db #$38
+	.db #$45
+	.db #$46
+	.db #$46
+	.db #$41
+	.db #$42
+	.db #$43
+	.db #$44
+	.db #$22
+	.db #$A0
+	.db #$60
+	.db #$46
+	.db #$22
+	.db #$A4
+	.db #$01
+	.db #$48
+	.db #$22
+	.db #$A8
+	.db #$01
+	.db #$47
+	.db #$22
+	.db #$AA
+	.db #$01
+	.db #$48
+	.db #$22
+	.db #$B0
+	.db #$01
+	.db #$47
+	.db #$22
+	.db #$B2
+	.db #$01
+	.db #$48
+	.db #$22
+	.db #$BA
+	.db #$01
+	.db #$48
+	.db #$22
+	.db #$C0
+	.db #$20
+	.db #$4C
+	.db #$4D
+	.db #$4E
+	.db #$4F
+	.db #$49
+	.db #$4A
+	.db #$4B
+	.db #$49
+	.db #$4C
+	.db #$4D
+	.db #$4E
+	.db #$4F
+	.db #$4D
+	.db #$4E
+	.db #$4F
+	.db #$49
+	.db #$4A
+	.db #$4B
+	.db #$49
+	.db #$4C
+	.db #$4D
+	.db #$4E
+	.db #$4F
+	.db #$49
+	.db #$49
+	.db #$4A
+	.db #$4B
+	.db #$49
+	.db #$4C
+	.db #$4D
+	.db #$4E
+	.db #$4F
+	.db #$22
+	.db #$E0
+	.db #$20
+	.db #$52
+	.db #$50
+	.db #$53
+	.db #$50
+	.db #$50
+	.db #$51
+	.db #$50
+	.db #$50
+	.db #$52
+	.db #$50
+	.db #$53
+	.db #$50
+	.db #$50
+	.db #$53
+	.db #$50
+	.db #$50
+	.db #$51
+	.db #$50
+	.db #$50
+	.db #$52
+	.db #$50
+	.db #$53
+	.db #$50
+	.db #$50
+	.db #$50
+	.db #$51
+	.db #$50
+	.db #$50
+	.db #$52
+	.db #$50
+	.db #$53
+	.db #$50
+	.db #$23
+	.db #$00
+	.db #$01
+	.db #$52
+	.db #$23
+	.db #$02
+	.db #$02
+	.db #$54
+	.db #$52
+	.db #$23
+	.db #$0A
+	.db #$02
+	.db #$54
+	.db #$52
+	.db #$23
+	.db #$0D
+	.db #$02
+	.db #$54
+	.db #$52
+	.db #$23
+	.db #$0F
+	.db #$02
+	.db #$54
+	.db #$52
+	.db #$23
+	.db #$15
+	.db #$02
+	.db #$54
+	.db #$52
+	.db #$23
+	.db #$1E
+	.db #$02
+	.db #$54
+	.db #$52
+	.db #$21
+	.db #$F9
+	.db #$03
+	.db #$28
+	.db #$29
+	.db #$2A
+	.db #$22
+	.db #$19
+	.db #$03
+	.db #$2B
+	.db #$46
+	.db #$2C
+	.db #$22
+	.db #$38
+	.db #$04
+	.db #$2D
+	.db #$2E
+	.db #$46
+	.db #$2F
+	.db #$20
+	.db #$81
+	.db #$04
+	.db #$5C
+	.db #$5D
+	.db #$5E
+	.db #$5F
+	.db #$20
+	.db #$A1
+	.db #$05
+	.db #$60
+	.db #$61
+	.db #$46
+	.db #$62
+	.db #$63
+	.db #$20
+	.db #$C1
+	.db #$05
+	.db #$64
+	.db #$65
+	.db #$66
+	.db #$67
+	.db #$68
+	.db #$20
+	.db #$E3
+	.db #$05
+	.db #$69
+	.db #$74
+	.db #$75
+	.db #$76
+	.db #$6A
+	.db #$21
+	.db #$03
+	.db #$05
+	.db #$6B
+	.db #$6C
+	.db #$7C
+	.db #$6D
+	.db #$6E
+	.db #$21
+	.db #$23
+	.db #$05
+	.db #$6F
+	.db #$70
+	.db #$71
+	.db #$72
+	.db #$73
+	.db #$21
+	.db #$40
+	.db #$07
+	.db #$74
+	.db #$75
+	.db #$76
+	.db #$77
+	.db #$78
+	.db #$79
+	.db #$7A
+	.db #$21
+	.db #$60
+	.db #$09
+	.db #$7B
+	.db #$7C
+	.db #$7D
+	.db #$7E
+	.db #$7F
+	.db #$80
+	.db #$5D
+	.db #$5E
+	.db #$5F
+	.db #$21
+	.db #$81
+	.db #$09
+	.db #$81
+	.db #$82
+	.db #$83
+	.db #$84
+	.db #$60
+	.db #$61
+	.db #$46
+	.db #$62
+	.db #$63
+	.db #$21
+	.db #$A3
+	.db #$07
+	.db #$85
+	.db #$86
+	.db #$64
+	.db #$87
+	.db #$88
+	.db #$67
+	.db #$68
+	.db #$21
+	.db #$C3
+	.db #$04
+	.db #$89
+	.db #$8A
+	.db #$8B
+	.db #$8C
+	.db #$21
+	.db #$E4
+	.db #$02
+	.db #$8D
+	.db #$8E
+	.db #$22
+	.db #$04
+	.db #$02
+	.db #$8F
+	.db #$90
+	.db #$22
+	.db #$24
+	.db #$02
+	.db #$8F
+	.db #$55
+	.db #$23
+	.db #$03
+	.db #$02
+	.db #$1B
+	.db #$27
+	.db #$23
+	.db #$23
+	.db #$5B
+	.db #$E3
+	.db #$23
+	.db #$22
+	.db #$06
+	.db #$E2
+	.db #$E3
+	.db #$E3
+	.db #$E3
+	.db #$E4
+	.db #$E2
+	.db #$23
+	.db #$36
+	.db #$02
+	.db #$E4
+	.db #$E2
+	.db #$23
+	.db #$3E
+	.db #$01
+	.db #$E4
+	.db #$23
+	.db #$48
+	.db #$56
+	.db #$B7
+	.db #$23
+	.db #$42
+	.db #$06
+	.db #$E5
+	.db #$D9
+	.db #$D9
+	.db #$D9
+	.db #$E7
+	.db #$E5
+	.db #$23
+	.db #$4C
+	.db #$4A
+	.db #$D6
+	.db #$23
+	.db #$56
+	.db #$02
+	.db #$E7
+	.db #$E5
+	.db #$23
+	.db #$5E
+	.db #$01
+	.db #$E7
+	.db #$23
+	.db #$58
+	.db #$46
+	.db #$00
+	.db #$23
+	.db #$68
+	.db #$56
+	.db #$B7
+	.db #$23
+	.db #$62
+	.db #$06
+	.db #$E5
+	.db #$DA
+	.db #$DB
+	.db #$DC
+	.db #$E7
+	.db #$E5
+	.db #$23
+	.db #$76
+	.db #$02
+	.db #$E7
+	.db #$E5
+	.db #$23
+	.db #$7E
+	.db #$01
+	.db #$E7
+	.db #$23
+	.db #$79
+	.db #$05
+	.db #$1C
+	.db #$0C
+	.db #$18
+	.db #$1B
+	.db #$0E
+	.db #$23
+	.db #$83
+	.db #$5B
+	.db #$E9
+	.db #$23
+	.db #$82
+	.db #$01
+	.db #$E8
+	.db #$23
+	.db #$86
+	.db #$02
+	.db #$EA
+	.db #$E8
+	.db #$23
+	.db #$96
+	.db #$02
+	.db #$EA
+	.db #$E8
+	.db #$23
+	.db #$9E
+	.db #$01
+	.db #$EA
+	.db #$23
+	.db #$C0
+	.db #$60
+	.db #$00
+	.db #$23
+	.db #$CA
+	.db #$04
+	.db #$CC
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$23
+	.db #$D2
+	.db #$04
+	.db #$CC
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$23
+	.db #$E0
+	.db #$48
+	.db #$50
+	.db #$23
+	.db #$E1
+	.db #$01
+	.db #$40
+	.db #$23
+	.db #$E8
+	.db #$48
+	.db #$A5
+	.db #$23
+	.db #$F0
+	.db #$08
+	.db #$AA
+	.db #$AA
+	.db #$AA
+	.db #$FA
+	.db #$FA
+	.db #$BA
+	.db #$FA
+	.db #$BA
+	.db #$23
+	.db #$F8
+	.db #$48
+	.db #$0A
+	.db #$23
+	.db #$48
+	.db #$03
+	.db #$11
+	.db #$12
+	.db #$1D
+	.db #$00
+	.db #$22
+	.db #$20
+	.db #$60
+	.db #$B6
+	.db #$22
+	.db #$40
+	.db #$60
+	.db #$B5
+	.db #$22
+	.db #$60
+	.db #$60
+	.db #$B5
+	.db #$22
+	.db #$80
+	.db #$60
+	.db #$B5
+	.db #$22
+	.db #$A0
+	.db #$60
+	.db #$B5
+	.db #$22
+	.db #$C0
+	.db #$60
+	.db #$B5
+	.db #$22
+	.db #$E0
+	.db #$60
+	.db #$B5
+	.db #$23
+	.db #$00
+	.db #$60
+	.db #$B5
+	.db #$21
+	.db #$85
+	.db #$05
+	.db #$AC
+	.db #$AD
+	.db #$AE
+	.db #$C1
+	.db #$C2
+	.db #$21
+	.db #$A4
+	.db #$07
+	.db #$AF
+	.db #$B0
+	.db #$B5
+	.db #$B5
+	.db #$C3
+	.db #$C4
+	.db #$C5
+	.db #$21
+	.db #$B0
+	.db #$04
+	.db #$EC
+	.db #$B4
+	.db #$B8
+	.db #$B9
+	.db #$21
+	.db #$C2
+	.db #$0B
+	.db #$B1
+	.db #$B2
+	.db #$B5
+	.db #$B5
+	.db #$B5
+	.db #$B5
+	.db #$B5
+	.db #$C6
+	.db #$C7
+	.db #$C8
+	.db #$C9
+	.db #$21
+	.db #$CE
+	.db #$0F
+	.db #$CA
+	.db #$B4
+	.db #$B5
+	.db #$B5
+	.db #$B5
+	.db #$ED
+	.db #$BA
+	.db #$BB
+	.db #$BC
+	.db #$B3
+	.db #$EB
+	.db #$B0
+	.db #$BE
+	.db #$BB
+	.db #$BF
+	.db #$21
+	.db #$E2
+	.db #$59
+	.db #$B5
+	.db #$21
+	.db #$E0
+	.db #$02
+	.db #$B3
+	.db #$B4
+	.db #$21
+	.db #$EB
+	.db #$04
+	.db #$CB
+	.db #$C4
+	.db #$CC
+	.db #$CD
+	.db #$21
+	.db #$F5
+	.db #$01
+	.db #$BD
+	.db #$21
+	.db #$FB
+	.db #$05
+	.db #$BD
+	.db #$CB
+	.db #$C4
+	.db #$C8
+	.db #$BB
+	.db #$22
+	.db #$00
+	.db #$5D
+	.db #$B5
+	.db #$22
+	.db #$0D
+	.db #$03
+	.db #$CE
+	.db #$CF
+	.db #$D0
+	.db #$22
+	.db #$1D
+	.db #$03
+	.db #$C3
+	.db #$C0
+	.db #$C0
+	.db #$22
+	.db #$60
+	.db #$06
+	.db #$99
+	.db #$9A
+	.db #$9B
+	.db #$9C
+	.db #$99
+	.db #$9A
+	.db #$22
+	.db #$80
+	.db #$06
+	.db #$9D
+	.db #$9E
+	.db #$9F
+	.db #$A0
+	.db #$9D
+	.db #$9E
+	.db #$22
+	.db #$A0
+	.db #$06
+	.db #$A1
+	.db #$A2
+	.db #$A3
+	.db #$A4
+	.db #$A1
+	.db #$A2
+	.db #$22
+	.db #$C0
+	.db #$06
+	.db #$A5
+	.db #$A6
+	.db #$A5
+	.db #$A7
+	.db #$A5
+	.db #$A6
+	.db #$22
+	.db #$47
+	.db #$84
+	.db #$9B
+	.db #$9F
+	.db #$A3
+	.db #$A5
+	.db #$22
+	.db #$48
+	.db #$84
+	.db #$9C
+	.db #$A0
+	.db #$A4
+	.db #$A6
+	.db #$22
+	.db #$4A
+	.db #$02
+	.db #$A8
+	.db #$A9
+	.db #$22
+	.db #$6A
+	.db #$02
+	.db #$AA
+	.db #$AB
+	.db #$22
+	.db #$58
+	.db #$05
+	.db #$A8
+	.db #$A9
+	.db #$A8
+	.db #$A8
+	.db #$A8
+	.db #$22
+	.db #$77
+	.db #$06
+	.db #$A8
+	.db #$AA
+	.db #$AB
+	.db #$AA
+	.db #$AA
+	.db #$AA
+	.db #$22
+	.db #$74
+	.db #$82
+	.db #$A9
+	.db #$AB
+	.db #$22
+	.db #$97
+	.db #$01
+	.db #$AA
+	.db #$22
+	.db #$BA
+	.db #$04
+	.db #$99
+	.db #$9A
+	.db #$9B
+	.db #$9C
+	.db #$22
+	.db #$DA
+	.db #$04
+	.db #$9D
+	.db #$9E
+	.db #$9F
+	.db #$A0
+	.db #$22
+	.db #$FA
+	.db #$04
+	.db #$A1
+	.db #$A2
+	.db #$A3
+	.db #$A4
+	.db #$23
+	.db #$20
+	.db #$60
+	.db #$C0
+	.db #$23
+	.db #$40
+	.db #$60
+	.db #$C0
+	.db #$23
+	.db #$60
+	.db #$60
+	.db #$C0
+	.db #$23
+	.db #$80
+	.db #$60
+	.db #$C0
+	.db #$23
+	.db #$A0
+	.db #$60
+	.db #$C0
+	.db #$23
+	.db #$00
+	.db #$60
+	.db #$DD
+	.db #$23
+	.db #$08
+	.db #$50
+	.db #$DF
+	.db #$23
+	.db #$07
+	.db #$01
+	.db #$DE
+	.db #$23
+	.db #$18
+	.db #$01
+	.db #$E0
+	.db #$23
+	.db #$28
+	.db #$56
+	.db #$E3
+	.db #$23
+	.db #$48
+	.db #$56
+	.db #$B7
+	.db #$23
+	.db #$68
+	.db #$56
+	.db #$B7
+	.db #$23
+	.db #$88
+	.db #$56
+	.db #$E9
+	.db #$23
+	.db #$58
+	.db #$46
+	.db #$00
+	.db #$23
+	.db #$22
+	.db #$06
+	.db #$E2
+	.db #$E3
+	.db #$E3
+	.db #$E3
+	.db #$E4
+	.db #$E2
+	.db #$23
+	.db #$42
+	.db #$06
+	.db #$E5
+	.db #$D9
+	.db #$D9
+	.db #$D9
+	.db #$E7
+	.db #$E5
+	.db #$23
+	.db #$62
+	.db #$06
+	.db #$E5
+	.db #$DA
+	.db #$DB
+	.db #$DC
+	.db #$E7
+	.db #$E5
+	.db #$23
+	.db #$82
+	.db #$06
+	.db #$E8
+	.db #$E9
+	.db #$E9
+	.db #$E9
+	.db #$EA
+	.db #$E8
+	.db #$23
+	.db #$4C
+	.db #$4A
+	.db #$D4
+	.db #$23
+	.db #$03
+	.db #$02
+	.db #$1B
+	.db #$27
+	.db #$23
+	.db #$36
+	.db #$84
+	.db #$E4
+	.db #$E7
+	.db #$E7
+	.db #$EA
+	.db #$23
+	.db #$37
+	.db #$84
+	.db #$E2
+	.db #$E5
+	.db #$E5
+	.db #$E8
+	.db #$23
+	.db #$3E
+	.db #$84
+	.db #$E4
+	.db #$E7
+	.db #$E7
+	.db #$EA
+	.db #$23
+	.db #$79
+	.db #$05
+	.db #$1C
+	.db #$0C
+	.db #$18
+	.db #$1B
+	.db #$0E
+	.db #$23
+	.db #$C0
+	.db #$60
+	.db #$00
+	.db #$23
+	.db #$C8
+	.db #$50
+	.db #$FF
+	.db #$23
+	.db #$E0
+	.db #$48
+	.db #$50
+	.db #$23
+	.db #$E8
+	.db #$48
+	.db #$55
+	.db #$23
+	.db #$F0
+	.db #$08
+	.db #$AA
+	.db #$AA
+	.db #$AA
+	.db #$FA
+	.db #$FA
+	.db #$BA
+	.db #$FA
+	.db #$BA
+	.db #$23
+	.db #$F8
+	.db #$48
+	.db #$0A
+	.db #$23
+	.db #$48
+	.db #$03
+	.db #$11
+	.db #$12
+	.db #$1D
+	.db #$00
+PPU_FILE_DUCKHUNT_SCREEN:
+	.db #$20
+	.db #$64
+	.db #$53
+	.db #$B7
+	.db #$20
+	.db #$84
+	.db #$53
+	.db #$B7
+	.db #$20
+	.db #$A4
+	.db #$53
+	.db #$B7
+	.db #$20
+	.db #$C4
+	.db #$53
+	.db #$B7
+	.db #$20
+	.db #$E4
+	.db #$53
+	.db #$B7
+	.db #$20
+	.db #$86
+	.db #$82
+	.db #$F5
+	.db #$F4
+	.db #$20
+	.db #$67
+	.db #$85
+	.db #$F0
+	.db #$B7
+	.db #$B7
+	.db #$B7
+	.db #$F1
+	.db #$20
+	.db #$68
+	.db #$C5
+	.db #$24
+	.db #$20
+	.db #$6B
+	.db #$83
+	.db #$24
+	.db #$24
+	.db #$F4
+	.db #$20
+	.db #$E9
+	.db #$04
+	.db #$F3
+	.db #$B7
+	.db #$B7
+	.db #$F1
+	.db #$20
+	.db #$6D
+	.db #$C5
+	.db #$24
+	.db #$20
+	.db #$6E
+	.db #$04
+	.db #$F2
+	.db #$B7
+	.db #$B7
+	.db #$F0
+	.db #$20
+	.db #$EE
+	.db #$04
+	.db #$F3
+	.db #$B7
+	.db #$B7
+	.db #$F1
+	.db #$20
+	.db #$90
+	.db #$02
+	.db #$F5
+	.db #$F6
+	.db #$20
+	.db #$B0
+	.db #$02
+	.db #$F4
+	.db #$F7
+	.db #$20
+	.db #$72
+	.db #$C5
+	.db #$24
+	.db #$20
+	.db #$75
+	.db #$85
+	.db #$24
+	.db #$F8
+	.db #$B7
+	.db #$F9
+	.db #$24
+	.db #$20
+	.db #$96
+	.db #$82
+	.db #$F1
+	.db #$F0
+	.db #$21
+	.db #$24
+	.db #$58
+	.db #$FB
+	.db #$21
+	.db #$49
+	.db #$53
+	.db #$B7
+	.db #$21
+	.db #$69
+	.db #$52
+	.db #$B7
+	.db #$21
+	.db #$89
+	.db #$52
+	.db #$B7
+	.db #$21
+	.db #$A9
+	.db #$52
+	.db #$B7
+	.db #$21
+	.db #$C9
+	.db #$52
+	.db #$B7
+	.db #$21
+	.db #$4B
+	.db #$85
+	.db #$24
+	.db #$FA
+	.db #$B7
+	.db #$24
+	.db #$24
+	.db #$21
+	.db #$4D
+	.db #$C5
+	.db #$24
+	.db #$21
+	.db #$CE
+	.db #$04
+	.db #$F3
+	.db #$B7
+	.db #$B7
+	.db #$F1
+	.db #$21
+	.db #$50
+	.db #$83
+	.db #$24
+	.db #$24
+	.db #$F4
+	.db #$21
+	.db #$52
+	.db #$C5
+	.db #$24
+	.db #$21
+	.db #$55
+	.db #$85
+	.db #$24
+	.db #$F0
+	.db #$B7
+	.db #$F9
+	.db #$24
+	.db #$21
+	.db #$57
+	.db #$C5
+	.db #$24
+	.db #$21
+	.db #$78
+	.db #$C4
+	.db #$24
+	.db #$21
+	.db #$7B
+	.db #$C4
+	.db #$24
+	.db #$22
+	.db #$28
+	.db #$0F
+	.db #$10
+	.db #$0A
+	.db #$16
+	.db #$0E
+	.db #$24
+	.db #$0A
+	.db #$24
+	.db #$24
+	.db #$24
+	.db #$01
+	.db #$24
+	.db #$0D
+	.db #$1E
+	.db #$0C
+	.db #$14
+	.db #$22
+	.db #$68
+	.db #$10
+	.db #$10
+	.db #$0A
+	.db #$16
+	.db #$0E
+	.db #$24
+	.db #$0B
+	.db #$24
+	.db #$24
+	.db #$24
+	.db #$02
+	.db #$24
+	.db #$0D
+	.db #$1E
+	.db #$0C
+	.db #$14
+	.db #$1C
+	.db #$22
+	.db #$A8
+	.db #$16
+	.db #$10
+	.db #$0A
+	.db #$16
+	.db #$0E
+	.db #$24
+	.db #$0C
+	.db #$24
+	.db #$24
+	.db #$24
+	.db #$0C
+	.db #$15
+	.db #$0A
+	.db #$22
+	.db #$24
+	.db #$1C
+	.db #$11
+	.db #$18
+	.db #$18
+	.db #$1D
+	.db #$12
+	.db #$17
+	.db #$10
+	.db #$23
+	.db #$07
+	.db #$0B
+	.db #$1D
+	.db #$18
+	.db #$19
+	.db #$24
+	.db #$1C
+	.db #$0C
+	.db #$18
+	.db #$1B
+	.db #$0E
+	.db #$24
+	.db #$27
+	.db #$23
+	.db #$45
+	.db #$16
+	.db #$25
+	.db #$01
+	.db #$09
+	.db #$08
+	.db #$04
+	.db #$24
+	.db #$17
+	.db #$12
+	.db #$17
+	.db #$1D
+	.db #$0E
+	.db #$17
+	.db #$0D
+	.db #$18
+	.db #$24
+	.db #$0C
+	.db #$18
+	.db #$EE
+	.db #$15
+	.db #$1D
+	.db #$0D
+	.db #$EF
+	.db #$23
+	.db #$C0
+	.db #$60
+	.db #$00 ;END OF DUCK GAME SCREEN DATA.
+	.db #$23
+	.db #$E0
+	.db #$42
+	.db #$55
+	.db #$23
+	.db #$E2
+	.db #$46
+	.db #$FF
+	.db #$23
+	.db #$EA
+	.db #$46
+	.db #$FF
+	.db #$23
+	.db #$F0
+	.db #$48
+	.db #$5A
+	.db #$23
+	.db #$F8
+	.db #$48
+	.db #$00
+	.db #$23
+	.db #$E1
+	.db #$01
+	.db #$55
+	.db #$23
+	.db #$E9
+	.db #$01
+	.db #$55
+	.db #$00
+PALLETE_FILES_LOW:
+	.db #$40
+PALLETE_FILES_HIGH:
+	.db #$E5
+	.db #$58
+	.db #$E5
+	.db #$7C
+	.db #$E5
+	.db #$A0
+	.db #$E5
+	.db #$A9
+	.db #$E5
+	.db #$C7
+	.db #$E5
+	.db #$B4
+	.db #$E5
+PPU_FILE_0:
+	.db #$3F ;3F00 addr
+	.db #$00
+	.db #$10 ;16 bytes, half pallet.
+	.db #$0F
+	.db #$2C
+	.db #$27
+	.db #$0F
+	.db #$0F
+	.db #$0F
+	.db #$30
+	.db #$30
+	.db #$0F
+	.db #$0F
+	.db #$2A
+	.db #$2A
+	.db #$0F
+	.db #$0F
+	.db #$27
+	.db #$27
+	.db #$3F
+	.db #$10
+	.db #$50 ;3F10, 10 bytes, single block.
+	.db #$0F
+	.db #$00
+PPU_FILE_1:
+	.db #$3F ;3F00 addr
+	.db #$00
+	.db #$20 ;whole pallet, 32 bytes.
+	.db #$21
+	.db #$07
+	.db #$29
+	.db #$0A
+	.db #$21
+	.db #$30
+	.db #$29
+	.db #$0A
+	.db #$21
+	.db #$0F
+	.db #$29
+	.db #$18
+	.db #$21
+	.db #$0F
+	.db #$30
+	.db #$16
+	.db #$21
+	.db #$30
+	.db #$0A
+	.db #$0F
+	.db #$21
+	.db #$30
+	.db #$26
+	.db #$0F
+	.db #$21
+	.db #$30
+	.db #$17
+	.db #$0F
+	.db #$21
+	.db #$07
+	.db #$17
+	.db #$0F
+	.db #$00
+PPU_FILE_2:
+	.db #$3F ;addr 3f00
+	.db #$00
+	.db #$20 ;32 bytes, whole pallet.
+	.db #$2C
+	.db #$29
+	.db #$19
+	.db #$09
+	.db #$2C
+	.db #$07
+	.db #$29
+	.db #$1A
+	.db #$2C
+	.db #$0F
+	.db #$29
+	.db #$10
+	.db #$2C
+	.db #$0F
+	.db #$30
+	.db #$16
+	.db #$2C
+	.db #$30
+	.db #$0F
+	.db #$0F
+	.db #$2C
+	.db #$30
+	.db #$16
+	.db #$07
+	.db #$2C
+	.db #$30
+	.db #$17
+	.db #$0F
+	.db #$2C
+	.db #$07
+	.db #$17
+	.db #$0F
+	.db #$00
+PPU_FILE_3:
+	.db #$3F ;ADDR 3F00, fired screen?
+	.db #$00
+	.db #$60 ;clear whole pallet, 32 bytes of 0F
+	.db #$0F
+	.db #$3F ;3F03 addr
+	.db #$03
+	.db #$01
+	.db #$30
+	.db #$00
+PPU_FILE_4:
+	.db #$3F ;3F00 addr, all black bg, sprites white.
+	.db #$00
+	.db #$60 ;clear whole pallet, 32 bytes of 0F.
+	.db #$0F
+	.db #$3F ;3F11 addr
+	.db #$11 ;3F11, 3 bytes of white.
+	.db #$03
+	.db #$30
+	.db #$30
+	.db #$30
+	.db #$00
+PPU_FILE_6:
+	.db #$3F ;3F10 ADDR
+	.db #$10
+	.db #$10 ;16 bytes
+	.db #$21
+	.db #$30
+	.db #$0A
+	.db #$0F
+	.db #$21
+	.db #$30
+	.db #$26
+	.db #$0F
+	.db #$21
+	.db #$30
+	.db #$17
+	.db #$0F
+	.db #$21
+	.db #$07
+	.db #$17
+	.db #$0F
+PPU_FILE_5:
+	.db #$3F ;3F00 Addr
+	.db #$00
+	.db #$10 ;16 bytes
+	.db #$21
+	.db #$07
+	.db #$29
+	.db #$0A
+	.db #$21
+	.db #$30
+	.db #$29
+	.db #$0A
+	.db #$21
+	.db #$0F
+	.db #$29
+	.db #$18
+	.db #$21
+	.db #$0F
+	.db #$30
+	.db #$16
+	.db #$00
+L_25DB:
+	.db #$23
+L_25DC:
+	.db #$58
+	.db #$06
+	.db #$00
+L_25DF:
+	.db #$00 ;goes to 0x5F0
+	.db #$01
+	.db #$20
+	.db #$00
+	.db #$00
+	.db #$01
+	.db #$20
+	.db #$00
+	.db #$00
+	.db #$01
+	.db #$20
+	.db #$00
+UNK_DATA:
+	.db #$01
+	.db #$01
+	.db #$A8
+	.db #$80
+	.db #$00
+	.db #$00
+	.db #$00
+	.db #$3F
+	.db #$01
+	.db #$00
+	.db #$03
+	.db #$00
+	.db #$00
+	.db #$00
+	.db #$00
+	.db #$00
+	.db #$00
+	.db #$00
+	.db #$00
+	.db #$00
+	.db #$00
+	.db #$00
+	.db #$00
+	.db #$00
+	.db #$00
+	.db #$00
+	.db #$00
+	.db #$03
+	.db #$00
+	.db #$00
+	.db #$00
+	.db #$00
+L_260B:
+	.db #$76
+L_260C:
+	.db #$ED
+	.db #$98
+	.db #$ED
+	.db #$B0
+	.db #$ED
+	.db #$BC
+	.db #$ED
+	.db #$D4
+	.db #$ED
+	.db #$FA
+	.db #$ED
+	.db #$1A
+	.db #$EE
+	.db #$34
+	.db #$EE
+	.db #$4C
+	.db #$EE
+	.db #$68
+	.db #$EE
+	.db #$82
+	.db #$EE
+	.db #$96
+	.db #$EE
+	.db #$B8
+	.db #$EE
+	.db #$D0
+	.db #$EE
+	.db #$F4
+	.db #$EE
+	.db #$0E
+	.db #$EF
+	.db #$2A
+	.db #$EF
+	.db #$2D
+	.db #$EF
+	.db #$30
+	.db #$EF
+	.db #$33
+	.db #$EF
+	.db #$36
+	.db #$EF
+	.db #$39
+	.db #$EF
+	.db #$3C
+	.db #$EF
+	.db #$3F
+	.db #$EF
+	.db #$42
+	.db #$EF
+	.db #$45
+	.db #$EF
+	.db #$48
+	.db #$EF
+	.db #$4B
+	.db #$EF
+	.db #$4E
+	.db #$EF
+	.db #$51
+	.db #$EF
+	.db #$54
+	.db #$EF
+	.db #$57
+	.db #$EF
+L_264B:
+	.db #$00
+	.db #$03
+	.db #$10
+	.db #$17
+	.db #$24
+	.db #$27
+	.db #$34
+	.db #$3B
+	.db #$48
+	.db #$4B
+	.db #$58
+	.db #$5F
+	.db #$6C
+	.db #$6F
+	.db #$7C
+	.db #$83
+	.db #$90
+	.db #$95
+	.db #$98
+	.db #$9B
+	.db #$9E
+	.db #$A1
+L_2661:
+	.db #$FF
+	.db #$00
+	.db #$AA
+	.db #$FF
+	.db #$01
+	.db #$FF
+	.db #$00
+	.db #$FF
+	.db #$00
+	.db #$FF
+	.db #$01
+	.db #$FF
+	.db #$00
+	.db #$00
+	.db #$00
+	.db #$AA
+	.db #$FF
+	.db #$01
+	.db #$FF
+	.db #$01
+	.db #$00
+	.db #$00
+	.db #$AA
+	.db #$00
+	.db #$01
+	.db #$FF
+	.db #$01
+	.db #$00
+	.db #$01
+	.db #$FF
+	.db #$01
+	.db #$00
+	.db #$01
+	.db #$00
+	.db #$00
+	.db #$AA
+	.db #$00
+	.db #$01
+	.db #$AA
+	.db #$00
+	.db #$01
+	.db #$01
+	.db #$01
+	.db #$00
+	.db #$01
+	.db #$01
+	.db #$01
+	.db #$00
+	.db #$01
+	.db #$00
+	.db #$00
+	.db #$AA
+	.db #$01
+	.db #$01
+	.db #$01
+	.db #$01
+	.db #$00
+	.db #$00
+	.db #$AA
+	.db #$01
+	.db #$01
+	.db #$01
+	.db #$00
+	.db #$01
+	.db #$00
+	.db #$01
+	.db #$01
+	.db #$01
+	.db #$00
+	.db #$00
+	.db #$00
+	.db #$AA
+	.db #$01
+	.db #$00
+	.db #$AA
+	.db #$01
+	.db #$FF
+	.db #$01
+	.db #$00
+	.db #$01
+	.db #$00
+	.db #$01
+	.db #$FF
+	.db #$01
+	.db #$00
+	.db #$00
+	.db #$00
+	.db #$AA
+	.db #$01
+	.db #$FF
+	.db #$01
+	.db #$FF
+	.db #$00
+	.db #$00
+	.db #$AA
+	.db #$00
+	.db #$FF
+	.db #$01
+	.db #$FF
+	.db #$00
+	.db #$FF
+	.db #$01
+	.db #$FF
+	.db #$00
+	.db #$FF
+	.db #$00
+	.db #$00
+	.db #$AA
+	.db #$00
+	.db #$FF
+	.db #$AA
+	.db #$00
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$00
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$00
+	.db #$FF
+	.db #$00
+	.db #$00
+	.db #$AA
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$00
+	.db #$00
+	.db #$AA
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$00
+	.db #$FF
+	.db #$00
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$00
+	.db #$00
+	.db #$00
+	.db #$AA
+	.db #$02
+	.db #$01
+	.db #$02
+	.db #$FF
+	.db #$AA
+	.db #$FF
+	.db #$FE
+	.db #$AA
+	.db #$FE
+	.db #$FF
+	.db #$AA
+	.db #$FE
+	.db #$00
+	.db #$AA
+	.db #$FE
+	.db #$01
+	.db #$AA
+	.db #$FF
+	.db #$02
+	.db #$AA
+	.db #$02
+	.db #$00
+	.db #$02
+	.db #$01
+	.db #$04
+	.db #$02
+	.db #$FE
+	.db #$02
+	.db #$03
+	.db #$02
+	.db #$04
+	.db #$04
+	.db #$05
+	.db #$FE
+	.db #$14
+	.db #$09
+	.db #$FF
+	.db #$06
+	.db #$01
+	.db #$04
+	.db #$0A
+	.db #$04
+	.db #$0B
+	.db #$FE
+	.db #$02
+	.db #$06
+	.db #$02
+	.db #$07
+	.db #$04
+	.db #$08
+	.db #$FE
+L_2724:
+	.db #$21
+	.db #$30
+	.db #$0A
+	.db #$0F
+	.db #$21
+	.db #$30
+	.db #$26
+	.db #$0F
+	.db #$21
+	.db #$30
+	.db #$14
+	.db #$02
+	.db #$21
+	.db #$30
+	.db #$26
+	.db #$02
+	.db #$21
+	.db #$30
+	.db #$0F
+	.db #$05
+	.db #$21
+	.db #$30
+	.db #$26
+	.db #$05
+L_273C:
+	.db #$04
+	.db #$08
+	.db #$0C
+	.db #$08
+	.db #$0C
+	.db #$10
+	.db #$08
+	.db #$0C
+	.db #$10
+	.db #$0C
+	.db #$10
+	.db #$14
+	.db #$10
+	.db #$14
+	.db #$18
+	.db #$10
+	.db #$14
+	.db #$18
+	.db #$14
+	.db #$18
+	.db #$1C
+	.db #$14
+	.db #$1C
+	.db #$1C
+	.db #$18
+	.db #$1C
+	.db #$1C
+	.db #$1C
+	.db #$1C
+	.db #$20
+L_275A:
+	.db #$10
+	.db #$14
+	.db #$14
+	.db #$18
+	.db #$18
+	.db #$1C
+	.db #$1C
+	.db #$20
+	.db #$20
+	.db #$24
+	.db #$24
+	.db #$28
+L_2766:
+	.db #$00
+	.db #$01
+	.db #$10
+	.db #$11
+	.db #$12
+	.db #$20
+	.db #$21
+	.db #$22
+L_276E:
+	.db #$01
+	.db #$01
+	.db #$AC
+	.db #$18
+	.db #$00
+	.db #$00
+	.db #$00
+	.db #$BF
+	.db #$00
+	.db #$00
+	.db #$00
+	.db #$00
+	.db #$00
+	.db #$00
+	.db #$00
+	.db #$00
+	.db #$00
+	.db #$00
+	.db #$00
+	.db #$00
+	.db #$00
+	.db #$60
+	.db #$00
+	.db #$00
+	.db #$00
+	.db #$00
+	.db #$00
+	.db #$00
+	.db #$00
+	.db #$00
+	.db #$00
+	.db #$00
+	.db #$06
+	.db #$0C
+	.db #$06
+	.db #$0D
+	.db #$06
+	.db #$0E
+	.db #$06
+	.db #$0F
+	.db #$FE
+	.db #$00
+	.db #$08
+	.db #$0C
+	.db #$08
+	.db #$10
+	.db #$08
+	.db #$0C
+	.db #$08
+	.db #$10
+	.db #$08
+	.db #$0C
+	.db #$08
+	.db #$10
+	.db #$FF
+	.db #$02
+	.db #$01
+	.db #$10
+	.db #$11
+	.db #$FF
+	.db #$08
+	.db #$01
+	.db #$90
+	.db #$03
+	.db #$12
+	.db #$83
+	.db #$01
+	.db #$12
+	.db #$83
+	.db #$01
+	.db #$12
+	.db #$83
+	.db #$01
+	.db #$12
+	.db #$83
+	.db #$01
+	.db #$12
+	.db #$82
+	.db #$01
+	.db #$12
+	.db #$82
+	.db #$01
+	.db #$12
+	.db #$82
+	.db #$01
+	.db #$12
+	.db #$82
+	.db #$01
+	.db #$12
+	.db #$81
+	.db #$01
+	.db #$12
+	.db #$82
+	.db #$01
+	.db #$12
+	.db #$81
+	.db #$01
+	.db #$12
+	.db #$81
+	.db #$01
+	.db #$12
+	.db #$81
+	.db #$01
+	.db #$12
+	.db #$81
+	.db #$01
+	.db #$12
+	.db #$81
+	.db #$01
+	.db #$12
+	.db #$81
+	.db #$01
+	.db #$12
+	.db #$84
+	.db #$01
+	.db #$13
+	.db #$00
+	.db #$01
+	.db #$13
+	.db #$81
+	.db #$01
+	.db #$13
+	.db #$00
+	.db #$01
+	.db #$13
+	.db #$81
+	.db #$01
+	.db #$13
+	.db #$00
+	.db #$01
+	.db #$13
+	.db #$00
+	.db #$01
+	.db #$13
+	.db #$00
+	.db #$01
+	.db #$13
+	.db #$81
+	.db #$01
+	.db #$13
+	.db #$FD
+	.db #$00
+	.db #$01
+	.db #$13
+	.db #$00
+	.db #$01
+	.db #$13
+	.db #$00
+	.db #$01
+	.db #$13
+	.db #$00
+	.db #$01
+	.db #$13
+	.db #$01
+	.db #$01
+	.db #$13
+	.db #$00
+	.db #$01
+	.db #$13
+	.db #$01
+	.db #$01
+	.db #$13
+	.db #$00
+	.db #$01
+	.db #$13
+	.db #$01
+	.db #$01
+	.db #$13
+	.db #$01
+	.db #$01
+	.db #$13
+	.db #$01
+	.db #$01
+	.db #$13
+	.db #$02
+	.db #$01
+	.db #$13
+	.db #$02
+	.db #$01
+	.db #$13
+	.db #$02
+	.db #$01
+	.db #$13
+	.db #$03
+	.db #$01
+	.db #$13
+	.db #$03
+	.db #$01
+	.db #$13
+	.db #$04
+	.db #$00
+	.db #$13
+	.db #$04
+	.db #$00
+	.db #$13
+	.db #$05
+	.db #$00
+	.db #$13
+	.db #$05
+	.db #$00
+	.db #$13
+	.db #$05
+	.db #$00
+	.db #$13
+	.db #$05
+	.db #$00
+	.db #$13
+	.db #$05
+	.db #$00
+	.db #$13
+	.db #$05
+	.db #$00
+	.db #$13
+	.db #$FF
+	.db #$0E
+	.db #$00
+	.db #$04
+	.db #$81
+	.db #$16
+	.db #$04
+	.db #$81
+	.db #$17
+	.db #$04
+	.db #$81
+	.db #$16
+	.db #$04
+	.db #$81
+	.db #$17
+	.db #$04
+	.db #$81
+	.db #$16
+	.db #$04
+	.db #$81
+	.db #$17
+	.db #$04
+	.db #$81
+	.db #$16
+	.db #$04
+	.db #$81
+	.db #$17
+	.db #$04
+	.db #$81
+	.db #$16
+	.db #$04
+	.db #$81
+	.db #$17
+	.db #$04
+	.db #$80
+	.db #$16
+	.db #$04
+	.db #$80
+	.db #$17
+	.db #$04
+	.db #$80
+	.db #$16
+	.db #$04
+	.db #$80
+	.db #$17
+	.db #$04
+	.db #$80
+	.db #$16
+	.db #$04
+	.db #$80
+	.db #$17
+	.db #$04
+	.db #$80
+	.db #$16
+	.db #$04
+	.db #$80
+	.db #$17
+	.db #$04
+	.db #$02
+	.db #$16
+	.db #$04
+	.db #$02
+	.db #$17
+	.db #$04
+	.db #$02
+	.db #$16
+	.db #$04
+	.db #$02
+	.db #$17
+	.db #$04
+	.db #$02
+	.db #$16
+	.db #$04
+	.db #$02
+	.db #$17
+	.db #$04
+	.db #$02
+	.db #$16
+	.db #$FF
+	.db #$0F
+	.db #$20
+	.db #$14
+	.db #$82
+	.db #$14
+	.db #$10
+	.db #$00
+	.db #$14
+	.db #$14
+	.db #$02
+	.db #$14
+	.db #$14
+	.db #$02
+	.db #$14
+	.db #$FF
+	.db #$0F
+	.db #$20
+	.db #$14
+	.db #$82
+	.db #$15
+	.db #$10
+	.db #$00
+	.db #$15
+	.db #$14
+	.db #$02
+	.db #$15
+	.db #$14
+	.db #$02
+	.db #$15
+	.db #$FF
+	.db #$0F
+	.db #$20
+	.db #$04
+	.db #$81
+	.db #$16
+	.db #$04
+	.db #$81
+	.db #$17
+	.db #$04
+	.db #$81
+	.db #$16
+	.db #$04
+	.db #$81
+	.db #$17
+	.db #$04
+	.db #$81
+	.db #$16
+	.db #$04
+	.db #$81
+	.db #$17
+	.db #$04
+	.db #$81
+	.db #$16
+	.db #$04
+	.db #$81
+	.db #$17
+	.db #$04
+	.db #$81
+	.db #$16
+	.db #$04
+	.db #$81
+	.db #$17
+	.db #$04
+	.db #$80
+	.db #$16
+	.db #$04
+	.db #$80
+	.db #$17
+	.db #$04
+	.db #$80
+	.db #$16
+	.db #$FC
+L_28DA:
+	.db #$01
+	.db #$02
+	.db #$00
+	.db #$00
+	.db #$00
+	.db #$00
+	.db #$00
+	.db #$4F
+	.db #$00
+	.db #$00
+	.db #$00
+	.db #$00
+	.db #$00
+	.db #$00
+	.db #$00
+	.db #$01
+	.db #$00
+	.db #$00
+	.db #$00
+	.db #$00
+	.db #$00
+	.db #$00
+	.db #$00
+	.db #$00
+	.db #$00
+	.db #$00
+	.db #$00
+	.db #$00
+	.db #$00
+	.db #$00
+	.db #$02
+	.db #$00
+	.db #$00
+	.db #$00
+	.db #$00
+	.db #$00
+	.db #$00
+	.db #$00
+	.db #$00
+	.db #$00
+	.db #$00
+	.db #$00
+	.db #$00
+	.db #$00
+	.db #$00
+	.db #$00
+	.db #$00
+	.db #$00
+	.db #$F9
+	.db #$FE
+	.db #$FB
+	.db #$FE
+	.db #$FF
+	.db #$FE
+	.db #$FF
+	.db #$FA
+	.db #$FB
+	.db #$FA
+	.db #$F9
+	.db #$FA
+	.db #$00
+	.db #$00
+	.db #$00
+	.db #$00
+	.db #$FA
+	.db #$FD
+	.db #$FB
+	.db #$FD
+	.db #$FB
+	.db #$FD
+	.db #$FC
+	.db #$FD
+	.db #$FC
+	.db #$FB
+	.db #$FB
+	.db #$FB
+	.db #$FB
+	.db #$FB
+	.db #$FA
+	.db #$FB
+L_292A:
+	.db #$18
+	.db #$18
+	.db #$19
+	.db #$1A
+	.db #$1A
+	.db #$1B
+	.db #$1C
+	.db #$1D
+	.db #$1E
+	.db #$1E
+	.db #$1F
+	.db #$1F
+	.db #$20
+	.db #$20
+	.db #$21
+	.db #$21
+	.db #$22
+	.db #$22
+	.db #$22
+	.db #$22
+	.db #$23
+	.db #$23
+	.db #$23
+	.db #$23
+	.db #$23
+	.db #$23
+L_2944:
+	.db #$00
+	.db #$00
+	.db #$00
+	.db #$01
+	.db #$01
+	.db #$01
+	.db #$02
+	.db #$02
+	.db #$02
+	.db #$02
+	.db #$03
+	.db #$03
+	.db #$03
+	.db #$03
+	.db #$04
+	.db #$04
+	.db #$04
+	.db #$04
+	.db #$04
+	.db #$05
+	.db #$05
+	.db #$05
+	.db #$05
+	.db #$05
+	.db #$05
+	.db #$05
+	.db #$05
+	.db #$05
+	.db #$05
+	.db #$05
+	.db #$05
+	.db #$05
+	.db #$05
+	.db #$05
+	.db #$05
+	.db #$05
+L_2968:
+	.db #$00
+L_2969:
+	.db #$00
+L_296A:
+	.db #$C0
+L_296B:
+	.db #$15
+L_296C:
+	.db #$1E
+L_296D:
+	.db #$2C
+	.db #$01
+	.db #$00
+	.db #$C0
+	.db #$0A
+	.db #$1E
+	.db #$30
+	.db #$03
+	.db #$00
+	.db #$D0
+	.db #$10
+	.db #$1E
+	.db #$25
+	.db #$04
+	.db #$00
+	.db #$C0
+	.db #$00
+	.db #$1C
+	.db #$30
+	.db #$06
+	.db #$00
+	.db #$C0
+	.db #$0F
+	.db #$1C
+	.db #$30
+	.db #$08
+	.db #$00
+	.db #$C0
+	.db #$F6
+	.db #$1C
+	.db #$30
+	.db #$09
+	.db #$00
+	.db #$C0
+	.db #$0C
+	.db #$1C
+	.db #$30
+	.db #$0A
+	.db #$00
+	.db #$C0
+	.db #$F4
+	.db #$1C
+	.db #$30
+	.db #$0C
+	.db #$00
+	.db #$C0
+	.db #$F4
+	.db #$1E
+	.db #$2D
+	.db #$0E
+	.db #$00
+	.db #$C0
+	.db #$08
+	.db #$1C
+	.db #$30
+	.db #$0A
+	.db #$00
+	.db #$C0
+	.db #$00
+	.db #$1D
+	.db #$30
+	.db #$11
+	.db #$00
+	.db #$B8
+	.db #$EE
+	.db #$20
+	.db #$33
+	.db #$13
+	.db #$00
+	.db #$C8
+	.db #$F0
+	.db #$1C
+	.db #$2A
+	.db #$04
+	.db #$80
+	.db #$C8
+	.db #$F7
+	.db #$1C
+	.db #$2D
+	.db #$0A
+	.db #$80
+	.db #$C8
+	.db #$0B
+	.db #$1C
+	.db #$2D
+	.db #$0F
+	.db #$80
+	.db #$C6
+	.db #$F3
+	.db #$21
+	.db #$26
+L_29C8:
+	.db #$14
+	.db #$14
+	.db #$10
+	.db #$10
+	.db #$10
+	.db #$08
+	.db #$04
+	.db #$00
+	.db #$18
+	.db #$14
+	.db #$14
+	.db #$10
+	.db #$0C
+	.db #$08
+	.db #$04
+	.db #$00
+	.db #$1C
+	.db #$18
+	.db #$18
+	.db #$14
+	.db #$10
+	.db #$0C
+	.db #$08
+	.db #$04
+	.db #$20
+	.db #$1C
+	.db #$18
+	.db #$14
+	.db #$10
+	.db #$0C
+	.db #$08
+	.db #$04
+	.db #$24
+	.db #$20
+	.db #$1C
+	.db #$18
+	.db #$14
+	.db #$0C
+	.db #$08
+	.db #$04
+	.db #$28
+	.db #$24
+	.db #$20
+	.db #$1C
+	.db #$14
+	.db #$10
+	.db #$0C
+	.db #$08
+	.db #$2C
+	.db #$28
+	.db #$24
+	.db #$20
+	.db #$18
+	.db #$10
+	.db #$0C
+	.db #$08
+L_2A00:
+	.db #$01
+	.db #$01
+	.db #$01
+	.db #$01
+	.db #$02
+	.db #$01
+	.db #$01
+	.db #$01
+	.db #$02
+	.db #$01
+	.db #$02
+	.db #$01
+	.db #$02
+	.db #$02
+	.db #$02
+	.db #$01
+	.db #$02
+	.db #$02
+	.db #$02
+	.db #$02
+	.db #$03
+	.db #$02
+	.db #$03
+	.db #$02
+	.db #$03
+	.db #$03
+	.db #$03
+	.db #$03
+	.db #$04
+	.db #$03
+	.db #$04
+	.db #$03
+	.db #$04
+	.db #$04
+	.db #$04
+	.db #$04
+	.db #$05
+	.db #$05
+	.db #$05
+	.db #$05
+	.db #$06
+	.db #$06
+	.db #$06
+	.db #$06
+	.db #$07
+	.db #$07
+	.db #$07
+	.db #$07
+L_2A30:
+	.db #$ED
+	.db #$40
+	.db #$ED
+	.db #$40
+	.db #$ED
+	.db #$C0
+	.db #$ED
+	.db #$80
+	.db #$ED
+	.db #$00
+	.db #$ED
+	.db #$00
+	.db #$ED
+	.db #$00
+	.db #$ED
+	.db #$00
+	.db #$EE
+	.db #$40
+	.db #$EE
+	.db #$40
+	.db #$EE
+	.db #$40
+	.db #$EE
+	.db #$40
+	.db #$EE
+	.db #$00
+	.db #$EE
+	.db #$00
+	.db #$EE
+	.db #$00
+	.db #$EE
+	.db #$00
+L_2A50:
+	.db #$06
+	.db #$05
+	.db #$04
+	.db #$03
+	.db #$03
+	.db #$02
+	.db #$03
+	.db #$03
+	.db #$02
+	.db #$02
+	.db #$02
+	.db #$02
+	.db #$02
+	.db #$01
+	.db #$01
+	.db #$02
+	.db #$01
+	.db #$01
+	.db #$01
+	.db #$01
+	.db #$01
+	.db #$01
+	.db #$01
+	.db #$00
+	.db #$01
+	.db #$01
+	.db #$01
+	.db #$01
+	.db #$00
+	.db #$01
+	.db #$01
+	.db #$01
+	.db #$00
+	.db #$01
+	.db #$01
+	.db #$00
+	.db #$01
+	.db #$00
+	.db #$01
+	.db #$00
+	.db #$BB
+	.db #$01
+	.db #$00
+	.db #$01
+	.db #$00
+	.db #$BB
+	.db #$01
+	.db #$00
+	.db #$01
+	.db #$00
+	.db #$BB
+	.db #$01
+	.db #$00
+	.db #$01
+	.db #$BB
+	.db #$00
+	.db #$01
+	.db #$BB
+	.db #$00
+	.db #$00
+	.db #$BB
+	.db #$00
+	.db #$AA
+L_2A8F:
+	.db #$02
+	.db #$02
+	.db #$01
+	.db #$02
+	.db #$02
+	.db #$01
+	.db #$01
+	.db #$01
+	.db #$01
+	.db #$01
+	.db #$00
+	.db #$01
+	.db #$00
+	.db #$01
+	.db #$00
+	.db #$01
+	.db #$00
+	.db #$01
+	.db #$BB
+	.db #$00
+	.db #$00
+	.db #$01
+	.db #$BB
+	.db #$00
+	.db #$00
+	.db #$01
+	.db #$BB
+	.db #$00
+	.db #$00
+	.db #$BB
+	.db #$01
+	.db #$00
+	.db #$00
+	.db #$BB
+	.db #$01
+	.db #$00
+	.db #$BB
+	.db #$00
+	.db #$00
+	.db #$BB
+	.db #$BB
+	.db #$BB
+	.db #$BB
+	.db #$BB
+	.db #$BB
+	.db #$BB
+	.db #$BB
+	.db #$BB
+	.db #$BB
+	.db #$BB
+	.db #$AA
+L_2AC2:
+	.db #$01
+	.db #$01
+	.db #$00
+	.db #$01
+	.db #$01
+	.db #$01
+	.db #$00
+	.db #$01
+	.db #$00
+	.db #$01
+	.db #$00
+	.db #$00
+	.db #$01
+	.db #$00
+	.db #$00
+	.db #$00
+	.db #$00
+	.db #$01
+	.db #$00
+	.db #$00
+	.db #$00
+	.db #$00
+	.db #$00
+	.db #$01
+	.db #$00
+	.db #$00
+	.db #$00
+	.db #$00
+	.db #$00
+	.db #$00
+	.db #$01
+	.db #$00
+	.db #$00
+	.db #$00
+	.db #$00
+	.db #$00
+	.db #$00
+	.db #$00
+	.db #$00
+	.db #$00
+	.db #$00
+	.db #$00
+	.db #$00
+	.db #$00
+	.db #$00
+	.db #$00
+	.db #$00
+	.db #$00
+L_2AF2:
+	.db #$00
+	.db #$06
+	.db #$00
+	.db #$FF
+	.db #$02
+	.db #$05
+	.db #$02
+	.db #$FF
+	.db #$08
+	.db #$04
+	.db #$06
+	.db #$FF
+	.db #$0E
+	.db #$04
+	.db #$07
+	.db #$FF
+	.db #$12
+	.db #$05
+	.db #$08
+	.db #$FF
+	.db #$14
+	.db #$04
+	.db #$0A
+	.db #$FF
+	.db #$FF
+	.db #$00
+	.db #$00
+	.db #$02
+	.db #$FF
+	.db #$00
+	.db #$00
+	.db #$04
+	.db #$FF
+	.db #$00
+	.db #$00
+	.db #$06
+	.db #$FF
+	.db #$00
+	.db #$00
+	.db #$0A
+	.db #$FF
+	.db #$00
+	.db #$00
+	.db #$10
+	.db #$FF
+	.db #$00
+	.db #$00
+	.db #$14
+L_2B22:
+	.db #$02
+	.db #$04
+	.db #$06
+	.db #$0A
+	.db #$0C
+	.db #$0E
+L_2B28:
+	.db #$01
+	.db #$03
+	.db #$05
+	.db #$07
+	.db #$09
+	.db #$0B
+	.db #$0D
+	.db #$0F
+L_2B30:
+	.db #$4A
+L_2B31:
+	.db #$EB
+	.db #$5D
+	.db #$EB
+	.db #$70
+	.db #$EB
+	.db #$7D
+	.db #$EB
+	.db #$86
+	.db #$EB
+	.db #$8F
+	.db #$EB
+	.db #$92
+	.db #$EB
+	.db #$92
+	.db #$EB
+	.db #$92
+	.db #$EB
+	.db #$95
+	.db #$EB
+	.db #$B6
+	.db #$EB
+	.db #$C9
+	.db #$EB
+	.db #$DC
+	.db #$EB
+	.db #$F4
+	.db #$F4
+	.db #$F4
+	.db #$FC
+	.db #$F4
+	.db #$04
+	.db #$FC
+	.db #$F4
+	.db #$FC
+	.db #$FC
+	.db #$FC
+	.db #$04
+	.db #$04
+	.db #$F4
+	.db #$04
+	.db #$FC
+	.db #$04
+	.db #$04
+	.db #$AA
+	.db #$F7
+	.db #$F5
+	.db #$F7
+	.db #$FD
+	.db #$F7
+	.db #$03
+	.db #$FF
+	.db #$F5
+	.db #$FF
+	.db #$FD
+	.db #$FF
+	.db #$03
+	.db #$01
+	.db #$F5
+	.db #$01
+	.db #$FD
+	.db #$01
+	.db #$03
+	.db #$AA
+	.db #$F9
+	.db #$F7
+	.db #$F9
+	.db #$FF
+	.db #$F9
+	.db #$01
+	.db #$FF
+	.db #$F7
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$01
+	.db #$AA
+	.db #$FA
+	.db #$F8
+	.db #$FA
+	.db #$00
+	.db #$FE
+	.db #$F8
+	.db #$FE
+	.db #$00
+	.db #$AA
+	.db #$FA
+	.db #$FA
+	.db #$FA
+	.db #$FE
+	.db #$FE
+	.db #$FA
+	.db #$FE
+	.db #$FE
+	.db #$AA
+	.db #$FC
+	.db #$FC
+	.db #$AA
+	.db #$FC
+	.db #$FC
+	.db #$AA
+	.db #$F0
+	.db #$F0
+	.db #$F0
+	.db #$F8
+	.db #$F0
+	.db #$00
+	.db #$F0
+	.db #$08
+	.db #$F8
+	.db #$F0
+	.db #$F8
+	.db #$F8
+	.db #$F8
+	.db #$00
+	.db #$F8
+	.db #$08
+	.db #$00
+	.db #$F0
+	.db #$00
+	.db #$F8
+	.db #$00
+	.db #$00
+	.db #$00
+	.db #$08
+	.db #$08
+	.db #$F0
+	.db #$08
+	.db #$F8
+	.db #$08
+	.db #$00
+	.db #$08
+	.db #$08
+	.db #$AA
+	.db #$F4
+	.db #$F5
+	.db #$F4
+	.db #$FD
+	.db #$F4
+	.db #$03
+	.db #$FC
+	.db #$F5
+	.db #$FC
+	.db #$FD
+	.db #$FC
+	.db #$03
+	.db #$04
+	.db #$F5
+	.db #$04
+	.db #$FD
+	.db #$04
+	.db #$03
+	.db #$AA
+	.db #$F5
+	.db #$F7
+	.db #$F5
+	.db #$FF
+	.db #$F5
+	.db #$01
+	.db #$FD
+	.db #$F7
+	.db #$FD
+	.db #$FF
+	.db #$FD
+	.db #$01
+	.db #$03
+	.db #$F7
+	.db #$03
+	.db #$FF
+	.db #$03
+	.db #$01
+	.db #$AA
+	.db #$F6
+	.db #$F8
+	.db #$F6
+	.db #$00
+	.db #$FE
+	.db #$F8
+	.db #$FE
+	.db #$00
+	.db #$02
+	.db #$F8
+	.db #$02
+	.db #$00
+	.db #$AA
+TBL_BONUS_SCORES_HIGH:
+	.db #$01
+	.db #$01
+	.db #$02
+	.db #$03
+TBL_BONUS_SCORES_LOW:
+	.db #$00
+	.db #$50
+	.db #$00
+	.db #$00
+TBL_DUCK_INDEXES:
+	.db #$00 ;black = 0, blue = 1, red = 2, discs = 1
+	.db #$02
+	.db #$03
+	.db #$01
+	.db #$04
+	.db #$06
+	.db #$02
+	.db #$05
+	.db #$07
+TBL_DUCK_SCORES:
+	.db #$05
+	.db #$08
+	.db #$10
+	.db #$15
+	.db #$16
+	.db #$20
+	.db #$24
+	.db #$30
+HITS_REQUIRED_FOR_LEVEL:
+	.db #$06
+	.db #$06
+	.db #$06
+	.db #$06
+	.db #$06
+	.db #$06
+	.db #$06
+	.db #$06
+	.db #$06
+	.db #$06
+	.db #$07
+	.db #$07
+	.db #$08
+	.db #$08
+	.db #$09
+	.db #$09
+	.db #$09
+	.db #$09
+	.db #$09
+	.db #$0A
+	.db #$FF
+L_2C17:
+	.db #$00
+	.db #$08
+	.db #$10
+	.db #$18
+	.db #$18
+	.db #$20
+	.db #$20
+	.db #$28
+TIMER_9D_STUFF?:
+	.db #$28
+	.db #$01
+	.db #$80
+	.db #$00
+	.db #$00
+	.db #$AA
+	.db #$01
+	.db #$40
+	.db #$02
+	.db #$10
+	.db #$03
+	.db #$08
+	.db #$02
+	.db #$10
+	.db #$03
+	.db #$08
+	.db #$02
+	.db #$10
+	.db #$03
+	.db #$08
+	.db #$02
+	.db #$10
+	.db #$03
+	.db #$08
+	.db #$00
+L_2C38:
+	.db #$00
+L_2C39:
+	.db #$AA
+	.db #$4A
+	.db #$EC
+	.db #$70
+	.db #$EC
+	.db #$82
+	.db #$EC
+	.db #$8B
+	.db #$EC
+	.db #$B1
+	.db #$EC
+	.db #$E6
+	.db #$EC
+	.db #$07
+	.db #$ED
+	.db #$3C
+	.db #$ED
+	.db #$CD
+	.db #$24
+	.db #$57
+	.db #$FF
+	.db #$13
+	.db #$13
+	.db #$13
+	.db #$13
+	.db #$13
+	.db #$1A
+	.db #$D8
+	.db #$1B
+	.db #$18
+	.db #$1E
+	.db #$17
+	.db #$0D
+	.db #$21
+	.db #$D8
+	.db #$B7
+	.db #$B7
+	.db #$B7
+	.db #$B7
+	.db #$B7
+	.db #$21
+	.db #$D8
+	.db #$B7
+	.db #$B7
+	.db #$B7
+	.db #$B7
+	.db #$B7
+	.db #$21
+	.db #$23
+	.db #$FC
+	.db #$FC
+	.db #$FC
+	.db #$FC
+	.db #$FC
+	.db #$FD
+	.db #$EE
+	.db #$10
+	.db #$35
+	.db #$B7
+	.db #$B7
+	.db #$B7
+	.db #$B7
+	.db #$B7
+	.db #$B7
+	.db #$10
+	.db #$18
+	.db #$FE
+	.db #$B7
+	.db #$B7
+	.db #$B7
+	.db #$B7
+	.db #$B7
+	.db #$B7
+	.db #$EF
+	.db #$04
+	.db #$23
+	.db #$B7
+	.db #$B7
+	.db #$B7
+	.db #$B7
+	.db #$B7
+	.db #$B7
+	.db #$CD
+	.db #$24
+	.db #$57
+	.db #$FF
+	.db #$13
+	.db #$13
+	.db #$13
+	.db #$13
+	.db #$13
+	.db #$1A
+	.db #$D8
+	.db #$B7
+	.db #$B7
+	.db #$B7
+	.db #$B7
+	.db #$B7
+	.db #$21
+	.db #$D8
+	.db #$10
+	.db #$18
+	.db #$18
+	.db #$0D
+	.db #$FE
+	.db #$21
+	.db #$D8
+	.db #$B7
+	.db #$B7
+	.db #$B7
+	.db #$B7
+	.db #$B7
+	.db #$21
+	.db #$23
+	.db #$FC
+	.db #$FC
+	.db #$FC
+	.db #$FC
+	.db #$FC
+	.db #$FD
+	.db #$CC
+	.db #$33
+	.db #$5A
+	.db #$FF
+	.db #$13
+	.db #$13
+	.db #$13
+	.db #$13
+	.db #$13
+	.db #$13
+	.db #$13
+	.db #$13
+	.db #$1A
+	.db #$D8
+	.db #$19
+	.db #$0E
+	.db #$1B
+	.db #$0F
+	.db #$0E
+	.db #$0C
+	.db #$1D
+	.db #$FE
+	.db #$21
+	.db #$D8
+	.db #$B7
+	.db #$B7
+	.db #$B7
+	.db #$B7
+	.db #$B7
+	.db #$B7
+	.db #$B7
+	.db #$B7
+	.db #$21
+	.db #$D8
+	.db #$B7
+	.db #$B7
+	.db #$B7
+	.db #$00
+	.db #$00
+	.db #$00
+	.db #$B7
+	.db #$B7
+	.db #$21
+	.db #$23
+	.db #$FC
+	.db #$FC
+	.db #$FC
+	.db #$FC
+	.db #$FC
+	.db #$FC
+	.db #$FC
+	.db #$FC
+	.db #$FD
+	.db #$EC
+	.db #$1F
+	.db #$3A
+	.db #$FF
+	.db #$13
+	.db #$13
+	.db #$13
+	.db #$13
+	.db #$13
+	.db #$13
+	.db #$13
+	.db #$13
+	.db #$1A
+	.db #$D8
+	.db #$0F
+	.db #$15
+	.db #$22
+	.db #$B7
+	.db #$0A
+	.db #$20
+	.db #$0A
+	.db #$22
+	.db #$21
+	.db #$23
+	.db #$FC
+	.db #$FC
+	.db #$FC
+	.db #$FC
+	.db #$FC
+	.db #$FC
+	.db #$FC
+	.db #$FC
+	.db #$FD
+	.db #$CC
+	.db #$33
+	.db #$5A
+	.db #$24
+	.db #$FF
+	.db #$13
+	.db #$13
+	.db #$13
+	.db #$13
+	.db #$13
+	.db #$1A
+	.db #$24
+	.db #$24
+	.db #$24
+	.db #$D8
+	.db #$B7
+	.db #$B7
+	.db #$B7
+	.db #$B7
+	.db #$B7
+	.db #$21
+	.db #$24
+	.db #$24
+	.db #$24
+	.db #$D8
+	.db #$19
+	.db #$0A
+	.db #$1E
+	.db #$1C
+	.db #$0E
+	.db #$21
+	.db #$24
+	.db #$24
+	.db #$24
+	.db #$D8
+	.db #$B7
+	.db #$B7
+	.db #$B7
+	.db #$B7
+	.db #$B7
+	.db #$21
+	.db #$24
+	.db #$24
+	.db #$24
+	.db #$23
+	.db #$FC
+	.db #$FC
+	.db #$FC
+	.db #$FC
+	.db #$FC
+	.db #$FD
+	.db #$24
+	.db #$24
+	.db #$AB
+	.db #$38
+	.db #$5B
+	.db #$FF
+	.db #$13
+	.db #$13
+	.db #$13
+	.db #$13
+	.db #$13
+	.db #$13
+	.db #$13
+	.db #$13
+	.db #$13
+	.db #$1A
+	.db #$D8
+	.db #$B7
+	.db #$B7
+	.db #$B7
+	.db #$B7
+	.db #$B7
+	.db #$B7
+	.db #$B7
+	.db #$B7
+	.db #$B7
+	.db #$21
+	.db #$D8
+	.db #$10
+	.db #$0A
+	.db #$16
+	.db #$0E
+	.db #$B7
+	.db #$18
+	.db #$1F
+	.db #$0E
+	.db #$1B
+	.db #$21
+	.db #$D8
+	.db #$B7
+	.db #$B7
+	.db #$B7
+	.db #$B7
+	.db #$B7
+	.db #$B7
+	.db #$B7
+	.db #$B7
+	.db #$B7
+	.db #$21
+	.db #$23
+	.db #$FC
+	.db #$FC
+	.db #$FC
+	.db #$FC
+	.db #$FC
+	.db #$FC
+	.db #$FC
+	.db #$FC
+	.db #$FC
+	.db #$FD
+	.db #$9C
+	.db #$18
+	.db #$14
+	.db #$10
+	.db #$01
+	.db #$10
+	.db #$02
+	.db #$20
+	.db #$03
+	.db #$08
+	.db #$02
+	.db #$08
+	.db #$01
+	.db #$18
+	.db #$00
+	.db #$10
+	.db #$0E
+	.db #$08
+	.db #$0D
+	.db #$20
+	.db #$0C
+	.db #$08
+	.db #$0D
+	.db #$08
+	.db #$0C
+	.db #$B0
+	.db #$0B
+	.db #$80
+	.db #$03
+	.db #$40
+	.db #$02
+	.db #$FF
+	.db #$08
+	.db #$00
+	.db #$88
+	.db #$10
+	.db #$12
+	.db #$28
+	.db #$0F
+	.db #$08
+	.db #$00
+	.db #$10
+	.db #$01
+	.db #$08
+	.db #$02
+	.db #$48
+	.db #$03
+	.db #$20
+	.db #$04
+	.db #$70
+	.db #$0C
+	.db #$30
+	.db #$0D
+	.db #$30
+	.db #$0E
+	.db #$FF
+	.db #$08
+	.db #$00
+	.db #$90
+	.db #$20
+	.db #$12
+	.db #$60
+	.db #$0D
+	.db #$90
+	.db #$03
+	.db #$78
+	.db #$02
+	.db #$FF
+	.db #$08
+	.db #$00
+	.db #$78
+	.db #$20
+	.db #$13
+	.db #$40
+	.db #$0F
+	.db #$10
+	.db #$0E
+	.db #$20
+	.db #$0D
+	.db #$18
+	.db #$0B
+	.db #$20
+	.db #$0A
+	.db #$50
+	.db #$06
+	.db #$28
+	.db #$04
+	.db #$38
+	.db #$03
+	.db #$78
+	.db #$02
+	.db #$FF
+	.db #$08
+	.db #$00
+	.db #$80
+	.db #$10
+	.db #$12
+	.db #$20
+	.db #$0D
+	.db #$08
+	.db #$0E
+	.db #$08
+	.db #$0F
+	.db #$20
+	.db #$03
+	.db #$10
+	.db #$02
+	.db #$08
+	.db #$0E
+	.db #$20
+	.db #$0D
+	.db #$08
+	.db #$0E
+	.db #$08
+	.db #$0F
+	.db #$08
+	.db #$01
+	.db #$08
+	.db #$03
+	.db #$30
+	.db #$04
+	.db #$40
+	.db #$05
+	.db #$80
+	.db #$0B
+	.db #$30
+	.db #$0E
+	.db #$60
+	.db #$0F
+	.db #$FF
+	.db #$08
+	.db #$00
+	.db #$B8
+	.db #$08
+	.db #$14
+	.db #$10
+	.db #$04
+	.db #$08
+	.db #$03
+	.db #$08
+	.db #$02
+	.db #$08
+	.db #$01
+	.db #$08
+	.db #$00
+	.db #$08
+	.db #$0E
+	.db #$08
+	.db #$0D
+	.db #$08
+	.db #$0C
+	.db #$50
+	.db #$0B
+	.db #$60
+	.db #$0C
+	.db #$10
+	.db #$0D
+	.db #$40
+	.db #$02
+	.db #$70
+	.db #$01
+	.db #$FF
+	.db #$08
+	.db #$00
+	.db #$70
+	.db #$18
+	.db #$12
+	.db #$40
+	.db #$0D
+	.db #$10
+	.db #$0F
+	.db #$10
+	.db #$02
+	.db #$30
+	.db #$04
+	.db #$20
+	.db #$05
+	.db #$40
+	.db #$03
+	.db #$20
+	.db #$04
+	.db #$20
+	.db #$03
+	.db #$18
+	.db #$02
+	.db #$20
+	.db #$01
+	.db #$FF
+	.db #$08
+	.db #$00
+	.db #$B0
+	.db #$10
+	.db #$14
+	.db #$28
+	.db #$02
+	.db #$18
+	.db #$01
+	.db #$30
+	.db #$00
+	.db #$10
+	.db #$0F
+	.db #$50
+	.db #$0B
+	.db #$60
+	.db #$0C
+	.db #$20
+	.db #$0B
+	.db #$70
+	.db #$04
+	.db #$80
+	.db #$05
+	.db #$FF
+	.db #$08
+	.db #$00
+	.db #$5A
+	.db #$08
+	.db #$13
+	.db #$10
+	.db #$02
+	.db #$20
+	.db #$0D
+	.db #$10
+	.db #$03
+	.db #$10
+	.db #$04
+	.db #$10
+	.db #$03
+	.db #$58
+	.db #$0D
+	.db #$28
+	.db #$03
+	.db #$48
+	.db #$04
+	.db #$10
+	.db #$03
+	.db #$48
+	.db #$0D
+	.db #$80
+	.db #$03
+	.db #$FF
+	.db #$08
+	.db #$00
+	.db #$46
+	.db #$20
+	.db #$12
+	.db #$20
+	.db #$0E
+	.db #$38
+	.db #$04
+	.db #$18
+	.db #$02
+	.db #$10
+	.db #$04
+	.db #$20
+	.db #$06
+	.db #$08
+	.db #$05
+	.db #$18
+	.db #$04
+	.db #$18
+	.db #$02
+	.db #$40
+	.db #$01
+	.db #$40
+	.db #$00
+	.db #$FF
+	.db #$08
+	.db #$00
+	.db #$D0
+	.db #$2A
+	.db #$14
+	.db #$30
+	.db #$0C
+	.db #$20
+	.db #$0B
+	.db #$20
+	.db #$0C
+	.db #$38
+	.db #$0B
+	.db #$48
+	.db #$0C
+	.db #$40
+	.db #$02
+	.db #$30
+	.db #$0C
+	.db #$FF
+	.db #$08
+	.db #$00
+	.db #$70
+	.db #$10
+	.db #$12
+	.db #$10
+	.db #$0D
+	.db #$20
+	.db #$0E
+	.db #$10
+	.db #$0F
+	.db #$10
+	.db #$00
+	.db #$30
+	.db #$02
+	.db #$10
+	.db #$04
+	.db #$10
+	.db #$05
+	.db #$60
+	.db #$05
+	.db #$20
+	.db #$0B
+	.db #$40
+	.db #$0C
+	.db #$08
+	.db #$0D
+	.db #$70
+	.db #$03
+	.db #$30
+	.db #$02
+	.db #$18
+	.db #$00
+	.db #$FF
+	.db #$08
+	.db #$00
+	.db #$C0
+	.db #$18
+	.db #$12
+	.db #$10
+	.db #$0D
+	.db #$40
+	.db #$0B
+	.db #$38
+	.db #$0D
+	.db #$08
+	.db #$0B
+	.db #$08
+	.db #$0C
+	.db #$10
+	.db #$0D
+	.db #$70
+	.db #$03
+	.db #$40
+	.db #$02
+	.db #$40
+	.db #$01
+	.db #$FF
+	.db #$08
+	.db #$00
+	.db #$90
+	.db #$18
+	.db #$14
+	.db #$20
+	.db #$02
+	.db #$28
+	.db #$0D
+	.db #$20
+	.db #$0B
+	.db #$20
+	.db #$0B
+	.db #$08
+	.db #$0C
+	.db #$10
+	.db #$0D
+	.db #$20
+	.db #$03
+	.db #$20
+	.db #$05
+	.db #$20
+	.db #$04
+	.db #$10
+	.db #$02
+	.db #$10
+	.db #$03
+	.db #$70
+	.db #$0D
+	.db #$40
+	.db #$04
+	.db #$50
+	.db #$03
+	.db #$20
+	.db #$02
+	.db #$FF
+	.db #$08
+	.db #$00
+	.db #$58
+	.db #$1C
+	.db #$14
+	.db #$24
+	.db #$02
+	.db #$08
+	.db #$00
+	.db #$48
+	.db #$0C
+	.db #$38
+	.db #$0E
+	.db #$50
+	.db #$07
+	.db #$30
+	.db #$05
+	.db #$30
+	.db #$04
+	.db #$28
+	.db #$0D
+	.db #$20
+	.db #$02
+	.db #$80
+	.db #$01
+	.db #$FF
+	.db #$08
+	.db #$00
+	.db #$50
+	.db #$20
+	.db #$12
+	.db #$20
+	.db #$0D
+	.db #$40
+	.db #$03
+	.db #$30
+	.db #$0C
+	.db #$40
+	.db #$03
+	.db #$30
+	.db #$04
+	.db #$38
+	.db #$05
+	.db #$08
+	.db #$0B
+	.db #$28
+	.db #$0C
+	.db #$08
+	.db #$0D
+	.db #$40
+	.db #$03
+	.db #$4A
+	.db #$04
+	.db #$FF
+	.db #$08
+	.db #$00
+	.db #$40
+	.db #$E0
+	.db #$01
+	.db #$80
+	.db #$E0
+	.db #$02
+	.db #$D0
+	.db #$E0
+	.db #$0E
+	.db #$38
+	.db #$E0
+	.db #$01
+	.db #$A0
+	.db #$E0
+	.db #$0D
+	.db #$30
+	.db #$E0
+	.db #$03
+	.db #$B0
+	.db #$E0
+	.db #$0E
+	.db #$90
+	.db #$E0
+	.db #$0F
+	.db #$40
+	.db #$E0
+	.db #$03
+	.db #$80
+	.db #$E0
+	.db #$03
+	.db #$C8
+	.db #$E0
+	.db #$0E
+	.db #$50
+	.db #$E0
+	.db #$0F
+	.db #$B8
+	.db #$E0
+	.db #$0D
+	.db #$20
+	.db #$E0
+	.db #$03
+	.db #$48
+	.db #$E0
+	.db #$01
+	.db #$B8
+	.db #$E0
+	.db #$0F
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+L_3300:
+	.db #$07
+L_3301:
+	.db #$F0
+	.db #$00
+	.db #$00
+	.db #$00
+	.db #$D4
+	.db #$00
+	.db #$C8
+	.db #$00
+	.db #$BD
+	.db #$00
+	.db #$B2
+	.db #$00
+	.db #$A8
+	.db #$00
+	.db #$9F
+	.db #$00
+	.db #$96
+	.db #$00
+	.db #$8D
+	.db #$00
+	.db #$85
+	.db #$00
+	.db #$7E
+	.db #$00
+	.db #$70
+	.db #$01
+	.db #$AB
+	.db #$01
+	.db #$93
+	.db #$01
+	.db #$7C
+	.db #$01
+	.db #$67
+	.db #$01
+	.db #$52
+	.db #$01
+	.db #$3F
+	.db #$01
+	.db #$2D
+	.db #$01
+	.db #$1C
+	.db #$01
+	.db #$0C
+	.db #$00
+	.db #$FD
+	.db #$00
+	.db #$EE
+	.db #$00
+	.db #$E1
+	.db #$03
+	.db #$57
+	.db #$02
+	.db #$F9
+	.db #$02
+	.db #$CF
+	.db #$02
+	.db #$A6
+	.db #$02
+	.db #$80
+	.db #$02
+	.db #$5C
+	.db #$02
+	.db #$3A
+	.db #$02
+	.db #$1A
+	.db #$01
+	.db #$FC
+	.db #$01
+	.db #$DF
+	.db #$01
+	.db #$C4
+	.db #$00
+	.db #$69
+	.db #$00
+	.db #$63
+	.db #$00
+	.db #$53
+	.db #$00
+	.db #$4A
+L_3350:
+	.db #$03
+	.db #$06
+	.db #$0C
+	.db #$18
+	.db #$30
+	.db #$12
+	.db #$24
+	.db #$04
+	.db #$08
+	.db #$10
+	.db #$20
+	.db #$40
+	.db #$18
+	.db #$30
+SND_SETUP_SQ1(YX):
+	.db #$A9
+	.db #$00
+	.db #$F0
+	.db #$0A
+SND_SETUP_TRI(YX):
+	LDA #$08
+	BNE SND_SETUP_RTN
+SND_SETUP_NOISE(YX):
+	LDA #$0C
+	BNE SND_SETUP_RTN
+SND_SETUP_SQ2(YX):
+	LDA #$04 ;SND_SETUP_PULSE2
+SND_SETUP_RTN:
+	STA SND_F4 ;low byte
+	LDA #$40
+	STA SND_F5 ;high byte
+	STX SND_F6 ;low
+	STY SND_F7 ;high
+	LDY #$00
+LOOP_4_BYTES:
+	LDA (SND_F6),Y
+	STA (SND_F4),Y
+	INY 
+	TYA 
+	CMP #$04
+	BNE LOOP_4_BYTES
+	RTS 
+L_3383:
+	STA SND_E6
+	LDA L_3846,Y
+	TAY 
+	LDA L_3846,Y
+	STA $E5
+	LDA L_3847,Y
+	STA $F8
+	LDA L_3848,Y
+	STA $F9
+	LDA L_3849,Y
+	STA $FA
+	LDA L_384A,Y
+	STA $FB
+	LDA L_384B,Y
+	STA $FC
+	LDA L_384C,Y
+	STA $FD
+	LDA L_384D,Y
+	STA $FE
+	LDA L_384E,Y
+	STA $FF
+	LDA #$01
+	STA $D8
+	STA $D9
+	STA $DA
+	STA $DB
+	LDA #$00
+	STA SND_PLAY_F3
+	STA $D0
+	STA $D1
+	STA $D2
+	STA $D3
+	STA APU_DMC_LOAD
+	RTS 
+L_33D0:
+	LDA #$7F
+	STA APU_PULSE1_SWEEP
+	STA APU_PULSE2_SWEEP
+	STX $E9
+	STY $EA
+	RTS 
+SND_DATA_TRI:
+	.db #$13
+	.db #$7F
+	.db #$3E
+	.db #$F0
+SND_TRI_DOG_LAUGH_DATA:
+	.db #$4F ;DOGS LAUGH?
+	.db #$53
+	.db #$58
+	.db #$5E
+	.db #$63
+	.db #$69
+	.db #$70
+	.db #$76
+	.db #$7E
+	.db #$85
+	.db #$8D
+	.db #$90
+	.db #$92
+	.db #$93
+L_33EF:
+	.db #$92
+	.db #$D5
+	.db #$40
+	.db #$C0
+SND_SQR_DATA:
+	.db #$B2
+	.db #$DF
+	.db #$FF
+	.db #$80
+SND_NOISE_INDIRECT_DAT:
+	.db #$02
+	.db #$7F
+	.db #$0F
+	.db #$08
+	.db #$00
+	.db #$7F
+	.db #$03
+	.db #$08
+	.db #$FF
+L_3400:
+	.db #$10
+L_3401:
+	.db #$00
+L_3402:
+	.db #$18
+	.db #$10
+	.db #$01
+	.db #$18
+	.db #$00
+	.db #$01
+	.db #$88
+	.db #$06
+	.db #$02
+	.db #$40
+	.db #$05
+	.db #$02
+	.db #$C0
+L_340F:
+	.db #$A5
+	.db #$F9
+	.db #$F0
+	.db #$3E
+	DEC $D8
+	BNE L_3451
+	LDX #$00
+	LDA #$23
+	STA $0612
+	LDA #$2E
+	STA $0610
+	LDY $D0
+	INC $D0
+	LDA ($F8),Y
+	BEQ L_3443
+	JMP L_351C
+	TYA 
+	BPL L_343A
+	JSR L_3544
+	LDY $D0
+	INC $D0
+	LDA ($F8),Y
+L_343A:
+	JSR L_3550
+	BNE L_3448
+	LDY #$10
+	BNE L_344A
+L_3443:
+	LDA #$00
+	JMP L_368C
+L_3448:
+	LDY $E9
+L_344A:
+	STY APU_PULSE1_DUTY
+	LDA $DC
+	STA $D8
+L_3451:
+	LDA $FB
+	BEQ L_347E
+	DEC $D9
+	BNE L_347E
+	LDX #$01
+	LDY $D1
+	INC $D1
+	LDA ($FA),Y
+	BPL L_346C
+	JSR L_3544
+	LDY $D1
+	INC $D1
+	LDA ($FA),Y
+L_346C:
+	JSR L_3564
+	BNE L_3475
+	LDY #$10
+	BNE L_3477
+L_3475:
+	LDY $EA
+L_3477:
+	STY APU_PULSE2_DUTY
+	LDA $DD
+	STA $D9
+L_347E:
+	LDA $FD
+	BEQ L_34D1
+	DEC $DA
+	BNE L_34D1
+	LDX #$02
+	LDA #$9B
+	STA $0610
+	LDA #$92
+	STA $0612
+	LDY $D2
+	INC $D2
+	LDA ($FC),Y
+	JMP L_351C
+	TYA 
+	BPL L_34BF
+	JSR L_3544
+	LDY SND_E4
+	BEQ L_34A9
+	LDA #$FF
+	BNE L_34B4
+L_34A9:
+	CLC 
+	ADC #$FE
+	ASL A
+	ASL A
+	CMP #$3C
+	BCC L_34B4
+	LDA #$3C
+L_34B4:
+	STA APU_TRI_COUNTER
+	STA $E7
+	LDY $D2
+	INC $D2
+	LDA ($FC),Y
+L_34BF:
+	JSR L_3568
+	BNE L_34C8
+	LDY #$00
+	BEQ L_34CA
+L_34C8:
+	LDY $E7
+L_34CA:
+	STY APU_TRI_COUNTER
+	LDA $DE
+	STA $DA
+L_34D1:
+	LDA $FF
+	BEQ L_3501
+	DEC $DB
+	BNE L_3501
+	LDX #$03
+	LDA #$EE
+	STA $0610
+	LDA #$E5
+	STA $0612
+	LDY $D3
+	INC $D3
+	LDA ($FE),Y
+	JMP L_351C
+	TYA 
+	BPL L_34FA
+	JSR L_3544
+	LDY $D3
+	INC $D3
+	LDA ($FE),Y
+L_34FA:
+	JSR L_3502
+	LDA $DF
+	STA $DB
+L_3501:
+	RTS 
+L_3502:
+	TAY 
+	LDA SND_PLAY_F3
+	CMP #$02
+	BEQ L_351B
+	LDA L_3400,Y
+	STA APU_NOISE_COUNTER
+	LDA L_3401,Y
+	STA APU_NOISE_PERIOD
+	LDA L_3402,Y
+	STA APU_NOISE_LENGTH
+L_351B:
+	RTS 
+L_351C:
+	TAY 
+	CMP #$FF
+	BEQ L_352A
+	AND #$C0
+	CMP #$C0
+	BEQ L_3536
+	JMP ($0610)
+L_352A:
+	LDA $E0,X
+	BEQ L_3541
+	DEC $E0,X
+	LDA $D4,X
+	STA $D0,X
+	BNE L_3541
+L_3536:
+	TYA 
+	AND #$3F
+	STA $E0,X
+	DEC $E0,X
+	LDA $D0,X
+	STA $D4,X
+L_3541:
+	JMP ($0612)
+L_3544:
+	AND #$07
+	CLC 
+	ADC $E5
+	TAY 
+	LDA L_3350,Y
+	STA $DC,X
+	RTS 
+L_3550:
+	LDX #$00
+L_3552:
+	TAY 
+	LDA L_3301,Y
+	BEQ L_3563
+	STA APU_PULSE1_TIMERL,X
+	LDA L_3300,Y
+	ORA #$08
+	STA APU_PULSE1_TIMERH,X
+L_3563:
+	RTS 
+L_3564:
+	LDX #$04
+	BNE L_3552
+L_3568:
+	LDX #$08
+	BNE L_3552
+PLAY_SOUNDS:
+	LDA #$C0 ;enable 5-step, disable irq. bug?
+	STA APU_FRAMECOUNTER
+	JSR SND_SETUP
+	JSR SND_PLAY_F0/F3
+	JSR SND_PLAY_F1/F2
+	JSR SND_PLAY_DMC ;DMC
+	LDA #$00
+	BEQ CLEAR_SOUND_STUFF
+UNK_SUB:
+	LDA #$F4
+	STA UNK_0613
+	STA UNK_0611
+	RTS 
+CLEAR_SOUND_STUFF:
+	STA SND_PLAY_F0 ;clear all flags.
+	STA SND_PLAY_F1
+	STA SND_PLAY_F2
+	RTS 
+SND_PLAY_DMC:
+	LDA SND_PLAY_F2
+	LSR A
+	BCS SND_PLAY_DMC_FB00
+	LSR A
+	BCS SND_PLAY_DMC_FD00
+	RTS 
+SND_PLAY_DMC_FD00:
+	LDA #$20 ;512 bytes in length
+	LDX #$F4 ;FD00
+	LDY #$0F ;playback rate
+	BNE PLAY_DMC_SAMPLE(AXY)
+SND_PLAY_DMC_FB00:
+	LDA #$20 ;512 bytes
+	LDX #$EC ;FB00
+	LDY #$0E ;rate
+PLAY_DMC_SAMPLE(AXY):
+	STA APU_DMC_SAMLEN
+	STX APU_DMC_SAMADDR
+	STY APU_DMC_IRQ
+	LDA #$1F
+	STA APU_Status ;turn on DMC
+	RTS 
+	.db #$9F
+	.db #$7F
+	.db #$60
+	.db #$00
+	.db #$9F
+	.db #$7F
+	.db #$61
+	.db #$00
+INIT_DOG_LAUGH:
+	LDX #$DD ;Uses $F3DD
+	LDY #$F3
+	JSR SND_SETUP_TRI(YX)
+	LDA #$00 ;clear all counters
+	STA SND_COUNTER_EB
+	STA SND_INDEX_ED
+	STA SND_COUNTER_EE
+	LDA #$06
+	STA SND_COUNTER_EF ;change target init
+	LDA #$3E
+	STA SND_EC ;dog laugh lenc_l
+	LDA #$40
+	STA SND_PLAY_F3 ;advance dog laugh?
+L_RTS:
+	RTS 
+DOG_LAUGH_ADVANCE:
+	INC SND_COUNTER_EE ;inc counter
+	LDA SND_COUNTER_EE
+	CMP #$01
+	BNE L_RTS ;never taken, runs every frame.
+	LDA #$00
+	STA SND_COUNTER_EE ;this is why it runs every time.
+	INC SND_COUNTER_EB ;update counter
+	LDA SND_COUNTER_EB
+	CMP SND_COUNTER_EF ;raise timer target
+	BEQ LOWER_LAUGH_FREQ ;if match target, raise freq
+	DEC SND_EC ;TRI_TIMERL copy
+	DEC SND_EC ;decrease with math
+	DEC SND_EC ;this makes it higher pitch
+	LDA SND_EC
+	STA APU_TRI_TIMERL ;store higher pitch to timer
+	RTS 
+LOWER_LAUGH_FREQ:
+	LDA SND_COUNTER_EF ;update target
+	CLC 
+	ADC #$06 ;6 updates until we raise length counter again
+	STA SND_COUNTER_EF ;store new target
+	LDY SND_INDEX_ED ;get update count
+	LDA SND_TRI_DOG_LAUGH_DATA,Y ;load timer for this update
+	STA APU_TRI_TIMERL ;store data
+	STA SND_EC ;Save to raise later
+	LDA #$F0
+	STA APU_TRI_TIMEH ;load length counter
+	INC SND_INDEX_ED ;steps done++
+	LDA SND_INDEX_ED
+	CMP #$0E ;final step?
+	BNE L_RTS ;no, dont clear vars.
+	LDA #$00 ;clear state, we're done making laughing sounds
+	STA APU_TRI_COUNTER
+	STA SND_PLAY_F3
+	RTS 
+SND_PLAY_F0/F3:
+	LDA SND_PLAY_F0
+	ASL A
+	BCS SET_PULSE2_DUTY
+	ASL A
+	BCS INIT_DOG_LAUGH
+	ASL A
+	BCS INIT_SQ1_F3F3
+	ASL A
+	BCS INIT_SQ1_F3EF
+	LDA SND_PLAY_F3
+	ASL A
+	ASL A
+	BCS DOG_LAUGH_ADVANCE
+	ASL A
+	BCS SND_WAIT_FRAMES_SET_DTY2
+	RTS 
+INIT_SQ1_F3EF:
+	LDX #$EF
+	LDY #$F3
+	JSR SND_SETUP_SQ1(YX)
+	RTS 
+INIT_SQ1_F3F3:
+	LDX #$F3
+	LDY #$F3
+	JSR SND_SETUP_SQ2(YX)
+	LDA SND_PLAY_F3
+	ORA #$20
+	STA SND_PLAY_F3
+	LDA #$00 ;clear counters
+	STA SND_COUNTER_EF
+	STA SND_COUNTER_EE
+L_RTS:
+	RTS 
+SND_WAIT_FRAMES_SET_DTY2:
+	INC SND_COUNTER_EE
+	LDA SND_COUNTER_EE
+	CMP #$02
+	BNE L_RTS ;run every 2 frames
+	LDA #$00
+	STA SND_COUNTER_EE
+	INC SND_COUNTER_EF
+	LDA SND_COUNTER_EF
+	CMP #$A0 ;wait 160*2 runs
+	BNE L_RTS
+SET_PULSE2_DUTY:
+	LDA #$10
+	STA APU_PULSE2_DUTY
+	LDA SND_PLAY_F3
+	AND #$DF ;unset bit 6
+	STA SND_PLAY_F3
+	RTS 
+SETUP_NOISE_PULSE1:
+	LDX #$F7
+	LDY #$F3
+	JSR SND_SETUP_NOISE(YX)
+	LDA #$10
+	STA APU_PULSE1_DUTY ;set constant volume
+	LDA SND_PLAY_F3 ;only keep top bits?
+	AND #$F0
+	STA SND_PLAY_F3
+	RTS 
+DISABLE_ALL_SOUND_REGS:
+	LDA #$00
+	STA SND_PLAY_F3
+L_368C:
+	STA APU_TRI_COUNTER
+	STA APU_DMC_LOAD
+	STA SND_E6
+	STA SND_E4
+	LDA #$10
+	STA APU_PULSE1_DUTY ;halt length counter
+	STA APU_PULSE2_DUTY ;same
+	STA APU_NOISE_COUNTER ;same
+	RTS 
+SND_SETUP_NOISE:
+	LDX #$FB
+	LDY #$F3
+	JSR SND_SETUP_NOISE(YX)
+	LDA #$00
+	STA SND_COUNTER_EB
+	LDA SND_PLAY_F3
+	ORA #$08 ;noise = bit 3
+	STA SND_PLAY_F3
+L_36B3:
+	RTS 
+SND_SHOT_PERIOD:
+	LDY SND_COUNTER_EB
+	LDA NOISE_PERIODS,Y
+	STA APU_NOISE_PERIOD
+	INC SND_COUNTER_EB
+	LDA SND_COUNTER_EB
+	CMP #$04
+	BNE L_36B3 ;rts
+	LDA SND_PLAY_F3
+	AND #$FE ;clear bit 0
+	STA SND_PLAY_F3
+	RTS 
+NOISE_PERIODS:
+	.db #$00
+	.db #$02
+	.db #$01
+	.db #$00
+SND_SETUP:
+	LDA SND_PLAY_F0
+	LSR A
+	BCS DISABLE_ALL_SOUND_REGS
+	LSR A
+	BCS SETUP_NOISE_DMC
+	LSR A
+	BCS SETUP_NOISE_PULSE1
+	LSR A
+	BCS SND_SETUP_NOISE
+	LDA SND_PLAY_F3
+	LSR A
+	LSR A
+	BCS FWD_NOISE?
+	LSR A
+	LSR A
+	BCS SND_SHOT_PERIOD ;NOISE
+	RTS 
+SETUP_NOISE_DMC:
+	LDX #$FF
+	LDY #$F6
+	JSR SND_SETUP_NOISE(YX)
+	LDA #$00
+	STA SND_EC ;clear whatever these are
+	STA SND_INDEX_ED
+	STA APU_DMC_LOAD ;clear dmc level
+	LDA SND_PLAY_F3
+	ORA #$02 ;DMC+NOISE = bit 1
+	STA SND_PLAY_F3
+L_36FE:
+	RTS 
+SND_INDIR_UNREF_DATA_NOISE:
+	.db #$3F
+	.db #$7F
+	.db #$0F
+	.db #$08
+FWD_NOISE?:
+	INC SND_EC
+	LDA SND_EC
+	CMP #$02
+	BNE L_36FE
+	LDA #$00
+	STA SND_EC
+	LDY SND_INDEX_ED
+	LDA L_3731,Y
+	STA APU_NOISE_PERIOD
+	LDA L_3761,Y
+	STA APU_NOISE_COUNTER
+	INC SND_INDEX_ED
+	LDA SND_INDEX_ED
+	CMP #$30
+	BNE L_3730
+	LDA #$10
+	STA APU_NOISE_COUNTER
+	LDA SND_PLAY_F3
+	AND #$FD
+	STA SND_PLAY_F3
+L_3730:
+	RTS 
+L_3731:
+	.db #$0E
+	.db #$0B
+	.db #$05
+	.db #$05
+	.db #$05
+	.db #$05
+	.db #$05
+	.db #$05
+	.db #$05
+	.db #$05
+	.db #$05
+	.db #$05
+	.db #$04
+	.db #$04
+	.db #$04
+	.db #$04
+	.db #$04
+	.db #$04
+	.db #$03
+	.db #$03
+	.db #$03
+	.db #$03
+	.db #$03
+	.db #$04
+	.db #$03
+	.db #$02
+	.db #$02
+	.db #$02
+	.db #$02
+	.db #$02
+	.db #$02
+	.db #$02
+	.db #$02
+	.db #$01
+	.db #$01
+	.db #$01
+	.db #$02
+	.db #$02
+	.db #$01
+	.db #$01
+	.db #$00
+	.db #$00
+	.db #$00
+	.db #$00
+	.db #$00
+	.db #$00
+	.db #$00
+	.db #$00
+L_3761:
+	.db #$3F
+	.db #$3F
+	.db #$3F
+	.db #$3F
+	.db #$3F
+	.db #$3F
+	.db #$3D
+	.db #$3C
+	.db #$38
+	.db #$38
+	.db #$38
+	.db #$37
+	.db #$37
+	.db #$37
+	.db #$36
+	.db #$36
+	.db #$34
+	.db #$34
+	.db #$34
+	.db #$34
+	.db #$34
+	.db #$34
+	.db #$34
+	.db #$34
+	.db #$33
+	.db #$33
+	.db #$33
+	.db #$33
+	.db #$33
+	.db #$33
+	.db #$33
+	.db #$33
+	.db #$32
+	.db #$32
+	.db #$32
+	.db #$32
+	.db #$32
+	.db #$32
+	.db #$32
+	.db #$32
+	.db #$32
+	.db #$32
+	.db #$32
+	.db #$32
+	.db #$32
+	.db #$32
+	.db #$32
+	.db #$32
+L_3791:
+	LDX #$B7
+	LDY #$F5
+	JSR SND_SETUP_SQ1(YX)
+	LDX #$BB
+	LDY #$F5
+L_379C:
+	JSR SND_SETUP_SQ2(YX)
+	RTS 
+	.db #$84
+	.db #$93
+	.db #$70
+	.db #$E3
+	.db #$84
+	.db #$93
+	.db #$72
+	.db #$E3
+L_37A8:
+	LDA #$00
+	STA APU_PULSE1_DUTY
+	LDX #$A0
+	LDY #$F7
+	JSR SND_SETUP_SQ1(YX)
+	LDX #$A4
+	LDY #$F7
+	BNE L_379C
+L_37BA:
+	LDY #$06
+	LDA #$80
+	BNE L_382F
+L_37C0:
+	LDY #$04
+	LDA #$04
+	BNE L_3826
+L_37C6:
+	LDY #$05
+	LDA #$08
+	BNE L_3826
+SND_PLAY_F1/F2:
+	LDA SND_PLAY_F1
+	LSR A
+	BCS L_37FD
+	LSR A
+	BCS L_3803
+	LSR A
+	BCS L_37C0
+	LSR A
+	BCS L_37C6
+	LSR A
+	BCS L_3809
+	LSR A
+	BCS L_380F
+	LSR A
+	BCS L_3815
+	LSR A
+	BCS L_37BA
+	LDA SND_PLAY_F2
+	ASL A
+	BCS L_381B
+	ASL A
+	ASL A
+	BCS L_3791
+	ASL A
+	BCS L_3840
+	ASL A
+	BCS L_37A8
+	LDA SND_E6
+	BNE L_37FA
+	RTS 
+L_37FA:
+	JMP L_340F
+L_37FD:
+	LDY #$00
+	LDA #$01
+	BNE L_3826
+L_3803:
+	LDY #$03
+	LDA #$02
+	BNE L_382F
+L_3809:
+	LDY #$01
+	LDA #$10
+	BNE L_3826
+L_380F:
+	LDY #$07
+	LDA #$20
+	BNE L_3826
+L_3815:
+	LDY #$02
+	LDA #$40
+	BNE L_3826
+L_381B:
+	LDA #$10
+	STA APU_NOISE_COUNTER
+	LDY #$08
+	LDA #$EF
+	BNE L_382F
+L_3826:
+	JSR L_3383
+	LDX #$C0
+	LDY #$C0
+	BNE L_3836
+L_382F:
+	JSR L_3383
+	LDX #$86
+	LDY #$86
+L_3836:
+	JSR L_33D0
+	LDA #$00
+	STA SND_E4
+	JMP L_340F
+L_3840:
+	LDY #$09
+	LDA #$EF
+	BNE L_3826
+L_3846:
+	.db #$0A
+L_3847:
+	.db #$13
+L_3848:
+	.db #$1C
+L_3849:
+	.db #$25
+L_384A:
+	.db #$2E
+L_384B:
+	.db #$37
+L_384C:
+	.db #$40
+L_384D:
+	.db #$49
+L_384E:
+	.db #$52
+	.db #$5B
+	.db #$07
+	.db #$C3
+	.db #$F8
+	.db #$E2
+	.db #$F8
+	.db #$08
+	.db #$F9
+	.db #$1B
+	.db #$F9
+	.db #$07
+	.db #$2F
+	.db #$F9
+	.db #$60
+	.db #$F9
+	.db #$A1
+	.db #$F9
+	.db #$CC
+	.db #$F9
+	.db #$07
+	.db #$AF
+	.db #$FA
+	.db #$CA
+	.db #$FA
+	.db #$E4
+	.db #$FA
+	.db #$F5
+	.db #$FA
+	.db #$07
+	.db #$DA
+	.db #$F9
+	.db #$F7
+	.db #$F9
+	.db #$13
+	.db #$FA
+	.db #$28
+	.db #$FA
+	.db #$07
+	.db #$2F
+	.db #$FA
+	.db #$3F
+	.db #$FA
+	.db #$64
+	.db #$FA
+	.db #$80
+	.db #$FA
+	.db #$07
+	.db #$91
+	.db #$FA
+	.db #$9A
+	.db #$FA
+	.db #$A7
+	.db #$FA
+	.db #$00
+	.db #$00
+	.db #$07
+	.db #$BD
+	.db #$F8
+	.db #$00
+	.db #$00
+	.db #$00
+	.db #$00
+	.db #$00
+	.db #$00
+	.db #$00
+	.db #$26
+	.db #$F9
+	.db #$2A
+	.db #$F9
+	.db #$00
+	.db #$00
+	.db #$00
+	.db #$00
+	.db #$00
+	.db #$AA
+	.db #$F8
+	.db #$B1
+	.db #$F8
+	.db #$B7
+	.db #$F8
+	.db #$00
+	.db #$00
+	.db #$00
+	.db #$00
+	.db #$FF
+	.db #$18
+	.db #$FF
+	.db #$00
+	.db #$00
+	.db #$00
+	.db #$00
+	.db #$85
+	.db #$3E
+	.db #$3C
+	.db #$3A
+	.db #$38
+	.db #$36
+	.db #$00
+	.db #$85
+	.db #$44
+	.db #$42
+	.db #$40
+	.db #$3E
+	.db #$3C
+	.db #$85
+	.db #$3E
+	.db #$3C
+	.db #$3A
+	.db #$38
+	.db #$36
+	.db #$C3
+	.db #$80
+	.db #$10
+	.db #$4E
+	.db #$FF
+	.db #$00
+	.db #$84
+	.db #$02
+	.db #$81
+	.db #$02
+	.db #$2A
+	.db #$2A
+	.db #$02
+	.db #$2C
+	.db #$02
+	.db #$2C
+	.db #$02
+	.db #$2E
+	.db #$30
+	.db #$02
+	.db #$22
+	.db #$83
+	.db #$02
+	.db #$81
+	.db #$02
+	.db #$08
+	.db #$02
+	.db #$02
+	.db #$06
+	.db #$02
+	.db #$06
+	.db #$02
+	.db #$28
+	.db #$2A
+	.db #$02
+	.db #$22
+	.db #$00
+	.db #$84
+	.db #$02
+	.db #$81
+	.db #$02
+	.db #$80
+	.db #$46
+	.db #$46
+	.db #$81
+	.db #$46
+	.db #$02
+	.db #$1C
+	.db #$1E
+	.db #$20
+	.db #$22
+	.db #$80
+	.db #$28
+	.db #$28
+	.db #$81
+	.db #$2A
+	.db #$02
+	.db #$40
+	.db #$83
+	.db #$02
+	.db #$81
+	.db #$02
+	.db #$30
+	.db #$02
+	.db #$02
+	.db #$80
+	.db #$2C
+	.db #$2C
+	.db #$81
+	.db #$1E
+	.db #$20
+	.db #$22
+	.db #$30
+	.db #$83
+	.db #$02
+	.db #$C6
+	.db #$80
+	.db #$0C
+	.db #$02
+	.db #$0C
+	.db #$02
+	.db #$18
+	.db #$02
+	.db #$18
+	.db #$02
+	.db #$4C
+	.db #$02
+	.db #$4C
+	.db #$02
+	.db #$18
+	.db #$02
+	.db #$18
+	.db #$02
+	.db #$FF
+	.db #$C6
+	.db #$81
+	.db #$03
+	.db #$03
+	.db #$06
+	.db #$06
+	.db #$03
+	.db #$03
+	.db #$06
+	.db #$03
+	.db #$FF
+	.db #$81
+	.db #$16
+	.db #$4A
+	.db #$00
+	.db #$80
+	.db #$02
+	.db #$81
+	.db #$16
+	.db #$4A
+	.db #$81
+	.db #$0C
+	.db #$0C
+	.db #$12
+	.db #$02
+	.db #$0C
+	.db #$02
+	.db #$12
+	.db #$02
+	.db #$0E
+	.db #$0E
+	.db #$16
+	.db #$02
+	.db #$0E
+	.db #$02
+	.db #$16
+	.db #$02
+	.db #$0C
+	.db #$0C
+	.db #$12
+	.db #$02
+	.db #$0C
+	.db #$02
+	.db #$12
+	.db #$02
+	.db #$12
+	.db #$10
+	.db #$0E
+	.db #$0C
+	.db #$08
+	.db #$04
+	.db #$30
+	.db #$02
+	.db #$80
+	.db #$04
+	.db #$04
+	.db #$81
+	.db #$08
+	.db #$0A
+	.db #$0C
+	.db #$80
+	.db #$0E
+	.db #$0E
+	.db #$81
+	.db #$12
+	.db #$16
+	.db #$18
+	.db #$48
+	.db #$00
+	.db #$80
+	.db #$04
+	.db #$04
+	.db #$81
+	.db #$04
+	.db #$22
+	.db #$28
+	.db #$04
+	.db #$22
+	.db #$24
+	.db #$28
+	.db #$80
+	.db #$2C
+	.db #$2C
+	.db #$81
+	.db #$2C
+	.db #$24
+	.db #$2C
+	.db #$04
+	.db #$2C
+	.db #$80
+	.db #$04
+	.db #$30
+	.db #$2C
+	.db #$28
+	.db #$80
+	.db #$04
+	.db #$04
+	.db #$81
+	.db #$22
+	.db #$24
+	.db #$10
+	.db #$28
+	.db #$2A
+	.db #$2C
+	.db #$2E
+	.db #$80
+	.db #$30
+	.db #$30
+	.db #$81
+	.db #$2E
+	.db #$2C
+	.db #$28
+	.db #$80
+	.db #$24
+	.db #$24
+	.db #$81
+	.db #$22
+	.db #$1E
+	.db #$02
+	.db #$80
+	.db #$22
+	.db #$22
+	.db #$81
+	.db #$24
+	.db #$26
+	.db #$28
+	.db #$80
+	.db #$2C
+	.db #$2C
+	.db #$81
+	.db #$30
+	.db #$04
+	.db #$08
+	.db #$0C
+	.db #$81
+	.db #$1A
+	.db #$1A
+	.db #$02
+	.db #$20
+	.db #$22
+	.db #$02
+	.db #$3E
+	.db #$02
+	.db #$3A
+	.db #$3A
+	.db #$02
+	.db #$40
+	.db #$42
+	.db #$02
+	.db #$1A
+	.db #$42
+	.db #$1A
+	.db #$32
+	.db #$02
+	.db #$34
+	.db #$36
+	.db #$38
+	.db #$3A
+	.db #$02
+	.db #$3E
+	.db #$82
+	.db #$3E
+	.db #$81
+	.db #$42
+	.db #$44
+	.db #$46
+	.db #$3E
+	.db #$02
+	.db #$1A
+	.db #$1A
+	.db #$02
+	.db #$38
+	.db #$3A
+	.db #$3A
+	.db #$02
+	.db #$3A
+	.db #$1A
+	.db #$C8
+	.db #$81
+	.db #$06
+	.db #$03
+	.db #$06
+	.db #$80
+	.db #$09
+	.db #$03
+	.db #$81
+	.db #$03
+	.db #$03
+	.db #$82
+	.db #$0C
+	.db #$FF
+	.db #$81
+	.db #$2A
+	.db #$2A
+	.db #$28
+	.db #$02
+	.db #$26
+	.db #$02
+	.db #$24
+	.db #$02
+	.db #$85
+	.db #$22
+	.db #$81
+	.db #$24
+	.db #$83
+	.db #$02
+	.db #$81
+	.db #$02
+	.db #$0E
+	.db #$06
+	.db #$2A
+	.db #$2A
+	.db #$28
+	.db #$26
+	.db #$24
+	.db #$85
+	.db #$22
+	.db #$81
+	.db #$24
+	.db #$00
+	.db #$81
+	.db #$24
+	.db #$24
+	.db #$22
+	.db #$02
+	.db #$20
+	.db #$02
+	.db #$1E
+	.db #$02
+	.db #$85
+	.db #$3E
+	.db #$81
+	.db #$40
+	.db #$83
+	.db #$02
+	.db #$81
+	.db #$02
+	.db #$2A
+	.db #$24
+	.db #$1C
+	.db #$1A
+	.db #$46
+	.db #$44
+	.db #$40
+	.db #$85
+	.db #$3E
+	.db #$81
+	.db #$40
+	.db #$84
+	.db #$02
+	.db #$85
+	.db #$1A
+	.db #$81
+	.db #$1C
+	.db #$83
+	.db #$02
+	.db #$81
+	.db #$02
+	.db #$4A
+	.db #$14
+	.db #$0E
+	.db #$0A
+	.db #$08
+	.db #$06
+	.db #$04
+	.db #$85
+	.db #$1A
+	.db #$81
+	.db #$1C
+	.db #$CC
+	.db #$81
+	.db #$06
+	.db #$06
+	.db #$09
+	.db #$03
+	.db #$FF
+	.db #$82
+	.db #$08
+	.db #$10
+	.db #$16
+	.db #$48
+	.db #$18
+	.db #$02
+	.db #$12
+	.db #$02
+	.db #$10
+	.db #$0C
+	.db #$08
+	.db #$06
+	.db #$81
+	.db #$08
+	.db #$00
+	.db #$81
+	.db #$26
+	.db #$26
+	.db #$82
+	.db #$2C
+	.db #$81
+	.db #$08
+	.db #$0C
+	.db #$10
+	.db #$16
+	.db #$80
+	.db #$12
+	.db #$12
+	.db #$81
+	.db #$28
+	.db #$10
+	.db #$0C
+	.db #$30
+	.db #$2E
+	.db #$30
+	.db #$04
+	.db #$80
+	.db #$2C
+	.db #$2C
+	.db #$81
+	.db #$08
+	.db #$28
+	.db #$30
+	.db #$80
+	.db #$26
+	.db #$26
+	.db #$81
+	.db #$2C
+	.db #$22
+	.db #$2C
+	.db #$82
+	.db #$26
+	.db #$85
+	.db #$1E
+	.db #$81
+	.db #$1E
+	.db #$82
+	.db #$3C
+	.db #$3C
+	.db #$85
+	.db #$3E
+	.db #$81
+	.db #$3E
+	.db #$85
+	.db #$3E
+	.db #$81
+	.db #$3E
+	.db #$85
+	.db #$42
+	.db #$81
+	.db #$42
+	.db #$85
+	.db #$42
+	.db #$81
+	.db #$42
+	.db #$82
+	.db #$1E
+	.db #$81
+	.db #$1E
+	.db #$1E
+	.db #$C4
+	.db #$81
+	.db #$06
+	.db #$82
+	.db #$0C
+	.db #$81
+	.db #$06
+	.db #$80
+	.db #$09
+	.db #$03
+	.db #$03
+	.db #$03
+	.db #$09
+	.db #$03
+	.db #$03
+	.db #$03
+	.db #$FF
+	.db #$81
+	.db #$0A
+	.db #$24
+	.db #$26
+	.db #$28
+	.db #$2E
+	.db #$0A
+	.db #$04
+	.db #$00
+	.db #$80
+	.db #$12
+	.db #$12
+	.db #$81
+	.db #$0A
+	.db #$0A
+	.db #$80
+	.db #$20
+	.db #$20
+	.db #$81
+	.db #$28
+	.db #$2E
+	.db #$2A
+	.db #$81
+	.db #$20
+	.db #$02
+	.db #$20
+	.db #$28
+	.db #$02
+	.db #$28
+	.db #$2A
+	.db #$82
+	.db #$02
+	.db #$81
+	.db #$0E
+	.db #$08
+	.db #$04
+	.db #$2C
+	.db #$2A
+	.db #$28
+	.db #$24
+	.db #$1E
+	.db #$1C
+	.db #$1A
+	.db #$1E
+	.db #$24
+	.db #$2E
+	.db #$24
+	.db #$2C
+	.db #$04
+	.db #$28
+	.db #$2E
+	.db #$08
+	.db #$28
+	.db #$30
+	.db #$0E
+	.db #$0C
+	.db #$00
+	.db #$82
+	.db #$02
+	.db #$81
+	.db #$2C
+	.db #$2C
+	.db #$02
+	.db #$02
+	.db #$1E
+	.db #$02
+	.db #$02
+	.db #$02
+	.db #$02
+	.db #$02
+	.db #$44
+	.db #$1E
+	.db #$24
+	.db #$42
+	.db #$1A
+	.db #$2C
+	.db #$44
+	.db #$1E
+	.db #$24
+	.db #$46
+	.db #$1E
+	.db #$1E
+	.db #$28
+	.db #$82
+	.db #$1E
+	.db #$81
+	.db #$1E
+	.db #$85
+	.db #$22
+	.db #$24
+	.db #$3C
+	.db #$82
+	.db #$3E
+	.db #$81
+	.db #$3E
+	.db #$85
+	.db #$42
+	.db #$44
+	.db #$46
+	.db #$1A
+	.db #$C5
+	.db #$81
+	.db #$06
+	.db #$06
+	.db #$06
+	.db #$09
+	.db #$03
+	.db #$06
+	.db #$FF
+	.db #$FF
+	.db #$FF
+SND_SAMPLE_1:
+	.db #$55
+	.db #$AD
+	.db #$4A
+	.db #$55
+	.db #$D5
+	.db #$AA
+	.db #$52
+	.db #$55
+	.db #$AD
+	.db #$2A
+	.db #$55
+	.db #$B5
+	.db #$2A
+	.db #$49
+	.db #$BB
+	.db #$55
+	.db #$45
+	.db #$A9
+	.db #$6E
+	.db #$53
+	.db #$44
+	.db #$B5
+	.db #$6B
+	.db #$15
+	.db #$A5
+	.db #$DA
+	.db #$56
+	.db #$49
+	.db #$A4
+	.db #$FB
+	.db #$96
+	.db #$10
+	.db #$D5
+	.db #$FA
+	.db #$4A
+	.db #$50
+	.db #$B6
+	.db #$5B
+	.db #$45
+	.db #$B2
+	.db #$B6
+	.db #$4B
+	.db #$01
+	.db #$E9
+	.db #$FF
+	.db #$45
+	.db #$00
+	.db #$BA
+	.db #$FF
+	.db #$01
+	.db #$90
+	.db #$FE
+	.db #$57
+	.db #$04
+	.db #$B5
+	.db #$2F
+	.db #$01
+	.db #$B5
+	.db #$FF
+	.db #$01
+	.db #$44
+	.db #$FE
+	.db #$1F
+	.db #$01
+	.db #$B0
+	.db #$FF
+	.db #$17
+	.db #$00
+	.db #$E8
+	.db #$FF
+	.db #$17
+	.db #$00
+	.db #$FA
+	.db #$7F
+	.db #$01
+	.db #$50
+	.db #$FB
+	.db #$1B
+	.db #$41
+	.db #$EA
+	.db #$BF
+	.db #$04
+	.db #$50
+	.db #$FB
+	.db #$2F
+	.db #$01
+	.db #$D2
+	.db #$FE
+	.db #$4B
+	.db #$00
+	.db #$F8
+	.db #$FF
+	.db #$05
+	.db #$40
+	.db #$FB
+	.db #$4F
+	.db #$40
+	.db #$EA
+	.db #$2B
+	.db #$55
+	.db #$B5
+	.db #$2B
+	.db #$11
+	.db #$D1
+	.db #$FE
+	.db #$45
+	.db #$44
+	.db #$6D
+	.db #$55
+	.db #$D5
+	.db #$6A
+	.db #$45
+	.db #$D4
+	.db #$FA
+	.db #$2A
+	.db #$49
+	.db #$45
+	.db #$51
+	.db #$FF
+	.db #$6E
+	.db #$04
+	.db #$A0
+	.db #$FE
+	.db #$1F
+	.db #$01
+	.db #$11
+	.db #$FB
+	.db #$BF
+	.db #$12
+	.db #$10
+	.db #$B5
+	.db #$FF
+	.db #$4A
+	.db #$04
+	.db #$C0
+	.db #$FE
+	.db #$7F
+	.db #$00
+	.db #$A8
+	.db #$FF
+	.db #$15
+	.db #$95
+	.db #$04
+	.db #$B8
+	.db #$FF
+	.db #$4B
+	.db #$04
+	.db #$E4
+	.db #$FE
+	.db #$17
+	.db #$00
+	.db #$F8
+	.db #$FF
+	.db #$03
+	.db #$00
+	.db #$EE
+	.db #$FF
+	.db #$07
+	.db #$00
+	.db #$E8
+	.db #$FF
+	.db #$17
+	.db #$00
+	.db #$E8
+	.db #$FF
+	.db #$1F
+	.db #$00
+	.db #$F0
+	.db #$FF
+	.db #$03
+	.db #$00
+	.db #$FE
+	.db #$FF
+	.db #$00
+	.db #$80
+	.db #$FF
+	.db #$1F
+	.db #$00
+	.db #$F0
+	.db #$FF
+	.db #$1F
+	.db #$00
+	.db #$E0
+	.db #$FF
+	.db #$0F
+	.db #$00
+	.db #$E8
+	.db #$FF
+	.db #$07
+	.db #$00
+	.db #$FE
+	.db #$FF
+	.db #$01
+	.db #$00
+	.db #$FF
+	.db #$7F
+	.db #$00
+	.db #$A0
+	.db #$FF
+	.db #$0F
+	.db #$00
+	.db #$F8
+	.db #$FF
+	.db #$03
+	.db #$00
+	.db #$FE
+	.db #$7F
+	.db #$00
+	.db #$E0
+	.db #$FF
+	.db #$0F
+	.db #$00
+	.db #$F8
+	.db #$FF
+	.db #$01
+	.db #$80
+	.db #$FF
+	.db #$1F
+	.db #$00
+	.db #$F8
+	.db #$FF
+	.db #$03
+	.db #$00
+	.db #$FE
+	.db #$1F
+	.db #$00
+	.db #$FE
+	.db #$7F
+	.db #$01
+	.db #$80
+	.db #$FF
+	.db #$07
+	.db #$C0
+	.db #$FE
+	.db #$3F
+	.db #$00
+	.db #$D8
+	.db #$7F
+	.db #$00
+	.db #$F8
+	.db #$FF
+	.db #$17
+	.db #$00
+SND_INDIR_DAT:
+	.db #$F8
+	.db #$0F
+	.db #$80
+	.db #$FF
+	.db #$7F
+	.db #$01
+	.db #$80
+	.db #$7F
+	.db #$40
+	.db #$B5
+	.db #$FE
+	.db #$3F
+	.db #$00
+SND_SAMPLE_2:
+	.db #$E8
+	.db #$03
+	.db #$F4
+	.db #$BF
+	.db #$E4
+	.db #$5E
+	.db #$01
+	.db #$10
+	.db #$EE
+	.db #$BF
+	.db #$90
+	.db #$FF
+	.db #$05
+	.db #$00
+	.db #$FC
+	.db #$7F
+	.db #$00
+	.db #$F8
+	.db #$7F
+	.db #$00
+	.db #$F0
+	.db #$FF
+	.db #$01
+	.db #$E0
+	.db #$FF
+	.db #$04
+	.db #$A0
+	.db #$FF
+	.db #$07
+	.db #$80
+	.db #$FE
+	.db #$0F
+	.db #$00
+	.db #$FF
+	.db #$1F
+	.db #$00
+	.db #$F8
+	.db #$FF
+	.db #$00
+	.db #$E0
+	.db #$FF
+	.db #$05
+	.db #$A0
+	.db #$FF
+	.db #$07
+	.db #$00
+	.db #$FE
+	.db #$3F
+	.db #$00
+	.db #$FA
+	.db #$3F
+	.db #$00
+	.db #$F8
+	.db #$FF
+	.db #$00
+	.db #$ED
+	.db #$17
+	.db #$00
+	.db #$FB
+	.db #$5F
+	.db #$A0
+	.db #$FB
+	.db #$13
+	.db #$00
+	.db #$FC
+	.db #$3F
+	.db #$00
+	.db #$FB
+	.db #$3F
+	.db #$00
+	.db #$E8
+	.db #$FF
+	.db #$00
+	.db #$E0
+	.db #$FF
+	.db #$07
+	.db #$00
+	.db #$FF
+	.db #$0F
+	.db #$00
+	.db #$FF
+	.db #$7F
+	.db #$00
+	.db #$E0
+	.db #$7F
+	.db #$01
+	.db #$F0
+	.db #$FF
+	.db #$07
+	.db #$00
+	.db #$FE
+	.db #$1F
+	.db #$00
+	.db #$F8
+	.db #$FF
+	.db #$01
+	.db #$80
+	.db #$FF
+	.db #$07
+	.db #$80
+	.db #$FF
+	.db #$7F
+	.db #$00
+	.db #$E0
+	.db #$FF
+	.db #$01
+	.db #$A0
+	.db #$FF
+	.db #$0F
+	.db #$00
+	.db #$FA
+	.db #$7F
+	.db #$00
+	.db #$E8
+	.db #$FF
+	.db #$01
+	.db #$80
+	.db #$FF
+	.db #$1F
+	.db #$00
+	.db #$F8
+	.db #$FF
+	.db #$01
+	.db #$80
+	.db #$FF
+	.db #$1F
+	.db #$00
+	.db #$F8
+	.db #$FF
+	.db #$01
+	.db #$A0
+	.db #$FF
+	.db #$0F
+	.db #$00
+	.db #$F8
+	.db #$FF
+	.db #$01
+	.db #$A0
+	.db #$FF
+	.db #$1F
+	.db #$00
+	.db #$F0
+	.db #$FF
+	.db #$05
+	.db #$E0
+	.db #$BF
+	.db #$12
+	.db #$00
+	.db #$F8
+	.db #$FF
+	.db #$07
+	.db #$80
+	.db #$FE
+	.db #$3F
+	.db #$00
+	.db #$11
+	.db #$EA
+	.db #$FE
+	.db #$17
+	.db #$E8
+	.db #$AA
+	.db #$EE
+	.db #$04
+	.db #$A9
+	.db #$15
+	.db #$81
+	.db #$FB
+	.db #$5F
+	.db #$51
+	.db #$A4
+	.db #$FB
+	.db #$01
+	.db #$A0
+	.db #$FF
+	.db #$03
+	.db #$40
+	.db #$FE
+	.db #$FF
+	.db #$00
+	.db #$C0
+	.db #$FF
+	.db #$47
+	.db #$00
+	.db #$EB
+	.db #$5F
+	.db #$00
+	.db #$B4
+	.db #$FF
+	.db #$0F
+	.db #$00
+	.db #$EC
+	.db #$FF
+	.db #$05
+	.db #$80
+	.db #$EE
+	.db #$57
+	.db #$11
+	.db #$D5
+	.db #$BE
+	.db #$45
+	.db #$A4
+	.db #$D6
+	.db #$AA
+	.db #$54
+	.db #$55
+	.db #$D5
+	.db #$54
+	.db #$AA
+	.db #$BA
+	.db #$52
+	.db #$D5
+	.db #$B6
+	.db #$54
+	.db #$4A
+	.db #$A9
+	.db #$2A
+	.db #$55
+	.db #$BB
+	.db #$4D
+	.db #$A5
+	.db #$94
+	.db #$6A
+	.db #$AB
+	.db #$4A
+	.db #$55
+	.db #$AD
+	.db #$2B
+	.db #$11
+	.db #$A9
+	.db #$AE
+	.db #$B7
+	.db #$44
+	.db #$DA
+	.db #$56
+	.db #$15
+	.db #$91
+	.db #$FA
+	.db #$AB
+	.db #$14
+	.db #$A5
+	.db #$AD
+	.db #$4A
+	.db #$A4
+	.db #$BE
+	.db #$AB
+	.db #$14
+	.db #$49
+	.db #$EB
+	.db #$56
+	.db #$25
+	.db #$D1
+	.db #$6E
+	.db #$4B
+	.db #$91
+	.db #$54
+	.db #$EB
+	.db #$AA
+	.db #$52
+	.db #$55
+	.db #$55
+	.db #$53
+	.db #$55
+	.db #$55
+	.db #$55
+	.db #$AB
+	.db #$AA
+	.db #$54
+	.db #$55
+	.db #$55
+	.db #$AB
+	.db #$AA
+	.db #$54
+	.db #$55
+	.db #$D5
+	.db #$52
+	.db #$A9
+	.db #$AE
+	.db #$2B
+	.db #$45
+	.db #$52
+	.db #$6B
+	.db #$AB
+	.db #$AA
+	.db #$AA
+	.db #$52
+	.db #$55
+	.db #$55
+	.db #$B5
+	.db #$AA
+	.db #$52
+	.db #$D5
+	.db #$52
+	.db #$55
+	.db #$55
+	.db #$AD
+	.db #$A6
+	.db #$52
+	.db #$55
+	.db #$55
+	.db #$D5
+	.db #$AA
+	.db #$2A
+	.db #$55
+	.db #$95
+	.db #$AA
+	.db #$ED
+	.db #$4A
+	.db #$91
+	.db #$D4
+	.db #$6A
+	.db #$AB
+	.db #$AA
+	.db #$2A
+	.db #$55
+	.db #$55
+	.db #$55
+	.db #$55
+	.db #$55
+	.db #$D5
+	.db #$AA
+	.db #$54
+	.db #$59
+	.db #$AB
+	.db #$2A
+	.db #$55
+	.db #$55
+	.db #$55
+	.db #$55
+	.db #$AD
+	.db #$AA
+	.db #$14
+	.db #$B5
+	.db #$BB
+	.db #$46
+	.db #$44
+	.db #$D5
+	.db #$BA
+	.db #$AA
+	.db #$AA
+	.db #$52
+	.db #$A5
+	.db #$6A
+	.db #$D5
+	.db #$2A
+	.db #$55
+	.db #$55
+	.db #$2B
+	.db #$55
+	.db #$D5
+	.db #$AA
+	.db #$52
+	.db #$95
+	.db #$6A
+	.db #$B5
+	.db #$AA
+	.db #$2A
+	.db #$45
+	.db #$EA
+	.db #$7B
+	.db #$15
+	.db #$41
+	.db #$AA
+	.db #$DB
+	.db #$5A
+	.db #$95
+	.db #$52
+	.db #$A5
+	.db #$55
+	.db #$D5
+	.db #$54
+	.db #$55
+	.db #$B5
+	.db #$AA
+	.db #$AA
+	.db #$AA
+	.db #$54
+	.db #$AA
+	.db #$DA
+	.db #$5A
+	.db #$A9
+	.db #$54
+	.db #$A9
+	.db #$D4
+	.db #$EE
+	.db #$55
+	.db #$04
+	.db #$A9
+	.db #$EB
+	.db #$5A
+	.db #$4A
+	.db #$55
+	.db #$B5
+	.db #$52
+	.db #$55
+	.db #$5A
+	.db #$55
+	.db #$AD
+	.db #$56
+	.db #$15
+	.db #$91
+	.db #$BA
+	.db #$6B
+	.db #$55
+	.db #$49
+	.db #$A9
+	.db #$B6
+	.db #$44
+	.db #$B9
+	.db #$BF
+	.db #$44
+	.db #$A0
+	.db #$BA
+	.db #$6B
+	.db #$52
+	.db #$D5
+	.db #$AA
+	.db #$4A
+	.db #$A9
+	.db #$AA
+	.db #$AD
+	.db #$AA
+	.db #$2B
+	.db #$11
+	.db #$A9
+	.db #$BE
+	.db #$2E
+	.db #$45
+	.db #$69
+	.db #$6B
+	.db #$49
+	.db #$90
+	.db #$FE
+	.db #$5F
+	.db #$00
+	.db #$E8
+	.db #$3F
+	.db #$05
+	.db #$B5
+	.db #$AF
+	.db #$12
+	.db #$51
+	.db #$6D
+	.db #$AB
+	.db #$54
+	.db #$DB
+	.db #$12
+	.db #$91
+	.db #$FA
+	.db #$56
+	.db #$52
+	.db #$6D
+	.db #$53
+	.db #$44
+	.db #$C4
+	.db #$FF
+	.db #$17
+	.db #$00
+	.db #$FD
+	.db #$13
+	.db #$A4
+	.db #$EF
+	.db #$46
+	.db #$A8
+	.db #$56
+	.db #$95
+	.db #$D5
+	.db #$AA
+	.db #$AA
+	.db #$4A
+	.db #$B2
+	.db #$B6
+	.db #$52
+	.db #$B5
+	.db #$2D
+	.db #$11
+	.db #$91
+	.db #$FE
+	.db #$1F
+	.db #$80
+	.db #$BE
+	.db #$12
+	.db #$ED
+	.db #$4E
+	.db #$52
+	.db #$AD
+	.db #$44
+	.db #$ED
+	.db #$47
+	.db #$50
+	.db #$6F
+	.db #$05
+	.db #$ED
+	.db #$2A
+	.db #$A5
+	.db #$DB
+	.db #$12
+	.db #$41
+	.db #$FA
+	.db #$3F
+	.db #$C0
+	.db #$2E
+	.db #$91
+	.db #$BE
+	.db #$15
+	.db #$B5
+	.db #$13
+	.db #$94
+	.db #$FB
+	.db #$12
+	.db #$65
+	.db #$4B
+	.db #$A9
+	.db #$AD
+	.db #$AA
+	.db #$52
+	.db #$B5
+	.db #$16
+	.db #$01
+	.db #$FF
+	.db #$0F
+	.db #$F0
+	.db #$03
+	.db #$F4
+	.db #$17
+	.db #$EA
+	.db #$17
+	.db #$C4
+	.db #$5A
+	.db #$B5
+	.db #$15
+	.db #$A9
+	.db #$55
+	.db #$A5
+	.db #$6D
+	.db #$45
+	.db #$EC
+	.db #$5A
+	.db #$04
+	.db #$F9
+	.db #$5F
+	.db #$A0
+	.db #$17
+	.db #$E0
+	.db #$1F
+	.db #$F8
+	.db #$17
+	.db #$E8
+	.db #$12
+	.db #$F9
+	.db #$47
+	.db #$E8
+	.db #$12
+	.db #$BB
+	.db #$AA
+	.db #$2A
+	.db #$A9
+	.db #$5B
+	.db #$01
+	.db #$FA
+	.db #$1F
+	.db #$F8
+	.db #$04
+	.db #$F8
+	.db #$07
+	.db #$FE
+	.db #$44
+	.db #$5B
+	.db #$90
+	.db #$7B
+	.db #$51
+	.db #$4B
+	.db #$B4
+	.db #$1B
+	.db #$EA
+	.db #$96
+	.db #$5A
+	.db #$11
+	.db #$E0
+	.db #$FF
+	.db #$C1
+	.db #$16
+	.db #$D0
+	.db #$4F
+	.db #$EC
+	.db #$93
+	.db #$5A
+	.db #$44
+	.db #$ED
+	.db #$56
+	.db #$94
+	.db #$AA
+	.db #$5A
+	.db #$AB
+	.db #$AA
+	.db #$49
+	.db #$A9
+	.db #$80
+	.db #$FF
+	.db #$87
+	.db #$16
+	.db #$D0
+	.db #$5E
+	.db #$BA
+	.db #$AA
+	.db #$96
+	.db #$94
+	.db #$AA
+	.db #$5B
+	.db #$54
+	.db #$AA
+	.db #$6A
+	.db #$AB
+	.db #$55
+	.db #$49
+	.db #$15
+	.db #$E0
+	.db #$FF
+	.db #$45
+	.db #$05
+	.db #$AA
+	.db #$57
+	.db #$AD
+	.db #$5A
+	.db #$49
+	.db #$95
+	.db #$EA
+	.db #$55
+	.db #$94
+	.db #$B4
+	.db #$DA
+	.db #$56
+	.db #$A5
+	.db #$B4
+	.db #$04
+	.db #$F8
+	.db #$7F
+	.db #$52
+	.db #$90
+	.db #$BA
+	.db #$56
+	.db #$AB
+	.db #$95
+	.db #$52
+	.db #$A9
+	.db #$6E
+	.db #$25
+	.db #$49
+	.db #$6D
+	.db #$B5
+	.db #$56
+	.db #$AA
+	.db #$12
+	.db #$A0
+	.db #$FF
+	.db #$17
+	.db #$11
+	.db #$69
+	.db #$6B
+	.db #$B5
+	.db #$56
+	.db #$49
+	.db #$A5
+	.db #$EA
+	.db #$4D
+	.db #$11
+	.db #$D5
+	.db #$D6
+	.db #$5A
+	.db #$A9
+	.db #$26
+	.db #$01
+	.db #$FE
+	.db #$5F
+	.db #$44
+	.db #$A4
+	.db #$B6
+	.db #$B5
+	.db #$56
+	.db #$25
+	.db #$A5
+	.db #$EA
+	.db #$36
+	.db #$45
+	.db #$54
+	.db #$6B
+	.db #$AB
+	.db #$55
+	.db #$55
+	.db #$00
+	.db #$FE
+	.db #$3F
+	.db #$41
+	.db #$92
+	.db #$B6
+	.db #$D6
+	.db #$5A
+	.db #$55
+	.db #$14
+	.db #$B5
+	.db #$BB
+	.db #$14
+	.db #$91
+	.db #$EE
+	.db #$AA
+	.db #$55
+	.db #$AA
+	.db #$04
+	.db #$F8
+	.db #$FF
+	.db #$10
+	.db #$52
+	.db #$DA
+	.db #$DA
+	.db #$5A
+	.db #$55
+	.db #$94
+	.db #$B4
+	.db #$BB
+	.db #$14
+	.db #$54
+	.db #$EB
+	.db #$AA
+	.db #$5A
+	.db #$55
+	.db #$00
+	.db #$FE
+	.db #$3F
+	.db #$41
+	.db #$51
+	.db #$B6
+	.db #$DA
+	.db #$6A
+	.db #$95
+	.db #$94
+	.db #$B4
+	.db #$BB
+	.db #$12
+	.db #$54
+	.db #$ED
+	.db #$AA
+	.db #$56
+	.db #$55
+	.db #$00
+	.db #$FE
+	.db #$5F
+	.db #$44
+	.db #$52
+	.db #$AD
+	.db #$B6
+	.db #$6A
+	.db #$95
+	.db #$94
+	.db #$AA
+	.db #$5B
+	.db #$15
+	.db #$51
+	.db #$EB
+	.db #$AA
+	.db #$AA
+	.db #$55
+	.db #$01
+	.db #$FA
+	.db #$5F
+	.db #$44
+	.db #$4A
+	.db #$AB
+	.db #$D6
+	.db #$AA
+	.db #$87
+	.db #$04
+	.db #$28
+	.db #$04
+	.db #$28
+	.db #$04
+	.db #$0C
+	.db #$04
+	.db #$0C
+	.db #$04
+	.db #$0C
+	.db #$12
+	.db #$0C
+	.db #$12
+	.db #$0C
+	.db #$12
+	.db #$48
+	.db #$12
+	.db #$48
+	.db #$12
+	.db #$48
+	.db #$80
+	.db #$02
+	.db #$00
+	.db #$80
+	.db #$02
+	.db #$87
+	.db #$04
+	.db #$28
+	.db #$04
+	.db #$28
+	.db #$04
+	.db #$0C
+	.db #$04
+	.db #$0C
+	.db #$04
+	.db #$0C
+	.db #$12
+	.db #$0C
+	.db #$12
+	.db #$0C
+	.db #$12
+	.db #$48
+	.db #$12
+	.db #$48
+	.db #$12
+	.db #$48
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.db #$FF
+	.LOW #$86
+	.HIGH #$C0
+	.LOW #$00
+	.HIGH #$C0
+	.LOW #$00
+	.HIGH #$C0

@@ -43,7 +43,7 @@ L_002C:
 	STA PPU_MASK_RAM
 	LDX #$0B
 LOOP_MOVE_DAT:
-	LDA L_25DF,X
+	LDA DEFAULT_HIGH_SCORES,X ;move default high scores into place.
 	STA HIGH_SCORES_ARRAY,X
 	DEX 
 	BPL LOOP_MOVE_DAT
@@ -60,7 +60,7 @@ NO_SOUND_STUFF:
 	JSR DEC_TIMERS_2B-2E ;timers
 	JSR READ_CONTROLLERS
 	JSR MAIN_ZAPPER_LOGIC
-	INC FRAME_COUNTER?
+	INC FRAME_COUNTER
 	JSR CLEAR_NMIRAN/PPUSTUFFFLAG
 LOOP_FOREVER:
 	LDA NMI_RAN
@@ -192,8 +192,8 @@ GOTO_STATE:
 	.HIGH RTS
 	.LOW GAME_STATE_INDIRECT_11 ;setup timers when substate 0?
 	.HIGH GAME_STATE_INDIRECT_11
-	.LOW GAME_STATE_INDIRECT_12 ;1E -> IN_GAME_STATE when 2D=0
-	.HIGH GAME_STATE_INDIRECT_12
+	.LOW MOVE_STATE_AFTER_2D_COUNTDOWN ;1E -> IN_GAME_STATE when 2D=0
+	.HIGH MOVE_STATE_AFTER_2D_COUNTDOWN
 IN_MENU:
 	LDA #$00
 	STA ZAPPER_RESULT ;init result
@@ -919,37 +919,37 @@ CLEAR_NMIRAN/PPUSTUFFFLAG:
 	STA NMI_RAN ;NMI not ran.
 	STA PPU_BLOCK_UPDATE_IN_NMI ;dont block ppu stuff.
 	RTS  ;return.
-GAME_STATE_INDIRECT_12:
+MOVE_STATE_AFTER_2D_COUNTDOWN:
 	LDA COUNTDOWN_2D
-	BNE RTS ;rts if not 0
-	LDA UNK_$1E ;move 1E to state
+	BNE RTS ;wait to move state.
+	LDA IN_GAME_FUTURE_STATE? ;future is now
 	STA IN_GAME_STATE
 RTS:
 	RTS  ;leave.
-$1E=X,2D=A,#$12=IN_GAME_STATE:
-	STX UNK_$1E
+X=FUTURE,A=TIMER,IN_GAME_STATE=#$12:
+	STX IN_GAME_FUTURE_STATE?
 	STA COUNTDOWN_2D ;set timer.
-	LDA #$12 ;special state after?
-	STA IN_GAME_STATE
+	LDA #$12 ;wait game state.
+	STA IN_GAME_STATE ;move to state now.
 	RTS 
 CLEAR_0300-03FF:
 	LDY #$00
 	TYA 
 more_data:
-	STA TRGT1_TYPE,Y
+	STA TRGT1_TYPE,Y ;$300 generic.
 	INY 
 	BNE more_data
 	RTS 
-CLEAR_RAM_0030-00FF:
+CLEAR_RAM_$30-$FF:
 	LDA #$00
-	LDX #$30
-MoreToDo:
+	LDX #$30 ;start
+LOOPX:
 	STA TMP_00,X
 	INX 
-	BNE MoreToDo
+	BNE LOOPX ;end when we write $FF
 	RTS 
 CLEAR_0040_00BF:
-	LDA #$00
+	LDA #$00 ;half of obj data? and other vars?
 	LDX #$7F
 MORE_CLEAR:
 	STA OBJ_ZP_$40,X
@@ -978,49 +978,49 @@ DIGITS_TO_UPDATE_BUF:
 	LDX BONUS_ADDR_LOW ;get location on screen.
 	LDY BONUS_ADDR_HIGH
 	JMP MAKE_SETUP_PPU_BLOCK ;commit data.
-L_067C:
-	LDA TMP_0C
-	ASL A
-	TAY 
-	LDA L_2B30,Y
-	STA TMP_10
-	LDA L_2B31,Y
-	STA $11
-	LDY #$00
+SPRITE_SOMETHING_UNK:
+	LDA TMP_0C ;get temp data byte.
+	ASL A ;make index.
+	TAY  ;to index reg.
+	LDA UNK_PTR_ARR_LOW,Y
+	STA TMP_$10
+	LDA UNK_PTR_ARR_HIGH,Y
+	STA TMP_$11
+	LDY #$00 ;start of stream/data.
 	LDX #$00
-L_068E:
-	LDA (TMP_10),Y
-	CMP #$AA
-	BNE L_0695
+LOOP_SPRITE_IDK:
+	LDA (TMP_$10),Y ;check stream.
+	CMP #$AA ;end of data/stream/file marker.
+	BNE COMMIT_SPRITE_DATA ;not end, write bytes.
 RTS:
-	RTS 
-L_0695:
+	RTS  ;leave if the end.
+COMMIT_SPRITE_DATA:
 	CLC 
-	ADC TARGET_Y_COORD_CPY
-	CMP #$A8
+	ADC TARGET_Y_COORD_CPY ;get Y after offset.
+	CMP #$A8 ;if >A9...
 	BCC L_069E
-	LDA #$F4
+	LDA #$F4 ;move off screen.
 L_069E:
-	STA TMP_0D
+	STA TMP_0D ;Y coord.
 	INY 
-	LDA (TMP_10),Y
+	LDA (TMP_$10),Y ;get next byte.
 	CLC 
-	ADC TARGET_X_COORD_CPY
-	STA $0E
+	ADC TARGET_X_COORD_CPY ;add X.
+	STA TMP_$0E ;save X.
 	INY 
-	LDA TMP_0D
+	LDA TMP_0D ;get saved Y
+	STA $0200,X ;store  Y
+	INX  ;next OAM
+	LDA #$56 ;tile 56, is blank, hmm... filled out later?
+	STA $0200,X
+	INX  ;next addr
+	LDA #$00 ;no mods to tile.
 	STA $0200,X
 	INX 
-	LDA #$56
-	STA $0200,X
-	INX 
-	LDA #$00
-	STA $0200,X
-	INX 
-	LDA $0E
-	STA $0200,X
-	INX 
-	JMP L_068E
+	LDA TMP_$0E ;get saved X
+	STA $0200,X ;write saved X
+	INX  ;point to next area.
+	JMP LOOP_SPRITE_IDK
 PPU_DISP_SOMETHING?:
 	LDA FLAG_AD
 	BEQ RTS ;not set
@@ -1224,7 +1224,7 @@ WAS_AA:
 RTS:
 	RTS 
 GAME_STATE_INDIRECT_00:
-	JSR CLEAR_RAM_0030-00FF
+	JSR CLEAR_RAM_$30-$FF
 	JSR WAIT_FOR_NMI
 	JSR CLEAR_BOTH_SCREENS
 	JSR Clear_Memories ;clear sprites, $3XX, and 40-BF
@@ -1511,7 +1511,7 @@ L_0A0E:
 	INC TRGT_STATE_PROCESS
 	RTS 
 TARGET_STATES_INDIRECT_03:
-	LDA FRAME_COUNTER?
+	LDA FRAME_COUNTER
 	AND #$07
 	BNE L_0A22
 	JSR SND_SET_F0_#$08
@@ -1556,7 +1556,7 @@ L_0A5F:
 	BNE L_0A70
 L_0A66:
 	DEX 
-	LDA FRAME_COUNTER?
+	LDA FRAME_COUNTER
 	LSR A
 	BCC L_0A70
 	DEC $4C
@@ -1607,7 +1607,7 @@ L_0AA8:
 	BCS L_0ABF
 	LDX #$1F
 L_0ABF:
-	LDA FRAME_COUNTER?
+	LDA FRAME_COUNTER
 	LSR A
 	TXA 
 	BCC L_0ACA
@@ -1654,7 +1654,7 @@ L_0AED:
 L_0B06:
 	CLC 
 	ADC TMP_0C
-	STA $0E
+	STA TMP_$0E
 	LDY TMP_0F
 	CMP #$00
 	BNE L_0B1B
@@ -1692,12 +1692,12 @@ L_0B45:
 	ASL A
 	BCS L_0B50
 L_0B4B:
-	DEC $0E
+	DEC TMP_$0E
 	JMP L_0B52
 L_0B50:
-	INC $0E
+	INC TMP_$0E
 L_0B52:
-	LDA $0E
+	LDA TMP_$0E
 	AND #$0F
 L_0B56:
 	JMP L_0B77
@@ -2422,15 +2422,15 @@ L_101B:
 	LDA #$DA
 	STA TMP_13
 	LDA (TMP_12),Y
-	STA TMP_10
+	STA TMP_$10
 	INY 
 	LDA (TMP_12),Y
-	STA $11
+	STA TMP_$11
 	LDY #$00
 	STY $1A
 L_1038:
 	LDY $1A
-	LDA (TMP_10),Y
+	LDA (TMP_$10),Y
 	CMP #$00
 	BNE L_1050
 	LDX UNK_B4
@@ -2447,15 +2447,15 @@ RTS:
 L_1050:
 	STA TMP_13
 	INY 
-	LDA (TMP_10),Y
+	LDA (TMP_$10),Y
 	INY 
 	STA TMP_12
-	LDA (TMP_10),Y
+	LDA (TMP_$10),Y
 	INY 
 	CLC 
 	ADC OBJ_ZP_$32
 	STA TARGET_Y_COORD_CPY
-	LDA (TMP_10),Y
+	LDA (TMP_$10),Y
 	INY 
 	LDX $34
 	BEQ L_106D
@@ -2770,7 +2770,7 @@ MOVE_TRGT1_TO_ZP:
 	STA TARGET_X_COORD_CPY
 	LDA TRGT1_UNKATTR,Y
 	STA TMP_0C ;anim frame???
-	JMP L_067C ;unk
+	JMP SPRITE_SOMETHING_UNK ;unk
 SETUP_HITSREQD_TARGETS_OTHER:
 	LDY HITS_REQUIRED_RAM_INDEX
 RELOAD_HITS_REQD:
@@ -2787,8 +2787,8 @@ NO_MORE_DATA:
 	STA UNK_BB
 	STA TARGETS_IN_LEVEL
 	LDA #$01
-	STA TRGT3_TYPE ;duck type
-	STA TRGT3_STATE ;disabled state?
+	STA TRGT3_TYPE ;target type. dog?
+	STA TRGT3_STATE ;enabled state?
 	LDA #$FF
 	STA UNK_$9C
 	RTS 
@@ -2856,7 +2856,7 @@ NOT_ENOUGH_TARGETS:
 	JSR SND_SET_F2_#$80
 	LDX #$06 ;$1E value.
 	LDA #$0C ;timer 2d value
-	JMP $1E=X,2D=A,#$12=IN_GAME_STATE
+	JMP X=FUTURE,A=TIMER,IN_GAME_STATE=#$12
 UNK_TABLE_02:
 	LDA TIMER_2B
 	BNE RTS ;if not 0, RTS.
@@ -2914,7 +2914,7 @@ END_ROUND_STUFF?:
 	BNE NOT_PIGEONS ;no if taken
 	LDX #$09 ;change X if so.
 NOT_PIGEONS:
-	JSR $1E=X,2D=A,#$12=IN_GAME_STATE
+	JSR X=FUTURE,A=TIMER,IN_GAME_STATE=#$12
 	LDA #$00
 	JMP UPDATE_PPU_GROUP
 SHOW_TRGT_NO_HITS:
@@ -3031,9 +3031,9 @@ L_146C:
 	BEQ L_14BC ;not doing something diff...hmm...
 	ASL A
 	TAX  ;X is now index.
-	LDA L_2C38,X
+	LDA UNK_TABLE_LOW,X
 	STA INDIR_JMP_LOW
-	LDA L_2C39,X
+	LDA UNK_TABLE_HIGH,X
 	STA INDIR_JMP_HIGH
 	LDY #$01
 	LDA (INDIR_JMP_LOW),Y
@@ -3568,7 +3568,7 @@ L_181A:
 	RTS 
 L_181B:
 	LDX OBJ_ZP_$5E
-	LDA L_2A00,X ;not sure...
+	LDA UNK_DATA_00_REAL,X ;not sure...
 	PHA 
 	INX 
 	TXA 
@@ -3689,8 +3689,8 @@ L_18CC:
 	BNE L_18B0
 	RTS 
 L_18DB:
-	STY TMP_10
-	STX $11
+	STY TMP_$10
+	STX TMP_$11
 	STA $95
 	LDA #$00
 	STA $96
@@ -3701,10 +3701,10 @@ L_18E9:
 	BCC L_18FA
 	CLC 
 	LDA $96
-	ADC TMP_10
+	ADC TMP_$10
 	STA $96
 	LDA $97
-	ADC $11
+	ADC TMP_$11
 	STA $97
 L_18FA:
 	ASL A
@@ -3769,7 +3769,7 @@ L_1959:
 L_195B:
 	STX TMP_0D
 	LDA L_2B22,X
-	STA $0E
+	STA TMP_$0E
 	TXA 
 	ASL A
 	TAX 
@@ -3801,7 +3801,7 @@ L_1991:
 L_1993:
 	STX TMP_0D
 	LDA L_2B28,X
-	STA $0E
+	STA TMP_$0E
 	TXA 
 	ASL A
 	CLC 
@@ -3860,7 +3860,7 @@ L_19F6:
 	LDA $57
 	AND #$03
 	STA UPDATE_GROUP?
-	LDA $0E
+	LDA TMP_$0E
 	JSR GOTO_TABLE_PAST_JSR
 	.LOW RTS
 	.HIGH RTS
@@ -6843,7 +6843,7 @@ BONUS_ADDR_LOW:
 	.db #$58
 	.db #$06
 	.db #$00
-L_25DF:
+DEFAULT_HIGH_SCORES:
 	.db #$00 ;goes to 0x5F0
 	.db #$01
 	.db #$20
@@ -7284,7 +7284,7 @@ TARGET_3_DATA:
 	.db #$00
 	.db #$00
 	.db #$00
-	.db #$00 ;end of data.
+	.db #$00 ;end of target 3 data.
 	.db #$06
 	.db #$0C
 	.db #$06
@@ -7921,7 +7921,7 @@ L_29C8:
 	.db #$10
 	.db #$0C
 	.db #$08
-L_2A00:
+UNK_DATA_00_REAL:
 	.db #$01
 	.db #$01
 	.db #$01
@@ -8233,53 +8233,55 @@ L_2B28:
 	.db #$0B
 	.db #$0D
 	.db #$0F
-L_2B30:
-	.db #$4A
-L_2B31:
-	.db #$EB
-	.db #$5D
-	.db #$EB
-	.db #$70
-	.db #$EB
-	.db #$7D
-	.db #$EB
-	.db #$86
-	.db #$EB
-	.db #$8F
-	.db #$EB
-	.db #$92
-	.db #$EB
-	.db #$92
-	.db #$EB
-	.db #$92
-	.db #$EB
-	.db #$95
-	.db #$EB
-	.db #$B6
-	.db #$EB
-	.db #$C9
-	.db #$EB
-	.db #$DC
-	.db #$EB
-	.db #$F4
-	.db #$F4
-	.db #$F4
-	.db #$FC
-	.db #$F4
-	.db #$04
-	.db #$FC
+UNK_PTR_ARR_LOW:
+	.LOW SPRITES_X_Y_SPRITE_VALUES?_00
+UNK_PTR_ARR_HIGH:
+	.HIGH SPRITES_X_Y_SPRITE_VALUES?_00
+	.LOW SPRITES_X_Y_SPRITE_VALUES?_01
+	.HIGH SPRITES_X_Y_SPRITE_VALUES?_01
+	.LOW SPRITES_X_Y_SPRITE_VALUES?_02
+	.HIGH SPRITES_X_Y_SPRITE_VALUES?_02
+	.LOW SPRITES_X_Y_SPRITE_VALUES?_03
+	.HIGH SPRITES_X_Y_SPRITE_VALUES?_03
+	.LOW SPRITES_X_Y_SPRITE_VALUES?_04
+	.HIGH SPRITES_X_Y_SPRITE_VALUES?_04
+	.LOW SPRITES_X_Y_SPRITE_VALUES?_05
+	.HIGH SPRITES_X_Y_SPRITE_VALUES?_05
+	.LOW SPRITES_X_Y_SPRITE_VALUES?_08
+	.HIGH SPRITES_X_Y_SPRITE_VALUES?_08
+	.LOW SPRITES_X_Y_SPRITE_VALUES?_08
+	.HIGH SPRITES_X_Y_SPRITE_VALUES?_08
+	.LOW SPRITES_X_Y_SPRITE_VALUES?_08
+	.HIGH SPRITES_X_Y_SPRITE_VALUES?_08
+	.LOW SPRITES_X_Y_SPRITE_VALUES?_09
+	.HIGH SPRITES_X_Y_SPRITE_VALUES?_09
+	.LOW SPRITES_X_Y_SPRITE_VALUES?_0A
+	.HIGH SPRITES_X_Y_SPRITE_VALUES?_0A
+	.LOW SPRITES_X_Y_SPRITE_VALUES?_0B
+	.HIGH SPRITES_X_Y_SPRITE_VALUES?_0B
+	.LOW SPRITES_X_Y_SPRITE_VALUES?_0C
+	.HIGH SPRITES_X_Y_SPRITE_VALUES?_0C
+SPRITES_X_Y_SPRITE_VALUES?_00:
+	.db #$F4 ;X coord.
+	.db #$F4 ;Y coord.
 	.db #$F4
 	.db #$FC
-	.db #$FC
-	.db #$FC
-	.db #$04
-	.db #$04
 	.db #$F4
 	.db #$04
 	.db #$FC
+	.db #$F4
+	.db #$FC
+	.db #$FC
+	.db #$FC
 	.db #$04
 	.db #$04
-	.db #$AA
+	.db #$F4
+	.db #$04
+	.db #$FC
+	.db #$04
+	.db #$04
+	.db #$AA ;End of file.
+SPRITES_X_Y_SPRITE_VALUES?_01:
 	.db #$F7
 	.db #$F5
 	.db #$F7
@@ -8299,6 +8301,7 @@ L_2B31:
 	.db #$01
 	.db #$03
 	.db #$AA
+SPRITES_X_Y_SPRITE_VALUES?_02:
 	.db #$F9
 	.db #$F7
 	.db #$F9
@@ -8312,6 +8315,7 @@ L_2B31:
 	.db #$FF
 	.db #$01
 	.db #$AA
+SPRITES_X_Y_SPRITE_VALUES?_03:
 	.db #$FA
 	.db #$F8
 	.db #$FA
@@ -8321,6 +8325,7 @@ L_2B31:
 	.db #$FE
 	.db #$00
 	.db #$AA
+SPRITES_X_Y_SPRITE_VALUES?_04:
 	.db #$FA
 	.db #$FA
 	.db #$FA
@@ -8330,12 +8335,15 @@ L_2B31:
 	.db #$FE
 	.db #$FE
 	.db #$AA
+SPRITES_X_Y_SPRITE_VALUES?_05:
 	.db #$FC
 	.db #$FC
 	.db #$AA
+SPRITES_X_Y_SPRITE_VALUES?_08:
 	.db #$FC
 	.db #$FC
 	.db #$AA
+SPRITES_X_Y_SPRITE_VALUES?_09:
 	.db #$F0
 	.db #$F0
 	.db #$F0
@@ -8369,6 +8377,7 @@ L_2B31:
 	.db #$08
 	.db #$08
 	.db #$AA
+SPRITES_X_Y_SPRITE_VALUES?_0A:
 	.db #$F4
 	.db #$F5
 	.db #$F4
@@ -8388,6 +8397,7 @@ L_2B31:
 	.db #$04
 	.db #$03
 	.db #$AA
+SPRITES_X_Y_SPRITE_VALUES?_0B:
 	.db #$F5
 	.db #$F7
 	.db #$F5
@@ -8407,6 +8417,7 @@ L_2B31:
 	.db #$03
 	.db #$01
 	.db #$AA
+SPRITES_X_Y_SPRITE_VALUES?_0C:
 	.db #$F6
 	.db #$F8
 	.db #$F6
@@ -8450,7 +8461,7 @@ TBL_DUCK_SCORES:
 	.db #$24
 	.db #$30
 HITS_REQUIRED_FOR_LEVEL:
-	.db #$06
+	.db #$06 ;Value
 	.db #$06
 	.db #$06
 	.db #$06
@@ -8470,7 +8481,7 @@ HITS_REQUIRED_FOR_LEVEL:
 	.db #$09
 	.db #$09
 	.db #$0A
-	.db #$FF
+	.db #$FF ;EOF mark.
 LEVEL_DATA_UNK:
 	.db #$00
 	.db #$08
@@ -8481,7 +8492,7 @@ LEVEL_DATA_UNK:
 	.db #$20
 	.db #$28
 TIMER_9D_STUFF?:
-	.db #$28
+	.db #$28 ;Not sure yet.
 	.db #$01
 	.db #$80
 	.db #$00
@@ -8506,26 +8517,27 @@ TIMER_9D_STUFF?:
 	.db #$03
 	.db #$08
 	.db #$00
-L_2C38:
-	.db #$00
-L_2C39:
-	.db #$AA
-	.db #$4A
-	.db #$EC
-	.db #$70
-	.db #$EC
-	.db #$82
-	.db #$EC
-	.db #$8B
-	.db #$EC
-	.db #$B1
-	.db #$EC
-	.db #$E6
-	.db #$EC
-	.db #$07
-	.db #$ED
-	.db #$3C
-	.db #$ED
+UNK_TABLE_LOW:
+	.LOW UNK_DATA_00_REAL ;copy protection pointer val?
+UNK_TABLE_HIGH:
+	.HIGH UNK_DATA_00_REAL ;copy protection ptr val?
+	.LOW UNK_DATA_00
+	.HIGH UNK_DATA_00
+	.LOW UNK_DATA_01
+	.HIGH UNK_DATA_01
+	.LOW UNK_DATA_02
+	.HIGH UNK_DATA_02
+	.LOW UNK_DATA_03
+	.HIGH UNK_DATA_03
+	.LOW UNK_DATA_04
+	.HIGH UNK_DATA_04
+	.LOW UNK_DATA_05
+	.HIGH UNK_DATA_05
+	.LOW UNK_DATA_06
+	.HIGH UNK_DATA_06
+	.LOW UNK_DATA_07
+	.HIGH UNK_DATA_07
+UNK_DATA_00:
 	.db #$CD
 	.db #$24
 	.db #$57
@@ -8564,6 +8576,7 @@ L_2C39:
 	.db #$FC
 	.db #$FC
 	.db #$FD
+UNK_DATA_01:
 	.db #$EE
 	.db #$10
 	.db #$35
@@ -8582,6 +8595,7 @@ L_2C39:
 	.db #$B7
 	.db #$B7
 	.db #$B7
+UNK_DATA_02:
 	.db #$EF
 	.db #$04
 	.db #$23
@@ -8591,6 +8605,7 @@ L_2C39:
 	.db #$B7
 	.db #$B7
 	.db #$B7
+UNK_DATA_03:
 	.db #$CD
 	.db #$24
 	.db #$57
@@ -8629,6 +8644,7 @@ L_2C39:
 	.db #$FC
 	.db #$FC
 	.db #$FD
+UNK_DATA_04:
 	.db #$CC
 	.db #$33
 	.db #$5A
@@ -8682,6 +8698,7 @@ L_2C39:
 	.db #$FC
 	.db #$FC
 	.db #$FD
+UNK_DATA_05:
 	.db #$EC
 	.db #$1F
 	.db #$3A
@@ -8715,6 +8732,7 @@ L_2C39:
 	.db #$FC
 	.db #$FC
 	.db #$FD
+UNK_DATA_06:
 	.db #$CC
 	.db #$33
 	.db #$5A
@@ -8768,6 +8786,7 @@ L_2C39:
 	.db #$FD
 	.db #$24
 	.db #$24
+UNK_DATA_07:
 	.db #$AB
 	.db #$38
 	.db #$5B

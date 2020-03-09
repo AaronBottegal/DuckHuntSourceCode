@@ -102,57 +102,57 @@ MAIN_ZAPPER_LOGIC:
 NOT_IN_MENU:
 	LDA CTRL_HELD
 	AND #$10 ;button start
-	BEQ CLEAR_BLOCK_PAUSE ;started with zapper
-	LDY BLOCK_PAUSE_BTN
-	BNE GOTO_STATE ;true, block.
-	INY 
-	STY BLOCK_PAUSE_BTN ;set flag
+	BEQ SWITCH_UNBLOCK_PAUSE ;no change.
+	LDY BLOCK_UNPAUSE
+	BNE GOTO_STATE ;skip unpausing for one update?
+	INY  ;Y=1
+	STY BLOCK_UNPAUSE ;set to 1
 	LDY IN_GAME_STATE ;pausable states?
-	CPY #$10
-	BEQ GAME_STATE_10
-	CPY #$03
-	BEQ GAME_STATE_3/4/B/C
+	CPY #$10 ;paused state value
+	BEQ UNPAUSE_GAME ;Unpause this state.
+	CPY #$03 ;these are all the possible pause states.
+	BEQ PAUSE_GAME
 	CPY #$04
-	BEQ GAME_STATE_3/4/B/C
+	BEQ PAUSE_GAME
 	CPY #$0B
-	BEQ GAME_STATE_3/4/B/C
+	BEQ PAUSE_GAME
 	CPY #$0C
-	BNE GOTO_STATE
-GAME_STATE_3/4/B/C:
+	BNE GOTO_STATE ;state cant be paused continue on.
+PAUSE_GAME:
 	LDX #$05
-L_00E1:
-	LDA TIMER_STATE,X
-	STA 0430_STATE_PREP?,X ;save timers.
+SAVE_TIMERS_LOOP:
+	LDA TIMER_LARGE_COUNT,X
+	STA TIMER_STATE_SAVE,X ;save timers.
 	DEX 
-	BPL L_00E1
+	BPL SAVE_TIMERS_LOOP
 	LDA PPU_MASK_RAM
-	AND #$0E ;Enable BG/SPR in left 8, plus BG in general.
+	AND #$0E ;Enable BG/SPR in left 8, BG, no SPR.
 	STA PPU_Mask
 	STA PPU_MASK_RAM
 	LDA IN_GAME_STATE
-	STA PREV_GAME_STATE?
+	STA PREV_GAME_STATE ;save state to restore.
 	LDA #$10
 	STA IN_GAME_STATE
-	LDA #$07
-	JMP DONT_CHANGE_STATE
-GAME_STATE_10:
+	LDA #$07 ;ppu update group #
+	JMP DONT_CHANGE_STATE ;could have used bne, tsk tsk, 1 byte lost.
+UNPAUSE_GAME:
 	LDA PPU_MASK_RAM
 	ORA #$10 ;enable sprites.
 	STA PPU_Mask
 	STA PPU_MASK_RAM
 	LDA #$11
-	STA IN_GAME_STATE
+	STA IN_GAME_STATE ;switch state.
 	LDA #$30
-	STA GAME_SUBSTATE?
+	STA GAME_SUBSTATE? ;substate...why?
 	LDA #$00
 DONT_CHANGE_STATE:
-	JSR UPDATE_PPU_GROUP
-	JSR SND_SET_F0_#$01
+	JSR UPDATE_PPU_GROUP ;show graphics needed.
+	JSR SND_SET_F0_#$01 ;Do sound.
 	JSR WAIT_FOR_NMI
-	JMP SND_SET_F1_#$80
-CLEAR_BLOCK_PAUSE:
+	JMP SND_SET_F1_#$80 ;pause sound?
+SWITCH_UNBLOCK_PAUSE:
 	LDA #$00
-	STA BLOCK_PAUSE_BTN ;clear flag
+	STA BLOCK_UNPAUSE ;clear paused setup flag.
 GOTO_STATE:
 	LDA IN_GAME_STATE
 	JSR GOTO_TABLE_PAST_JSR
@@ -170,7 +170,7 @@ GOTO_STATE:
 	.HIGH RTS
 	.LOW GAME_STATE_INDIRECT_06 ;start of round stuff?
 	.HIGH GAME_STATE_INDIRECT_06
-	.LOW GAME_STATE_INDIRECT_07 ;continue target 3?
+	.LOW GAME_STATE_INDIRECT_07 ;continue target 3 only?
 	.HIGH GAME_STATE_INDIRECT_07
 	.LOW GAME_STATE_INDIRECT_08 ;Pigeons?
 	.HIGH GAME_STATE_INDIRECT_08
@@ -188,7 +188,7 @@ GOTO_STATE:
 	.HIGH RTS
 	.LOW RTS ;RTS
 	.HIGH RTS
-	.LOW RTS ;RTS
+	.LOW RTS ;Pause state, does nothing.
 	.HIGH RTS
 	.LOW GAME_STATE_INDIRECT_11 ;setup timers when substate 0?
 	.HIGH GAME_STATE_INDIRECT_11
@@ -212,7 +212,7 @@ IN_MENU:
 	LDA CTRL_HELD ;get buttons held
 	AND #$30 ;get select and start
 	CMP #$10 ;comp start
-	BNE START_NOT_PRESSED/ALONE ;not pressed alone
+	BNE START_NOT_PRESSED ;not pressed alone. (Why alone checked?)
 MENU_GOTO_GAME:
 	LDA #$00 ;go to game here.
 	STA IN_MENU_FLAG ;not in menu now.
@@ -220,10 +220,10 @@ MENU_GOTO_GAME:
 	JSR SND_SET_F0_#$01 ;disable all sounds
 	JSR NMI_DISABLE_SPRITS/BG ;disable screen
 	LDA #$02
-	STA TIMER_STATE ;play music when back on title screen
+	STA TIMER_LARGE_COUNT ;play music when back on title screen
 	STA COUNTDOWN_2D ;set to low number.
 	RTS 
-START_NOT_PRESSED/ALONE:
+START_NOT_PRESSED:
 	LDX SWITCH_BACK_TO_MENU_FALSE ;wait for selection
 	BNE START_NOT_PRESSED/ALONE ;always taken?
 SKIP_MENU:
@@ -305,9 +305,9 @@ NO_BLANK_ZERO:
 	JSR MAKE_SETUP_PPU_BLOCK ;make the buffer to upload.
 COUNT_DOWN_MENU:
 	LDA COUNTDOWN_2D ;count down for menu music
-	BNE Switch_State ;dont set music to play
-	JSR SND_SET_F1 ;title sound?
-	LDA #$FF
+	BNE Switch_State ;only set music when "switched" to
+	JSR SND_SET_F1 ;title sound play?
+	LDA #$FF ;why not just DEC $2D? Hmm...
 	STA COUNTDOWN_2D ;title screen countdown reset
 Switch_State:
 	LDA SWITCH_BACK_TO_MENU_FALSE ;which selected?
@@ -328,9 +328,9 @@ SETUP_CLEAR_SCREEN:
 	JMP CLEAR_SCREEN
 CLEAR_SPRITES:
 	LDY #$00
-	LDA #$F4 ;Bug maybe: #$FF correct clear value.
+	LDA #$F4 ;Clear value.
 CLR_LOOP:
-	STA $0200,Y
+	STA $0200,Y ;clr sprites.
 	INY 
 	INY 
 	INY 
@@ -344,8 +344,8 @@ UPLOAD_PALETTE:
 	TYA 
 	ASL A ;mul by 2 for index
 	TAY 
-	LDA PALLETE_FILES_LOW,Y ;low
-	LDX PALLETE_FILES_HIGH,Y ;high
+	LDA PALLETE_PTR_L,Y ;low
+	LDX PALLETE_PTR_H,Y ;high
 	LDY #$00
 	STY PALETTE_UPLOAD ;clear flag
 PREP_PPU_FILE_PTR:
@@ -364,15 +364,15 @@ UPDATE_PALATTE_FROM_400_DUR_WHITEBOX:
 	BNE PREP_PPU_FILE_PTR ;file from RAM.
 GAME_STATE_INDIRECT_11:
 	DEC GAME_SUBSTATE?
-	BNE RTS ;leave if more data later.
+	BNE RTS ;leave if still counting. for sound to play?
 	LDX #$05 ;move 6 bytes
 MOVE_LOOP:
-	LDA 0430_STATE_PREP?,X
-	STA TIMER_STATE,X
+	LDA TIMER_STATE_SAVE,X
+	STA TIMER_LARGE_COUNT,X
 	DEX 
 	BPL MOVE_LOOP
-	LDA PREV_GAME_STATE?
-	STA IN_GAME_STATE
+	LDA PREV_GAME_STATE ;Unpause...
+	STA IN_GAME_STATE ;by moving old state to current.
 RTS:
 	RTS 
 READ_CONTROLLERS:
@@ -487,19 +487,19 @@ WRITE_ATTR_LOOP:
 	BNE WRITE_ATTR_LOOP
 	RTS 
 DEC_TIMERS_2B-2E:
-	LDX #$01 ;2C index
-	DEC TIMER_STATE
-	BPL DEC_TIMER_X ;Only B+C
-	LDA #$0A ;D+E only once every 11 frames
-	STA TIMER_STATE
+	LDX #$01 ;index
+	DEC TIMER_LARGE_COUNT
+	BPL DEC_TIMER(X) ;Only B+C
+	LDA #$0A ;Timers[2+] only dec every 12 frames.
+	STA TIMER_LARGE_COUNT
 	LDX #$03 ;index 2E instead
-DEC_TIMER_X:
-	LDA TIMER_2B,X
-	BEQ ALREADY_0
-	DEC TIMER_2B,X ;dec if not already 0
+DEC_TIMER(X):
+	LDA FAST_TIMERS,X
+	BEQ ALREADY_0 ;dont dec if 0.
+	DEC FAST_TIMERS,X ;dec if not already 0
 ALREADY_0:
 	DEX  ;next timer
-	BPL DEC_TIMER_X
+	BPL DEC_TIMER(X)
 	RTS 
 GOTO_TABLE_PAST_JSR:
 	STX SAVE_STATE_X ;save x and y
@@ -605,7 +605,7 @@ MORE_BYTES_IN_GROUP:
 	DEC TMP_06 ;dec num bytes left
 	BNE MORE_BYTES_IN_GROUP
 	JSR INCREASE_PPU_UPD8_INDEX
-	STX PPU_UPD8_BUF_INDEX ;save if leaving
+	STX PPU_UPD8_BUF_INDEX ;save new index.
 	CLC 
 	LDA #$20 ;move ppu to next line.
 	ADC TMP_00
@@ -620,10 +620,10 @@ MORE_BYTES_IN_GROUP:
 	RTS 
 INCREASE_PPU_UPD8_INDEX:
 	INX 
-	TXA 
-	CMP #$4F
+	TXA  ;not sure why not CPX below without this. TODO.
+	CMP #$4F ;last byte possible.
 	BCC NO_TERM ;if index < 4F
-	LDX PPU_UPD8_BUF_INDEX ;Stop overflow
+	LDX PPU_UPD8_BUF_INDEX ;Stop overflow if >=4F.
 	LDA #$00 ;terminate
 	STA PPU_UPDATE_BUF,X
 	PLA  ;leave 2 routines back, wtf?
@@ -888,12 +888,12 @@ PPU_ENABLE_SPRITES/BG:
 	LDA PPU_MASK_RAM
 	ORA #$18 ;set sprits/bg
 	BNE STORE_PPUMASK
-MOVE_$50B_FROM_$3XX_TO_$30,XX=Y:
+COPY_OBJ_$3YY_TO_OBJ_ZP:
 	STY MV_FROM_300_LOCATION ;save for move back later
 	LDX #$00 ;these bytes are the object data.
 Loopy:
 	LDA TRGT1_TYPE,Y ;it moves them to work on them all in zp.
-	STA $30,X ;and then moves them back.
+	STA OBJ_ZP_COPY,X ;and then moves them back.
 	INY  ;thanks for coming to my ted talk.
 	INX 
 	CPX #$50
@@ -903,7 +903,7 @@ MOVE_$50B_BACK:
 	LDY MV_FROM_300_LOCATION ;get original location.
 	LDX #$00
 Loopy:
-	LDA $30,X
+	LDA OBJ_ZP_COPY,X
 	STA TRGT1_TYPE,Y ;store back.
 	INY 
 	INX 
@@ -922,7 +922,7 @@ CLEAR_NMIRAN/PPUSTUFFFLAG:
 MOVE_STATE_AFTER_2D_COUNTDOWN:
 	LDA COUNTDOWN_2D
 	BNE RTS ;wait to move state.
-	LDA IN_GAME_FUTURE_STATE? ;future is now
+	LDA IN_GAME_FUTURE_STATE? ;future is now...
 	STA IN_GAME_STATE
 RTS:
 	RTS  ;leave.
@@ -952,7 +952,7 @@ CLEAR_0040_00BF:
 	LDA #$00 ;half of obj data? and other vars?
 	LDX #$7F
 MORE_CLEAR:
-	STA OBJ_ZP_$40,X
+	STA OBJ_ZP_PTR_L_UNK,X
 	DEX 
 	BPL MORE_CLEAR
 	RTS 
@@ -1058,7 +1058,7 @@ PPU_DISP_SHOTS_LEFT:
 	STA SHOT_FIRED ;clear fired.
 	LDX SHOTS_REMAINING
 	LDY #$00 ;setup index.
-DECIDE_LOOP:
+MOVE_MORE_TILES:
 	CPX #$00
 	BEQ NO_SHOTS_REMAINING
 	DEX  ;1 less shot.
@@ -1070,7 +1070,7 @@ L_070C:
 	STA PPU_UPDATE_BUF,Y ;store to spot.
 	INY  ;next spot.
 	CPY #$03 ;check for 3 bullets.
-	BNE DECIDE_LOOP
+	BNE MOVE_MORE_TILES ;do all tiles.
 	LDA #$13 ;1 group of 3
 	STA PPU_BLOCK_BUF_SETTING
 	LDX #$43 ;put where they go.
@@ -1203,7 +1203,7 @@ GAME_STATE_INDIRECT_0D:
 	STA IN_GAME_STATE ;new state
 	RTS 
 TIMER_2B_FROM_9D_STUFF:
-	LDA TIMER_2B
+	LDA FAST_TIMERS
 	BNE RTS ;rts if timer !0
 	LDY FLAG_9D_INDEX
 	BEQ RTS ;rts if flag clear.
@@ -1213,7 +1213,7 @@ TIMER_2B_FROM_9D_STUFF:
 	PHA 
 	INY 
 	LDA TIMER_9D_STUFF?,Y ;get next byte.
-	STA TIMER_2B ;set timer.
+	STA FAST_TIMERS ;set timer.
 	INY 
 	STY FLAG_9D_INDEX ;save.
 	PLA 
@@ -1248,7 +1248,7 @@ GAME_STATE_INDIRECT_01:
 	STA IN_GAME_STATE ;next game state
 	JSR SET_PPU_SCROLL ;set scroll
 	JSR PPU_ENABLE_SPRITES/BG ;turn on screeen
-	JMP SND_SET_F1_#$10 ;set a sound
+	JMP SND_SET_F1_#$10 ;set a sound, abuse RTS.
 GAME_STATE_INDIRECT_02:
 	JSR Clear_Memories
 	JSR SETUP_HITSREQD_TARGETS_OTHER
@@ -1266,7 +1266,7 @@ GAME_STATE_INDIRECT_02:
 GAME_STATE_INDIRECT_03:
 	JSR ZAP_PROC_TRIGGER
 	JSR PROCESS_ZAPPER
-	JSR FORWARD_TARGET_3 ;forwards other states. main code?
+	JSR FORWARD_TARGET_3 ;dog? main inits?
 	JSR FORWARD_TARGETS_1+2 ;ducks?
 	JSR PPU_DISP_SHOTS_LEFT
 	JSR UPDATE_ACTIVE_TARGET_STATUS
@@ -1282,17 +1282,17 @@ FORWARD_TARGETS_1+2:
 	LDA TRGT1_TYPE
 	BEQ FORWARD_TARGET_2 ;not active
 	LDY #$00
-	STY TARGET_DATA_ORIGIN ;where obj came from?
-	JSR MOVE_$50B_FROM_$3XX_TO_$30,XX=Y ;move obj data.
-	JSR PROCESS_OBJ_STATE
+	STY OBJ_ZP_ORIGIN_SLOT# ;where obj came from
+	JSR COPY_OBJ_$3YY_TO_OBJ_ZP ;move obj data.
+	JSR PROCESS_OBJ_ZP
 	JSR MOVE_$50B_BACK
 FORWARD_TARGET_2:
 	LDA TRGT2_TYPE
 	BEQ Zapper_shot? ;not active
 	LDY #$50
-	INC TARGET_DATA_ORIGIN
-	JSR MOVE_$50B_FROM_$3XX_TO_$30,XX=Y
-	JSR PROCESS_OBJ_STATE
+	INC OBJ_ZP_ORIGIN_SLOT#
+	JSR COPY_OBJ_$3YY_TO_OBJ_ZP
+	JSR PROCESS_OBJ_ZP
 	JSR MOVE_$50B_BACK
 Zapper_shot?:
 	LDA ZAP_SHOT_ENABLED
@@ -1312,7 +1312,7 @@ WRITE_COUNTDOWN:
 	BNE RTS ;in state, rts
 	LDA TRGT2_STATE
 	BNE RTS ;in state, rts
-	LDA TIMER_2B
+	LDA FAST_TIMERS
 	BNE RTS ;has time, rts
 	LDA #$0A ;state
 	LDY #$07 ;palette
@@ -1326,7 +1326,7 @@ BD_IS_0:
 	JSR WAIT_FOR_NMI
 	JSR PPU_DISP_SHOT_TEXT
 	LDA #$40
-	STA TIMER_2B ;store timer
+	STA FAST_TIMERS ;store timer
 	LDA #$00
 	STA ZAP_SHOT_ENABLED ;disable shots
 	JMP UPDATE_PPU_GROUP
@@ -1336,8 +1336,8 @@ DEC_A6:
 	DEC UNK_$A6 ;if not zero, dec.
 RTS:
 	RTS 
-PROCESS_OBJ_STATE:
-	LDA TRGT_STATE_PROCESS
+PROCESS_OBJ_ZP:
+	LDA OBJ_ZP_STATE
 	JSR GOTO_TABLE_PAST_JSR
 	.LOW RTS
 	.HIGH RTS ;RTS
@@ -1361,17 +1361,17 @@ TARGET_STATES_INDIRECT_01:
 	LDX #$1F ;move 0 to 1F bytes.
 LOOP:
 	LDA TARGET_INIT_DATA?,X ;initial target data?
-	STA $30,X ;store to in-ram buffer.
+	STA OBJ_ZP_COPY,X ;store to in-ram buffer.
 	DEX 
 	BPL LOOP ;move 1F to 0
-	LDA TARGET_DATA_ORIGIN ;if origin was obj 0?
-	BEQ TARGET_ZERO ;not sure why.
+	LDA OBJ_ZP_ORIGIN_SLOT# ;if origin was obj 0?
+	BEQ TARGET_ZERO ;not sure why. find last shot? idk.
 	LDA #$40
 	STA OBJ_36 ;different obj data?
 	LDA #$7F
-	STA FINAL_2XX_VALUE?TMP? ;store idk why.
+	STA OBJ_FINAL_2XX_VALUE? ;store idk why.
 TARGET_ZERO:
-	INC TRGT_STATE_PROCESS ;inc target state.
+	INC OBJ_ZP_STATE ;inc target state.
 RTS:
 	RTS 
 TARGET_STATES_INDIRECT_02:
@@ -1402,19 +1402,19 @@ NOT_EQ:
 	ASL A
 	TAX 
 	LDA OBJ_DATA_UNK_HIGH,X
-	STA OBJ_ZP_$44
+	STA OBJ_ZP_STEP?
 	LDA OBJ_DATA_UNK_LOW,X
-	STA OBJ_ZP_$45
+	STA OBJ_ZP_COPY+21
 	JSR RNG_ADVANCE ;get new rand number.
 	AND #$3F ;range
 	TAY 
 	INY  ;1 to 40
 	STY UNK_$A6 ;store
 	LDY #$00 ;reset index
-	LDA (OBJ_ZP_$44),Y ;load data pointer.
+	LDA (OBJ_ZP_STEP?),Y ;load data pointer.
 	INY 
-	STY OBJ_ZP_$47 ;store next index
-	STA OBJ_ZP_$33 ;store loaded data.
+	STY OBJ_ZP_COPY+23 ;store next index
+	STA OBJ_ZP_X_COORD. ;store loaded data.
 	LDY #$00
 	LDX UNK_$99 ;set something.
 	BEQ $99_CLEAR
@@ -1480,12 +1480,12 @@ L_09D0:
 	BCS L_09E2
 	LDA #$09
 L_09E2:
-	STA $3A
+	STA OBJ_ZP_COPY+10
 	LDA #$00
-	STA $46
-	STA OBJ_ZP_$42
-	STA $4E
-	STA $4F
+	STA OBJ_ZP_COPY+22
+	STA OBJ_ZP_STATE_TIMER?
+	STA OBJ_ZP_COPY+30
+	STA OBJ_ZP_COPY+31
 	LDA #$01
 	STA OBJ_ZP_$4B
 	STA $AE
@@ -1500,7 +1500,7 @@ L_09E2:
 	BCC L_0A08
 	LDA #$3E
 L_0A08:
-	STA $4C
+	STA OBJ_ZP_COPY+28
 	LDA #$00
 	STA $AF
 L_0A0E:
@@ -1508,7 +1508,7 @@ L_0A0E:
 	LDA UNK_BB
 	STA OBJ_ZP_$3B
 	DEC NUMBER_OF_TARGETS_IN_GAME_MODE
-	INC TRGT_STATE_PROCESS
+	INC OBJ_ZP_STATE
 	RTS 
 TARGET_STATES_INDIRECT_03:
 	LDA FRAME_COUNTER
@@ -1522,12 +1522,12 @@ L_0A22:
 L_0A29:
 	LDA SHOTS_REMAINING
 	BNE L_0A3E
-	LDA $4E
+	LDA OBJ_ZP_COPY+30
 	BNE L_0A3E
 	LDA #$01
-	STA $4E
+	STA OBJ_ZP_COPY+30
 	LDA #$F0
-	STA $46
+	STA OBJ_ZP_COPY+22
 	LDA #$00
 	JMP L_0B77
 L_0A3E:
@@ -1538,18 +1538,18 @@ L_0A42:
 L_0A45:
 	LDA OBJ_ZP_$4B
 	BEQ L_0A53
-	LDA OBJ_ZP_$32
+	LDA OBJ_ZP_COPY+2
 	CMP #$88
 	BCS L_0A42
 	LDA #$00
 	STA OBJ_ZP_$4B
 L_0A53:
 	LDX #$01
-	LDA $4C
+	LDA OBJ_ZP_COPY+28
 	BEQ L_0A70
 	LDA SHOTS_REMAINING
 	BNE L_0A66
-	STA $4C
+	STA OBJ_ZP_COPY+28
 L_0A5F:
 	JSR L_0F96
 	LDX #$01
@@ -1559,7 +1559,7 @@ L_0A66:
 	LDA FRAME_COUNTER
 	LSR A
 	BCC L_0A70
-	DEC $4C
+	DEC OBJ_ZP_COPY+28
 	BEQ L_0A5F
 L_0A70:
 	STX $AE
@@ -1578,13 +1578,13 @@ L_0A70:
 L_0A8A:
 	JMP L_0F16
 L_0A8D:
-	LDA OBJ_ZP_$32
+	LDA OBJ_ZP_COPY+2
 	CMP #$20
 	BCC L_0AD1
 	CMP #$90
 	BCS L_0AD7
 	LDX #$00
-	LDA OBJ_ZP_$33
+	LDA OBJ_ZP_X_COORD.
 	CMP #$10
 	BCC L_0AE3
 	LDX #$08
@@ -1620,11 +1620,11 @@ L_0ACA:
 	LSR A
 	JMP L_0B56
 L_0AD1:
-	INC OBJ_ZP_$32
+	INC OBJ_ZP_COPY+2
 	LDY #$00
 	BEQ L_0ADB
 L_0AD7:
-	DEC OBJ_ZP_$32
+	DEC OBJ_ZP_COPY+2
 	LDY #$02
 L_0ADB:
 	LDA OBJ_ZP_$48
@@ -1632,11 +1632,11 @@ L_0ADB:
 	TAX 
 	JMP L_0AED
 L_0AE3:
-	INC OBJ_ZP_$33
+	INC OBJ_ZP_X_COORD.
 	LDY #$04
 	BNE L_0AED
 L_0AE9:
-	DEC OBJ_ZP_$33
+	DEC OBJ_ZP_X_COORD.
 	LDY #$02
 L_0AED:
 	STX TMP_0C
@@ -1702,24 +1702,24 @@ L_0B52:
 L_0B56:
 	JMP L_0B77
 L_0B59:
-	LDA $46
+	LDA OBJ_ZP_COPY+22
 	BNE L_0BC3
-	LDY OBJ_ZP_$47
-	LDA (OBJ_ZP_$44),Y
+	LDY OBJ_ZP_COPY+23
+	LDA (OBJ_ZP_STEP?),Y
 	INY 
 	CMP #$FF
 	BNE L_0B70
-	LDA (OBJ_ZP_$44),Y
+	LDA (OBJ_ZP_STEP?),Y
 	INY 
-	STA TRGT_STATE_PROCESS
-	LDA (OBJ_ZP_$44),Y
-	STA OBJ_ZP_$42
+	STA OBJ_ZP_STATE
+	LDA (OBJ_ZP_STEP?),Y
+	STA OBJ_ZP_STATE_TIMER?
 	RTS 
 L_0B70:
-	STA $46
-	LDA (OBJ_ZP_$44),Y
+	STA OBJ_ZP_COPY+22
+	LDA (OBJ_ZP_STEP?),Y
 	INY 
-	STY OBJ_ZP_$47
+	STY OBJ_ZP_COPY+23
 L_0B77:
 	STA OBJ_ZP_$48
 	TAX 
@@ -1727,7 +1727,7 @@ L_0B77:
 	STA OBJ_ZP_$49
 	STA OBJ_ZP_$4A
 	LDA #$00
-	STA $34
+	STA OBJ_ZP_DIRECTION
 	LDA OBJ_ZP_$48
 	CMP #$11
 	BCC L_0BA2
@@ -1739,14 +1739,14 @@ L_0B77:
 	BEQ L_0BB0
 	CPX #$13
 	BEQ L_0BA8
-	INC $34
+	INC OBJ_ZP_DIRECTION
 	CPX #$12
 	BEQ L_0BB0
 	BNE L_0BBC
 L_0BA2:
 	CMP #$08
 	BCC L_0BA8
-	INC $34
+	INC OBJ_ZP_DIRECTION
 L_0BA8:
 	LDX #$0C
 	LDY #$E7
@@ -1763,20 +1763,20 @@ L_0BBC:
 	LDX #$1D
 	LDY #$E7
 L_0BC0:
-	JSR SETUP_$40/41,CLEAR_$42/43
+	JSR SETUP_OBJ_PTR+INIT_SUBSTATE+INDEX
 L_0BC3:
 	JSR L_181B
 L_0BC6:
 	PHA 
-	LDA OBJ_ZP_$32
+	LDA OBJ_ZP_COPY+2
 	CMP #$F0
 	BCC L_0BD1
 	PLA 
 	JMP L_0F2A
 L_0BD1:
-	LDA $46
+	LDA OBJ_ZP_COPY+22
 	BEQ L_0BD7
-	DEC $46
+	DEC OBJ_ZP_COPY+22
 L_0BD7:
 	LDY OBJ_ZP_$49
 L_0BD9:
@@ -1788,7 +1788,7 @@ L_0BD9:
 	JMP L_0BD9
 L_0BE6:
 	CLC 
-	ADC OBJ_ZP_$32
+	ADC OBJ_ZP_COPY+2
 	LDX OBJ_ZP_$4B
 	BNE L_0BF9
 	LDX $AE
@@ -1798,13 +1798,13 @@ L_0BE6:
 	CMP #$92
 	BCS L_0BFB
 L_0BF9:
-	STA OBJ_ZP_$32
+	STA OBJ_ZP_COPY+2
 L_0BFB:
 	LDA L_2661,Y
 	INY 
 	STY OBJ_ZP_$49
 	CLC 
-	ADC OBJ_ZP_$33
+	ADC OBJ_ZP_X_COORD.
 	LDX OBJ_ZP_$4B
 	BNE L_0C14
 	LDX $AE
@@ -1814,7 +1814,7 @@ L_0BFB:
 	CMP #$F2
 	BCS L_0C16
 L_0C14:
-	STA OBJ_ZP_$33
+	STA OBJ_ZP_X_COORD.
 L_0C16:
 	PLA 
 	SEC 
@@ -1834,8 +1834,8 @@ TARGET_STATES_INDIRECT_04:
 	LDX #$13
 	LDY #$E7
 L_0C37:
-	JSR SETUP_$40/41,CLEAR_$42/43
-	INC TRGT_STATE_PROCESS
+	JSR SETUP_OBJ_PTR+INIT_SUBSTATE+INDEX
+	INC OBJ_ZP_STATE
 	RTS 
 TARGET_STATES_INDIRECT_05:
 	LDA OBJ_ZP_$4D
@@ -1850,7 +1850,7 @@ L_0C4C:
 TARGET_STATES_INDIRECT_06:
 	JSR SPRITE_SOMETHING_2
 	JSR SND_SET_F0_#$10
-	LDA OBJ_ZP_$33
+	LDA OBJ_ZP_X_COORD.
 	LDX #$48
 	CMP #$48
 	BCC L_0C64 ;<48...range?
@@ -1871,48 +1871,48 @@ L_0C64:
 	LDY #$E7
 	BNE L_0C37 ;setup obj data.
 TARGET_STATES_INDIRECT_07:
-	LDA OBJ_ZP_$32 ;Y-coord?
+	LDA OBJ_ZP_COPY+2 ;Y-coord?
 	CMP #$B0
 	BCS GREATER_THAN_#$B0 ;>=
 	JMP L_0BC3 ;idfk
 GREATER_THAN_#$B0:
 	JSR SND_SET_F2_#$08 ;thump sound?
-	INC TRGT_STATE_PROCESS ;next state when sound.
+	INC OBJ_ZP_STATE ;next state when sound.
 	RTS 
 TARGET_STATES_INDIRECT_08:
 	LDA #$00
-	STA TRGT_STATE_PROCESS
+	STA OBJ_ZP_STATE
 	LDX OBJ_36
 	JMP SPRITE_OFF_SCREEN ;take away sprite?
 FORWARD_TARGET_3:
 	LDA TRGT3_TYPE
-	BEQ RTS ;deativated?
+	BEQ RTS ;deativated, nothing to display.
 	LDA #$02
-	STA TARGET_DATA_ORIGIN ;unk
+	STA OBJ_ZP_ORIGIN_SLOT#
 	LDY #$A0
-	JSR MOVE_$50B_FROM_$3XX_TO_$30,XX=Y ;move object to $30
-	JSR GOTO_STATE_31
+	JSR COPY_OBJ_$3YY_TO_OBJ_ZP ;move object to $30
+	JSR GOTO_OBJ_STATE
 	JSR MOVE_$50B_BACK ;put into high RAM
 RTS:
 	RTS 
-GOTO_STATE_31:
-	LDA TRGT_STATE_PROCESS
+GOTO_OBJ_STATE:
+	LDA OBJ_ZP_STATE
 	JSR GOTO_TABLE_PAST_JSR
-	.LOW RTS ;nothing
+	.LOW RTS ;RTS, default state?
 	.HIGH RTS
-	.LOW TARGET_STATE_INDIR_01 ;setup dog.
+	.LOW TARGET_STATE_INDIR_01 ;setup dog, moves to 2.
 	.HIGH TARGET_STATE_INDIR_01
-	.LOW TARGET_STATE_INDIR_02 ;setup something else.
+	.LOW TARGET_STATE_INDIR_02 ;setup obj substream, 
 	.HIGH TARGET_STATE_INDIR_02
 	.LOW TARGET_STATE_INDIR_03 ;watch for something.
 	.HIGH TARGET_STATE_INDIR_03
 	.LOW TARGET_STATE_INDIR_04 ;setup something else.
 	.HIGH TARGET_STATE_INDIR_04
-	.LOW TARGET_STATE_INDIR_11 ;unused?
+	.LOW TARGET_STATE_INDIR_11 ;copy of state 0x11
 	.HIGH TARGET_STATE_INDIR_11
 	.LOW TARGET_STATE_INDIR_06 ;setup.
 	.HIGH TARGET_STATE_INDIR_06
-	.LOW TARGET_STATE_INDIR_11 ;unused?
+	.LOW TARGET_STATE_INDIR_11 ;another copy.
 	.HIGH TARGET_STATE_INDIR_11
 	.LOW TARGET_STATE_INDIR_08 ;setup
 	.HIGH TARGET_STATE_INDIR_08
@@ -1932,79 +1932,79 @@ GOTO_STATE_31:
 	.HIGH TARGET_STATE_INDIR_0F
 	.LOW TARGET_STATE_INDIR_10 ;set something for object.
 	.HIGH TARGET_STATE_INDIR_10
-	.LOW TARGET_STATE_INDIR_11 ;OBJ counter?
+	.LOW TARGET_STATE_INDIR_11 ;disp obj?
 	.HIGH TARGET_STATE_INDIR_11
 	.LOW TARGET_STATE_INDIR_12 ;clears sprites of some sort.
 	.HIGH TARGET_STATE_INDIR_12
 TARGET_STATE_INDIR_01:
 	LDX #$1F ;index
 MOVE_DATA:
-	LDA TARGET_3_DATA,X
-	STA $30,X ;store to $30.
+	LDA TARGET_3_DATA,X ;move initial data here to OBJ_ZP_COPY
+	STA OBJ_ZP_COPY,X
 	DEX 
 	BPL MOVE_DATA
 	LDA #$03
 	STA SHOTS_REMAINING ;set shots remaining.
 	LDA #$01
 	STA SHOT_FIRED ;disable shooting the screen.
-	STA FLAG_AD ;set to 1?
+	STA FLAG_AD ;unk, set to 1.
 	LDA #$02
 	STA PALETTE_UPLOAD ;upload pallette.
 	LDA IN_GAME_STATE
-	CMP #$07 ;target 3 main state?
-	BNE NOT_TARGET_3_MAIN_STATE
+	CMP #$07 ;if game state is 7 (pigeons start?)
+	BNE GAME_HAS_DOG
 	LDA #$10
-	STA TRGT_STATE_PROCESS ;store.
+	STA OBJ_ZP_STATE ;move this to state #$10 if state is 7.
 	RTS 
-NOT_TARGET_3_MAIN_STATE:
+GAME_HAS_DOG:
 	LDA LEVEL
-	LDY #$18 ;unk values.
-	LDX #$00
+	LDY #$18 ;X coord for dog in intro, very left.
+	LDX #$00 ;not sure.
 	CMP #$01
-	BEQ IS_LEVEL_1(LONGER)
-	LDY #$50 ;mid screen?
-	LDX #$18 ;mid animation?
-IS_LEVEL_1(LONGER):
-	STY OBJ_ZP_$33 ;X location?
-	STX OBJ_ZP_$44 ;animation step?
+	BEQ IS_LEVEL_1_FARTHER_AWAY
+	LDY #$50 ;puts dog mid screen.
+	LDX #$18
+IS_LEVEL_1_FARTHER_AWAY:
+	STY OBJ_ZP_X_COORD. ;X coord.
+	STX OBJ_ZP_STEP? ;animation step? Not sure.
 	LDA #$01
 	STA FLAG_9D_INDEX ;anim flag?
 	JSR WAIT_FOR_NMI
-	JSR PLAY_SOUNDS
-	INC TRGT_STATE_PROCESS
+	JSR PLAY_SOUNDS ;init sounds to clear garbage up?
+	INC OBJ_ZP_STATE ;inc object state to 2.
 	RTS 
 TARGET_STATE_INDIR_02:
-	LDX #$8E ;$40
-	LDY #$E7 ;$41
+	LDX #$8E ;points to $E78E
+	LDY #$E7
 	JMP SETUP_INC_TRGT_GOTO_11
 TARGET_STATE_INDIR_03:
-	LDA UNK_35
+	LDA OBJ_ZP_FRAME
 	CMP #$0C
 	BNE L_0D2E
-	INC OBJ_ZP_$44
-	LDA OBJ_ZP_$44
+	INC OBJ_ZP_STEP?
+	LDA OBJ_ZP_STEP?
 	CMP #$20
 	BCC L_0D2E
-	INC TRGT_STATE_PROCESS
+	INC OBJ_ZP_STATE
 RTS:
 	RTS 
 L_0D2E:
 	JSR TARGET_STATE_INDIR_11
-	LDA OBJ_ZP_$33
-	CMP OBJ_ZP_$45
+	LDA OBJ_ZP_X_COORD.
+	CMP OBJ_ZP_COPY+21
 	BNE RTS
 	LDA #$06
-	STA TRGT_STATE_PROCESS
+	STA OBJ_ZP_STATE
 	RTS 
 TARGET_STATE_INDIR_04:
 	LDA #$00
-	STA OBJ_ZP_$44
+	STA OBJ_ZP_STEP?
 	LDX #$98
 	LDY #$E7
 SETUP_INC_TRGT_GOTO_11:
-	JSR SETUP_$40/41,CLEAR_$42/43
-	INC TRGT_STATE_PROCESS
-	JMP TARGET_STATE_INDIR_11
+	JSR SETUP_OBJ_PTR+INIT_SUBSTATE+INDEX
+	INC OBJ_ZP_STATE ;OBJ_ZP = 3
+	JMP TARGET_STATE_INDIR_11 ;display this obj NOW.
 TARGET_STATE_INDIR_06:
 	LDX #$A7
 	LDY #$E7
@@ -2025,17 +2025,17 @@ TARGET_STATE_INDIR_09:
 L_0D69:
 	JMP TARGET_STATE_INDIR_11
 TARGET_STATE_INDIR_0A:
-	LDA TIMER_2B
+	LDA FAST_TIMERS
 	BNE RTS
 	JSR SND_SET_F0_#$40
 	LDA #$80
-	STA OBJ_ZP_$33
+	STA OBJ_ZP_X_COORD.
 	JSR CLEAR_46-47,#$AC->32
 	LDX #$46
 	LDY #$E8
 	BNE SETUP_INC_TRGT_GOTO_11
 TARGET_STATE_INDIR_0C:
-	LDA TIMER_2B
+	LDA FAST_TIMERS
 	BNE RTS
 	JSR SND_SET_F1
 	JSR CLEAR_46-47,#$AC->32
@@ -2106,9 +2106,9 @@ FIRST_LEVEL:
 	LDA #$01
 	STA WHITE_BOX_DISPLAYED ;init?
 	LDA #$12
-	STA TRGT_STATE_PROCESS ;move state
+	STA OBJ_ZP_STATE ;move state
 	LDA #$00
-	STA OBJ_ZP_$42 ;init
+	STA OBJ_ZP_STATE_TIMER? ;init
 	RTS 
 TARGET_STATE_INDIR_0F:
 	LDA UNK_BB
@@ -2121,11 +2121,11 @@ TARGET_STATE_INDIR_0F:
 	JMP CLEAR_SPRITES
 L_0E29:
 	LDA #$0E
-	STA TRGT_STATE_PROCESS
+	STA OBJ_ZP_STATE
 	RTS 
 TARGET_STATE_INDIR_10:
 	LDA #$80
-	STA OBJ_ZP_$33
+	STA OBJ_ZP_X_COORD.
 	LDA #$01
 	STA OBJ_38
 	JSR CLEAR_46-47,#$AC->32
@@ -2133,154 +2133,154 @@ TARGET_STATE_INDIR_10:
 	LDY #$E8
 	JMP SETUP_INC_TRGT_GOTO_11
 TARGET_STATE_INDIR_12:
-	LDA OBJ_ZP_$42
+	LDA OBJ_ZP_STATE_TIMER?
 	BNE TARGET_STATE_INDIR_11
 	LDA #$00
-	STA TRGT_STATE_PROCESS
+	STA OBJ_ZP_STATE
 	LDX OBJ_36
 	JMP SPRITE_OFF_SCREEN
 TARGET_STATE_INDIR_11:
-	LDA OBJ_ZP_$42
-	BEQ L_0E56
-	DEC OBJ_ZP_$42
-	JMP L_101B
-L_0E56:
-	LDY OBJ_ZP_$43
-	LDA (OBJ_ZP_$40),Y
-	CMP #$FA
-	BCC L_0E72
-	INC OBJ_ZP_$43
+	LDA OBJ_ZP_STATE_TIMER? ;obj substate?
+	BEQ UPDATE_SPRITES? ;if update time...?
+	DEC OBJ_ZP_STATE_TIMER? ;not sure why dec.
+	JMP OBJ_TO_SCREEN_ROUTINE
+UPDATE_SPRITES?:
+	LDY OBJ_ZP_PTR_INDEX ;index held by obj
+	LDA (OBJ_ZP_PTR_L_UNK),Y ;loads data from obj ptr.
+	CMP #$FA ;if <= FA, not a flag?
+	BCC LESS_THAN_FA ;if < FA, go here.
+	INC OBJ_ZP_PTR_INDEX ;next index.
 	SEC 
-	SBC #$FA
+	SBC #$FA ;if >= #$FA, make index 0 to 5.
 	JSR GOTO_TABLE_PAST_JSR
-	.LOW RTS
+	.LOW RTS ;FA
 	.HIGH RTS
-	.LOW RTS
+	.LOW RTS ;FB
 	.HIGH RTS
-	.LOW INDIRECT_TABLE_UNK_02
-	.HIGH INDIRECT_TABLE_UNK_02
-	.LOW INDIRECT_TABLE_UNK_03
-	.HIGH INDIRECT_TABLE_UNK_03
-	.LOW INDIRECT_TABLE_UNK_04
-	.HIGH INDIRECT_TABLE_UNK_04
-	.LOW INDIRECT_TABLE_UNK_05
-	.HIGH INDIRECT_TABLE_UNK_05
-L_0E72:
-	LDY OBJ_ZP_$43
-	LDX TARGET_DATA_ORIGIN
-	CPX #$02
-	BNE L_0EE6
-	LDX TRGT_STATE_PROCESS
-	CPX #$09
-	BEQ L_0EAD
-	CPX #$0B
-	BEQ L_0E8C
-	CPX #$0D
-	BEQ L_0E8C
-	CPX #$11
-	BNE L_0ED4
+	.LOW OBJ_ZP_INDEX_TO_#$1E ;FC
+	.HIGH OBJ_ZP_INDEX_TO_#$1E
+	.LOW OBJ_ZP+8_TO_1 ;FD
+	.HIGH OBJ_ZP+8_TO_1
+	.LOW OBJ_ZP_PTR_INDEX=0 ;FE
+	.HIGH OBJ_ZP_PTR_INDEX=0
+	.LOW OBJ_ZP_NEW_STATE_FROM_PTR ;sets up substate from own ptr. FF
+	.HIGH OBJ_ZP_NEW_STATE_FROM_PTR
+LESS_THAN_FA:
+	LDY OBJ_ZP_PTR_INDEX ;get index.
+	LDX OBJ_ZP_ORIGIN_SLOT#
+	CPX #$02 ;if dog origin?
+	BNE OBJ_ZP_STATE_NOT_3 ;if not dog, go here.
+	LDX OBJ_ZP_STATE ;load dog state.
+	CPX #$09 ;state
+	BEQ L_0EAD ;if is
+	CPX #$0B ;state
+	BEQ L_0E8C ;if is
+	CPX #$0D ;state
+	BEQ L_0E8C ;if is
+	CPX #$11 ;state
+	BNE NOT_ANY_OBJ_STATE_WANTED ;Not any obj state we care for.
 L_0E8C:
-	LDX $46
-	BEQ L_0E9C
-	DEC $46
-	LDA OBJ_ZP_$47
+	LDX OBJ_ZP_COPY+22 ;load idk.
+	BEQ OBJ+22_IS_0 ;skip below if 0.
+	DEC OBJ_ZP_COPY+22 ;count down otherwise.
+	LDA OBJ_ZP_COPY+23 ;load OBJ+23
 	CLC 
-	ADC OBJ_ZP_$32
-	STA OBJ_ZP_$32
-	JMP L_101B
-L_0E9C:
-	STA $46
-	INY 
-	LDA (OBJ_ZP_$40),Y
-	BPL L_0EA8
-	AND #$7F
-	JSR L_112B
-L_0EA8:
-	STA OBJ_ZP_$47
-	JMP L_0EC9
+	ADC OBJ_ZP_COPY+2 ;Add to Y?
+	STA OBJ_ZP_COPY+2 ;store.
+	JMP OBJ_TO_SCREEN_ROUTINE
+OBJ+22_IS_0:
+	STA OBJ_ZP_COPY+22 ;store data loaded by ptr
+	INY  ;next byte.
+	LDA (OBJ_ZP_PTR_L_UNK),Y ;load next byte.
+	BPL IS_POSITIVE ;unsigned positive value.
+	AND #$7F ;get lower bits.
+	JSR TWO_COMPLIMENT ;get inverse.
+IS_POSITIVE:
+	STA OBJ_ZP_COPY+23 ;store
+	JMP MOVE_MORE_PTR_DATA
 L_0EAD:
 	TAX 
 	BPL L_0EB5
 	AND #$7F
-	JSR L_112B
+	JSR TWO_COMPLIMENT
 L_0EB5:
 	CLC 
-	ADC OBJ_ZP_$32
-	STA OBJ_ZP_$32
+	ADC OBJ_ZP_COPY+2
+	STA OBJ_ZP_COPY+2
 	INY 
-	LDA (OBJ_ZP_$40),Y
-	LDX $34
+	LDA (OBJ_ZP_PTR_L_UNK),Y
+	LDX OBJ_ZP_DIRECTION
 	BEQ L_0EC4
-	JSR L_112B
+	JSR TWO_COMPLIMENT
 L_0EC4:
 	CLC 
-	ADC OBJ_ZP_$33
-	STA OBJ_ZP_$33
-L_0EC9:
+	ADC OBJ_ZP_X_COORD.
+	STA OBJ_ZP_X_COORD.
+MOVE_MORE_PTR_DATA:
+	INY  ;next data ptr.
+	LDA (OBJ_ZP_PTR_L_UNK),Y ;load
+	STA OBJ_ZP_FRAME ;animation frame?
 	INY 
-	LDA (OBJ_ZP_$40),Y
-	STA UNK_35
-	INY 
-	STY OBJ_ZP_$43
-	JMP L_101B
-L_0ED4:
-	CPX #$03
-	BNE L_0EE6
-	LDA #$02
-	LDX $34
-	BEQ L_0EE1
-	JSR L_112B
-L_0EE1:
+	STY OBJ_ZP_PTR_INDEX ;store pointer to next byte.
+	JMP OBJ_TO_SCREEN_ROUTINE ;sprite on screen.
+NOT_ANY_OBJ_STATE_WANTED:
+	CPX #$03 ;OBJ_ZP_STATE
+	BNE OBJ_ZP_STATE_NOT_3
+	LDA #$02 ;this code runs after first time. state=2, so here after first.
+	LDX OBJ_ZP_DIRECTION ;get direction?
+	BEQ MOVING_RIGHT ;if right, dont invert.
+	JSR TWO_COMPLIMENT ;invert for negative.
+MOVING_RIGHT:
 	CLC 
-	ADC OBJ_ZP_$33
-	STA OBJ_ZP_$33
-L_0EE6:
-	LDA (OBJ_ZP_$40),Y
-	STA OBJ_ZP_$42
-	JMP L_0EC9
-INDIRECT_TABLE_UNK_05:
-	LDY OBJ_ZP_$43
-	LDA (OBJ_ZP_$40),Y
-	STA TRGT_STATE_PROCESS
+	ADC OBJ_ZP_X_COORD. ;add to coord.
+	STA OBJ_ZP_X_COORD. ;save to obj.
+OBJ_ZP_STATE_NOT_3:
+	LDA (OBJ_ZP_PTR_L_UNK),Y ;get data from obj ptr
+	STA OBJ_ZP_STATE_TIMER? ;write that to the substate. counter?
+	JMP MOVE_MORE_PTR_DATA
+OBJ_ZP_NEW_STATE_FROM_PTR:
+	LDY OBJ_ZP_PTR_INDEX
+	LDA (OBJ_ZP_PTR_L_UNK),Y
+	STA OBJ_ZP_STATE
 	INY 
-	LDA (OBJ_ZP_$40),Y
-	STA OBJ_ZP_$42
+	LDA (OBJ_ZP_PTR_L_UNK),Y
+	STA OBJ_ZP_STATE_TIMER?
 	RTS 
-INDIRECT_TABLE_UNK_04:
+OBJ_ZP_PTR_INDEX=0:
 	LDA #$00
-L_0EFB:
-	STA OBJ_ZP_$43
-	JMP L_0E56
-INDIRECT_TABLE_UNK_03:
+WRITE_OBJ_PTR_INDEX:
+	STA OBJ_ZP_PTR_INDEX
+	JMP UPDATE_SPRITES?
+OBJ_ZP+8_TO_1:
 	LDA #$01
 	STA OBJ_38
-	JMP L_0E56
-INDIRECT_TABLE_UNK_02:
+	JMP UPDATE_SPRITES?
+OBJ_ZP_INDEX_TO_#$1E:
 	LDA #$1E
-	BNE L_0EFB
-SETUP_$40/41,CLEAR_$42/43:
-	STX OBJ_ZP_$40
-	STY OBJ_ZP_$41
+	BNE WRITE_OBJ_PTR_INDEX ;always taken.
+SETUP_OBJ_PTR+INIT_SUBSTATE+INDEX:
+	STX OBJ_ZP_PTR_L_UNK ;Pointer setup from X+Y
+	STY OBJ_ZP_PTR_H_UNK
 	LDA #$00
-	STA OBJ_ZP_$43
-	STA OBJ_ZP_$42
+	STA OBJ_ZP_PTR_INDEX ;index to obj data of some type.
+	STA OBJ_ZP_STATE_TIMER? ;substate counter?
 	RTS 
 L_0F16:
-	LDA OBJ_ZP_$32
+	LDA OBJ_ZP_COPY+2
 	CMP #$08
 	BCC L_0F2A
 	CMP #$90
 	BCS L_0F33
-	LDA OBJ_ZP_$33
+	LDA OBJ_ZP_X_COORD.
 	CMP #$0C
 	BCC L_0F2A
 	CMP #$F4
 	BCC L_0F36
 L_0F2A:
 	LDA #$08
-	STA TRGT_STATE_PROCESS
+	STA OBJ_ZP_STATE
 	LDA #$00
-	STA OBJ_ZP_$42
+	STA OBJ_ZP_STATE_TIMER?
 	RTS 
 L_0F33:
 	JMP L_0AD7
@@ -2288,10 +2288,10 @@ L_0F36:
 	JMP L_0AA5
 CLEAR_46-47,#$AC->32:
 	LDA #$00
-	STA $46
-	STA OBJ_ZP_$47
+	STA OBJ_ZP_COPY+22
+	STA OBJ_ZP_COPY+23
 	LDA #$AC
-	STA OBJ_ZP_$32
+	STA OBJ_ZP_COPY+2
 	RTS 
 MOVE_DATA_TO_403+Y:
 	TAX  ;A to index?
@@ -2346,7 +2346,7 @@ L_0F96:
 	LDA #$06
 	JSR UPDATE_PPU_GROUP
 	LDA #$30
-	STA TIMER_2B
+	STA FAST_TIMERS
 	LDA #$06
 	STA PALETTE_UPLOAD
 	LDA #$01
@@ -2396,11 +2396,11 @@ SPRITE_SOMETHING_2:
 	BEQ IS_ZER0
 	LDX #$04
 IS_ZER0:
-	LDA OBJ_ZP_$32 ;Y-coord?
+	LDA OBJ_ZP_COPY+2 ;Y-coord?
 	SEC 
 	SBC #$04
 	STA SPR_OBJ_Y,X ;store at index...
-	LDA OBJ_ZP_$33 ;X coord?
+	LDA OBJ_ZP_X_COORD. ;X coord?
 	SEC 
 	SBC #$08
 	STA SPR_OBJ_X,X ;store 
@@ -2411,170 +2411,170 @@ IS_ZER0:
 	LDA #$30 ;counter value?
 	STA SPR_ANIM_COUNTER,X ;X is either 4 or 0, hmm...
 	RTS 
-L_101B:
-	LDA OBJ_36
-	STA UNK_B4
-	LDA UNK_35
+OBJ_TO_SCREEN_ROUTINE:
+	LDA OBJ_36 ;unk
+	STA SPRITE_INDEX_VAL ;last index of sprite?
+	LDA OBJ_ZP_FRAME ;get frame to show.
 	ASL A
-	TAY 
-	LDA #$C5
+	TAY  ;put to Y index.
+	LDA #$C5 ;set up pointer to $DAC5
 	STA TMP_12
 	LDA #$DA
 	STA TMP_13
-	LDA (TMP_12),Y
+	LDA (TMP_12),Y ;get frame from OBJ_ZP_FRAME
 	STA TMP_$10
-	INY 
+	INY  ;next data
 	LDA (TMP_12),Y
-	STA TMP_$11
+	STA TMP_$11 ;this sets up a pointer from data.
 	LDY #$00
-	STY $1A
-L_1038:
-	LDY $1A
-	LDA (TMP_$10),Y
-	CMP #$00
-	BNE L_1050
-	LDX UNK_B4
+	STY FRAME_PTR_INDEX ;clear index into frame ptr
+$12_WAS_#$FF:
+	LDY FRAME_PTR_INDEX ;get ptr value.
+	LDA (TMP_$10),Y ;load data from ptr.
+	CMP #$00 ;EOF.
+	BNE NOT_EOF_$10 ;if not 0, maniuplate data.
+	LDX SPRITE_INDEX_VAL ;index for sprite obj something.
 SPRITE_OFF_SCREEN:
-	LDA #$F4
+	LDA #$F4 ;move sprite off screen.
 CLEAR_SPRITE_LOOP:
-	CPX FINAL_2XX_VALUE?TMP?
-	BEQ RTS
-	STA $0200,X
-	INX 
+	CPX OBJ_FINAL_2XX_VALUE?
+	BEQ RTS ;if at end, leave.
+	STA $0200,X ;store data.
+	INX  ;next byte.
 	JMP CLEAR_SPRITE_LOOP
 RTS:
 	RTS 
-L_1050:
-	STA TMP_13
+NOT_EOF_$10:
+	STA TMP_13 ;store high byte. 3 levels of indirection!
 	INY 
-	LDA (TMP_$10),Y
+	LDA (TMP_$10),Y ;load byte
 	INY 
-	STA TMP_12
-	LDA (TMP_$10),Y
+	STA TMP_12 ;store low byte.
+	LDA (TMP_$10),Y ;Y offset.
 	INY 
 	CLC 
-	ADC OBJ_ZP_$32
-	STA TARGET_Y_COORD_CPY
-	LDA (TMP_$10),Y
+	ADC OBJ_ZP_COPY+2 ;Add to Y coord.
+	STA TARGET_Y_COORD_CPY ;store copy of this value.
+	LDA (TMP_$10),Y ;X offset.
 	INY 
-	LDX $34
-	BEQ L_106D
-	JSR L_112B
+	LDX OBJ_ZP_DIRECTION ;get direction.
+	BEQ DIRECTION_RIGHT ;3 below.
+	JSR TWO_COMPLIMENT ;if left, invert.
 	SEC 
-	SBC #$08
-L_106D:
+	SBC #$08 ;subtract sprite width also, for right math.
+DIRECTION_RIGHT:
 	CLC 
-	ADC OBJ_ZP_$33
-	STA TARGET_X_COORD_CPY
-	STY $1A
-	LDY #$00
-	LDA (TMP_12),Y
-	LDX #$00
-	CMP #$00
-	BEQ L_108C
-	LDX #$10
-	CMP #$01
-	BEQ L_108C
+	ADC OBJ_ZP_X_COORD. ;X position of obj.
+	STA TARGET_X_COORD_CPY ;store to copy.
+	STY FRAME_PTR_INDEX ;store new index of $10 into $1A
+	LDY #$00 ;reset index to load $12 data now.
+	LDA (TMP_12),Y ;get data from pointer in $10 stream.
+	LDX #$00 ;set index for object.
+	CMP #$00 ;this cmp not needed if rearranged.
+	BEQ WRITE_UPDATE_GROUP ;if is, X index correct.
+	LDX #$10 ;index for this obj.
+	CMP #$01 ;all this code could be avoided with an array smh.
+	BEQ WRITE_UPDATE_GROUP
 	LDX #$38
 	CMP #$02
-	BEQ L_108C
+	BEQ WRITE_UPDATE_GROUP
 	LDX #$44
-L_108C:
-	STX UPDATE_GROUP?
-L_108E:
-	INY 
-L_108F:
+WRITE_UPDATE_GROUP:
+	STX UPDATE_GROUP? ;i forget what this does.
+$12_NEXT:
+	INY  ;next $12 ptr data.
+MORE_DATA_$12:
 	LDA (TMP_12),Y
-	CMP #$FF
-	BEQ L_1038
+	CMP #$FF ;EOF?
+	BEQ $12_WAS_#$FF ;goes back to $10 stream data.
 	CMP #$FE
-	BNE L_10A0
+	BNE $12_NOT_#$FE
+	INC UPDATE_GROUP? ;FE value incs group twice.
 	INC UPDATE_GROUP?
-	INC UPDATE_GROUP?
-	JMP L_108E
-L_10A0:
+	JMP $12_NEXT ;keep processing $12
+$12_NOT_#$FE:
 	CMP #$FD
-	BNE L_10B9
-	INY 
+	BNE $12_NOT_#$FD
+	INY  ;FD does...
 	LDA (TMP_12),Y
 	CLC 
-	ADC OBJ_ZP_$3C
-	STA $B3
-	LDA OBJ_38
-	BEQ L_108E
-	LDA $B3
+	ADC OBJ_ZP_$3C ;add it to 3C
+	STA UNK_B3 ;not sure of variable.
+	LDA OBJ_38 ;unk what is.
+	BEQ $12_NEXT ;but if it's 0, process more data.
+	LDA UNK_B3 ;set B3 %0010 0000, behind background?
 	ORA #$20
-	STA $B3
-	JMP L_108E
-L_10B9:
+	STA UNK_B3 ;save
+	JMP $12_NEXT ;do more data.
+$12_NOT_#$FD:
 	LDX UPDATE_GROUP?
-	LDA L_1CC0,X
-	INC UPDATE_GROUP?
+	LDA SPR_DATA_UNK_ARRAY,X
+	INC UPDATE_GROUP? ;next group.
 	CLC 
-	ADC TARGET_Y_COORD_CPY
-	JSR L_110E
-	LDX UNK_B4
-	STA $0200,X
-	INC UNK_B4
-	LDA (TMP_12),Y
-	INY 
-	LDX UNK_B4
-	STA $0200,X
-	INC UNK_B4
-	LDA $B3
-	LDX $34
-	BEQ L_10E9
-	AND #$BF
-	STA TMP_0C
-	LDA $B3
-	AND #$40
-	EOR #$40
-	ORA TMP_0C
-L_10E9:
-	LDX UNK_B4
-	STA $0200,X
-	INC UNK_B4
-	LDX UPDATE_GROUP?
-	LDA L_1CC0,X
-	INC UPDATE_GROUP?
-	LDX $34
-	BEQ L_10FE
-	JSR L_112B
-L_10FE:
+	ADC TARGET_Y_COORD_CPY ;add Y copy with data. does it do this to overflow if going to always?
+	JSR MAKE_Y_PROPER ;something to do with Y, proper value, and FF.
+	LDX SPRITE_INDEX_VAL
+	STA $0200,X ;finally some sprite code jesus
+	INC SPRITE_INDEX_VAL ;next byte.
+	LDA (TMP_12),Y ;get data.
+	INY  ;next data.
+	LDX SPRITE_INDEX_VAL ;get index.
+	STA $0200,X ;store sprite data.
+	INC SPRITE_INDEX_VAL ;next data.
+	LDA UNK_B3 ;get TMP
+	LDX OBJ_ZP_DIRECTION ;direction? 0=>,1=<?
+	BEQ DIRECTION_RIGHT
+	AND #$BF ;X0XX XXXX
+	STA TMP_0C ;store to temp.
+	LDA UNK_B3 ;get B3, idk what is.
+	AND #$40 ;get bit 0100 0000
+	EOR #$40 ;invert it. sprite flip horizontally?
+	ORA TMP_0C ;store to TMP
+DIRECTION_RIGHT:
+	LDX SPRITE_INDEX_VAL ;get index.
+	STA $0200,X ;store sprite data.
+	INC SPRITE_INDEX_VAL ;next index.
+	LDX UPDATE_GROUP? ;get group.
+	LDA SPR_DATA_UNK_ARRAY,X ;get value
+	INC UPDATE_GROUP? ;next data.
+	LDX OBJ_ZP_DIRECTION ;get direction.
+	BEQ IS_RIGHT
+	JSR TWO_COMPLIMENT ;invert if left. x?
+IS_RIGHT:
 	CLC 
-	ADC TARGET_X_COORD_CPY
-	JSR L_1114
-	LDX UNK_B4
-	STA $0200,X
-	INC UNK_B4
-	JMP L_108F
-L_110E:
-	PHA 
-	LDA OBJ_ZP_$32
-	JMP L_1117
-L_1114:
-	PHA 
-	LDA OBJ_ZP_$33
-L_1117:
-	STA TMP_0F
-	PLA 
-	PHA 
+	ADC TARGET_X_COORD_CPY ;add with X coord.
+	JSR MAKE_X_PROPER ;make X proper value.
+	LDX SPRITE_INDEX_VAL ;get index.
+	STA $0200,X ;sprite data store.
+	INC SPRITE_INDEX_VAL ;next index.
+	JMP MORE_DATA_$12 ;LOOP.
+MAKE_Y_PROPER:
+	PHA  ;save A
+	LDA OBJ_ZP_COPY+2 ;Y coord.
+	JMP MAKE_A_PROPER_VALUE
+MAKE_X_PROPER:
+	PHA  ;save return.
+	LDA OBJ_ZP_X_COORD. ;X coord.
+MAKE_A_PROPER_VALUE:
+	STA TMP_0F ;A to 0F
+	PLA  ;pull data on stack.
+	PHA  ;push back for later again.
 	SEC 
-	SBC TMP_0F
-	BCS L_1123
-	JSR L_112B
-L_1123:
-	CMP #$30
-	PLA 
-	BCC L_112A
-	LDA #$FF
-L_112A:
+	SBC TMP_0F ;subtract with Y.
+	BCS IS_ON_SCREEN_STILL
+	JSR TWO_COMPLIMENT ;invert otherwise.
+IS_ON_SCREEN_STILL:
+	CMP #$30 ;idk why this value.
+	PLA  ;pull old value back.
+	BCC SPRITE_OKAY ;if < #$30
+	LDA #$FF ;off screen?
+SPRITE_OKAY:
 	RTS 
-L_112B:
-	EOR #$FF
+TWO_COMPLIMENT:
+	EOR #$FF ;invert
 	CLC 
-	ADC #$01
-	RTS 
+	ADC #$01 ;add 1 to correct.
+	RTS  ;return value.
 ZAP_PROC_TRIGGER:
 	LDA APU_FRAMECOUNTER ;zapper input
 	AND #$10 ;read trigger
@@ -2784,20 +2784,20 @@ NO_MORE_DATA:
 	STY HITS_REQUIRED_RAM_INDEX ;store back current index.
 	STA HITS_REQUIRED_RAM
 	LDA #$00
-	STA UNK_BB
+	STA UNK_BB ;clear idk
 	STA TARGETS_IN_LEVEL
 	LDA #$01
 	STA TRGT3_TYPE ;target type. dog?
 	STA TRGT3_STATE ;enabled state?
 	LDA #$FF
-	STA UNK_$9C
+	STA UNK_$9C ;set idk.
 	RTS 
 GAME_STATE_INDIRECT_0C:
 	LDA STATE_A9
 	JSR GOTO_TABLE_PAST_JSR
-	.LOW A9_STATE_0 ;A9 next state, init timer 2B to #$10
+	.LOW A9_STATE_0 ;A9 next state. sets up timer.
 	.HIGH A9_STATE_0
-	.LOW END_ROUND_STATUS_STUFF ;watch timer 2B, at 0 do something.
+	.LOW END_ROUND_STATUS_STUFF ;watch timer 2B, at 0 exec end of round
 	.HIGH END_ROUND_STATUS_STUFF
 	.LOW UNK_TABLE_02 ;find bonus.
 	.HIGH UNK_TABLE_02
@@ -2805,30 +2805,30 @@ GAME_STATE_INDIRECT_0C:
 	.HIGH UNK_TABLE_03
 A9_STATE_0:
 	LDA #$10
-	STA TIMER_2B
+	STA FAST_TIMERS
 	INC STATE_A9
 	RTS 
 END_ROUND_STATUS_STUFF:
-	LDA TIMER_2B
+	LDA FAST_TIMERS
 	BNE RTS ;RTS if not 0
 	LDY #$00 ;Y=NOT_PERFECT_FLAG
-	LDX #$01
-DUCK_CHECK_LOOP:
-	LDA DUCKS_HIT_ARRAY,X ;get if hit
+	LDX #$01 ;start with index 1
+DUCK_MOVE_LOOP:
+	LDA DUCKS_HIT_ARRAY,X ;get status+1
 	BEQ SKIP_STATUS_SWAP ;if not hit, skip.
-	LDA DUCKS_HIT_ARRAY-1,X ;get previous.
-	BNE SKIP_STATUS_SWAP ;if prev hit, skip.
-	INC DUCKS_HIT_ARRAY-1,X ;prev hit.
-	DEC DUCKS_HIT_ARRAY,X ;current not hit. effectively swapped.
-	LDY #$01 ;Not perfect.
+	LDA DUCKS_HIT_ARRAY-1,X ;get status
+	BNE SKIP_STATUS_SWAP ;if hit, skip.
+	INC DUCKS_HIT_ARRAY-1,X ;curr now hit.
+	DEC DUCKS_HIT_ARRAY,X ;+1 not hit now.
+	LDY #$01 ;Not perfect, needs another round.
 SKIP_STATUS_SWAP:
-	INX  ;next ducks.
+	INX  ;next target
 	CPX #$0A
-	BNE DUCK_CHECK_LOOP ;not done, loop.
+	BNE DUCK_MOVE_LOOP ;not done, loop.
 	DEY  ;if imperfect, Y=0.
 	BNE FINALIZE_ROUND ;finalize if not imperfect.
 	LDA #$00 ;perfect round here.
-	STA STATE_A9 ;reset state.
+	STA STATE_A9 ;do this state again.
 	JSR SND_SET_F1_#$20 ;play swapped music.
 	JMP PPU_DISP_TARGET_STATUS ;show new ducks.
 FINALIZE_ROUND:
@@ -2839,7 +2839,7 @@ FINALIZE_ROUND:
 	LDA #$00
 	STA SHOT_FIRED ;reset
 	LDA #$10 ;timer value
-	STA TIMER_2B
+	STA FAST_TIMERS
 	INC STATE_A9 ;next state.
 	LDA LEVEL
 	AND #$0F ;get bottom digit
@@ -2854,14 +2854,14 @@ NOT_ENOUGH_TARGETS:
 	LDA #$08
 	JSR UPDATE_PPU_GROUP
 	JSR SND_SET_F2_#$80
-	LDX #$06 ;$1E value.
-	LDA #$0C ;timer 2d value
+	LDX #$06 ;future state
+	LDA #$0C ;timer 2d val.
 	JMP X=FUTURE,A=TIMER,IN_GAME_STATE=#$12
 UNK_TABLE_02:
-	LDA TIMER_2B
+	LDA FAST_TIMERS
 	BNE RTS ;if not 0, RTS.
 	LDA #$10
-	STA TIMER_2B ;reset timer.
+	STA FAST_TIMERS ;reset timer.
 	INC SHOT_FIRED ;used different here?
 	LDA SHOT_FIRED
 	CMP #$0F
@@ -2901,7 +2901,7 @@ BONUS_FOUND:
 	LDA #$03
 	STA STATE_A9 ;bonus state?
 	LDA #$A0
-	STA TIMER_2B ;set timer.
+	STA FAST_TIMERS ;set timer.
 	JSR CLEAR_SPRITES ;no sprites.
 	LDA #$05
 	JMP UPDATE_PPU_GROUP ;update and RTS.
@@ -2934,7 +2934,7 @@ STORE_TILES_LOOP:
 	BPL STORE_TILES_LOOP ;if >=0, loop.
 	JMP PPU_SHOW_TARGETS_BUFFER
 UNK_TABLE_03:
-	LDA TIMER_2B
+	LDA FAST_TIMERS
 	BNE RTS ;if not 0, RTS.
 	LDA #$04 ;2D timer later.
 	BNE END_ROUND_STUFF? ;always taken.
@@ -3251,16 +3251,16 @@ PROCESS_TARGETS_AT_1:
 	LDA TRGT1_TYPE
 	BEQ PROCESS_TARGETS_AT_2
 	LDY #$00 ;origin $300
-	STY TARGET_DATA_ORIGIN ;save where obj info came from.
-	JSR MOVE_$50B_FROM_$3XX_TO_$30,XX=Y ;move obj to RAM.
+	STY OBJ_ZP_ORIGIN_SLOT# ;save where obj info came from.
+	JSR COPY_OBJ_$3YY_TO_OBJ_ZP ;move obj to RAM.
 	JSR HANDLE_TARGET_STATE ;handle target.
 	JSR MOVE_$50B_BACK ;move to $500.
 PROCESS_TARGETS_AT_2:
 	LDA TRGT2_TYPE
 	BEQ PROCESS_OTHER
 	LDY #$50 ;origin $350
-	INC TARGET_DATA_ORIGIN ;to 1?
-	JSR MOVE_$50B_FROM_$3XX_TO_$30,XX=Y
+	INC OBJ_ZP_ORIGIN_SLOT# ;to 1?
+	JSR COPY_OBJ_$3YY_TO_OBJ_ZP
 	JSR HANDLE_TARGET_STATE
 	JSR MOVE_$50B_BACK ;move to $500.
 PROCESS_OTHER:
@@ -3300,7 +3300,7 @@ BC_NOT_CLEAR:
 RTS:
 	RTS 
 HANDLE_TARGET_STATE:
-	LDA TRGT_STATE_PROCESS ;target states.
+	LDA OBJ_ZP_STATE ;target states.
 	JSR GOTO_TABLE_PAST_JSR
 	.LOW RTS
 	.HIGH RTS
@@ -3324,7 +3324,7 @@ TARGET_HANDLE_01:
 	LDX #$4F
 L_166B:
 	LDA L_28DA,X
-	STA $30,X
+	STA OBJ_ZP_COPY,X
 	DEX 
 	BPL L_166B
 	LDA #$01
@@ -3356,27 +3356,27 @@ L_1697:
 	ADC TMP_0C
 	TAX 
 	LDA L_2968,X
-	STA OBJ_ZP_$44
+	STA OBJ_ZP_STEP?
 	LDA L_2969,X
-	STA OBJ_ZP_$43
+	STA OBJ_ZP_PTR_INDEX
 	LDA L_296A,X
 	STA OBJ_ZP_$4A
 	LDA L_296B,X
-	STA OBJ_ZP_$42
+	STA OBJ_ZP_STATE_TIMER?
 	LDA L_296C,X
-	STA OBJ_ZP_$47
+	STA OBJ_ZP_COPY+23
 	LDA L_296D,X
-	STA $4C
+	STA OBJ_ZP_COPY+28
 	INC UNK_BB
 	LDA UNK_BB
 	STA OBJ_ZP_$3B
 	DEC NUMBER_OF_TARGETS_IN_GAME_MODE
 	LDA #$FF
-	STA $5F
+	STA OBJ_ZP_COPY+47
 	JSR SND_SET_F2_#$20
 	LDA #$05
 	STA L_0058
-	INC TRGT_STATE_PROCESS
+	INC OBJ_ZP_STATE
 L_16D4:
 	RTS 
 TARGET_HANDLE_03:
@@ -3386,7 +3386,7 @@ TARGET_HANDLE_03:
 	BNE L_16E0
 	JSR SND_SET_F0_#$20
 L_16E0:
-	LDA $4C
+	LDA OBJ_ZP_COPY+28
 	BMI L_16EC
 	LDA OBJ_ZP_$49
 	LSR A
@@ -3395,9 +3395,9 @@ L_16E0:
 	BCC $16EE
 L_16EC:
 	LDA #$07
-	CMP $5F
+	CMP OBJ_ZP_COPY+47
 	BEQ L_16FD
-	STA $5F
+	STA OBJ_ZP_COPY+47
 	CLC 
 	ADC LEVEL_TIED_VAR?
 	TAX 
@@ -3412,25 +3412,25 @@ L_1700:
 	SEC 
 	SBC #$01
 	BNE L_1700
-	LDA $4E
+	LDA OBJ_ZP_COPY+30
 	BMI L_174D
 	LDA OBJ_ZP_$49
 	CMP #$30
 	BCS L_174D
 	JSR L_182F
-	LDA OBJ_ZP_$32
+	LDA OBJ_ZP_COPY+2
 	SEC 
 	SBC #$40
-	STA OBJ_ZP_$32
+	STA OBJ_ZP_COPY+2
 	LDA OBJ_ZP_$49
 	LSR A
 	TAX 
 	LDA L_292A,X
-	STA UNK_35
+	STA OBJ_ZP_FRAME
 	STX TMP_0C
 	SEC 
 	SBC #$18
-	STA $56
+	STA OBJ_ZP_COPY+38
 	LDX LEVEL
 	LDA #$00
 	CPX #$12
@@ -3444,37 +3444,37 @@ L_173E:
 	ADC TMP_0C
 	TAX 
 	LDA L_2944,X
-	STA $3A
+	STA OBJ_ZP_COPY+10
 	JSR L_1805
-	JMP L_101B
+	JMP OBJ_TO_SCREEN_ROUTINE
 L_174D:
 	LDA #$08
-	STA TRGT_STATE_PROCESS
+	STA OBJ_ZP_STATE
 	RTS 
 TARGET_HANDLE_04:
 	LDX OBJ_ZP_$3B
 	LDA #$01
 	STA DUCKS_HIT_ARRAY-1,X
 	STA FLAG_AD
-	LDA $56
+	LDA OBJ_ZP_COPY+38
 	ASL A
 	ASL A
 	TAX 
 	LDY #$00
 L_1762:
 	LDA L_2AF2,X
-	STA $0050,Y
+	STA OBJ_ZP_COPY+32,Y
 	INX 
 	INY 
 	CPY #$04
 	BNE L_1762
 	LDA #$00
-	STA $57
+	STA OBJ_ZP_COPY+39
 	LDX #$00
 L_1774:
-	LDA OBJ_ZP_$32
+	LDA OBJ_ZP_COPY+2
 	JSR L_1AA5
-	LDA OBJ_ZP_$33
+	LDA OBJ_ZP_X_COORD.
 	JSR L_1AB5
 	INX 
 	INX 
@@ -3483,51 +3483,51 @@ L_1774:
 	JSR L_0F56
 	LDX OBJ_36
 	JSR SPRITE_OFF_SCREEN
-	INC TRGT_STATE_PROCESS
+	INC OBJ_ZP_STATE
 	RTS 
 TARGET_HANDLE_05:
 	JSR L_1805
 	JSR L_193A
 	LDA OBJ_36
-	STA UNK_B4
-	LDY $50
+	STA SPRITE_INDEX_VAL
+	LDY OBJ_ZP_COPY+32
 	INY 
 	BEQ L_17A7
 	LDX #$00
 	LDY #$0C
-	LDA $54
+	LDA OBJ_ZP_COPY+36
 	JSR L_17CE
 L_17A7:
-	LDY $53
+	LDY OBJ_ZP_COPY+35
 	INY 
 	BEQ L_17B5
 	LDX #$10
 	LDY #$20
-	LDA $55
+	LDA OBJ_ZP_COPY+37
 	JSR L_17CE
 L_17B5:
-	LDA $57
+	LDA OBJ_ZP_COPY+39
 	CMP #$02
 	BNE L_17BE
 	JSR SND_SET_F0_#$04
 L_17BE:
 	LDA #$00
-	STA $54
-	STA $55
+	STA OBJ_ZP_COPY+36
+	STA OBJ_ZP_COPY+37
 	RTS 
 TARGET_HANDLE_08:
 	LDA #$00
-	STA TRGT_STATE_PROCESS
+	STA OBJ_ZP_STATE
 	LDX OBJ_36
 	JMP SPRITE_OFF_SCREEN
 L_17CE:
 	STA TMP_0D
 	STY TMP_0C
-	LDY UNK_B4
+	LDY SPRITE_INDEX_VAL
 L_17D4:
 	LDA TMP_0D
 	BNE L_17DC
-	LDA $60,X
+	LDA OBJ_ZP_COPY+48,X
 	BNE L_17E0
 L_17DC:
 	INX 
@@ -3542,14 +3542,14 @@ L_17E0:
 	LDA L_2A30,X
 	STA $0200,Y
 	INY 
-	LDA $60,X
+	LDA OBJ_ZP_COPY+48,X
 	STA $0200,Y
 	INY 
 L_17F9:
 	INX 
 	CPX TMP_0C
 	BNE L_17D4
-	STY UNK_B4
+	STY SPRITE_INDEX_VAL
 	TYA 
 	TAX 
 	JMP SPRITE_OFF_SCREEN
@@ -3563,7 +3563,7 @@ L_1805:
 	LDA #$50
 	STA OBJ_36
 	LDA #$9F
-	STA FINAL_2XX_VALUE?TMP?
+	STA OBJ_FINAL_2XX_VALUE?
 L_181A:
 	RTS 
 L_181B:
@@ -3587,7 +3587,7 @@ L_182F:
 	SEC 
 	SBC #$00
 	TAY 
-	LDA $4E
+	LDA OBJ_ZP_COPY+30
 	SBC #$10
 	TAX 
 	LDA #$3B
@@ -3598,7 +3598,7 @@ L_182F:
 	SEC 
 	SBC #$00
 	TAY 
-	LDA $4E
+	LDA OBJ_ZP_COPY+30
 	SBC #$10
 	TAX 
 	LDA #$E7
@@ -3645,17 +3645,17 @@ L_182F:
 	JSR L_1907
 	SBC #$00
 	EOR #$7F
-	STA OBJ_ZP_$32
-	LDA OBJ_ZP_$43
+	STA OBJ_ZP_COPY+2
+	LDA OBJ_ZP_PTR_INDEX
 	SEC 
 	SBC #$00
 	TAY 
-	LDA OBJ_ZP_$44
+	LDA OBJ_ZP_STEP?
 	SBC #$09
 	TAX 
 	JSR L_1907
 	EOR #$80
-	STA OBJ_ZP_$33
+	STA OBJ_ZP_X_COORD.
 	RTS 
 L_18AE:
 	LDA #$0F
@@ -3664,27 +3664,27 @@ L_18B0:
 	SBC #$05
 	TAX 
 	LDY #$00
-	LDA OBJ_ZP_$40,X
+	LDA OBJ_ZP_PTR_L_UNK,X
 	BPL L_18BB
 	DEY 
 L_18BB:
 	CLC 
-	ADC OBJ_ZP_$41,X
-	STA OBJ_ZP_$41,X
+	ADC OBJ_ZP_PTR_H_UNK,X
+	STA OBJ_ZP_PTR_H_UNK,X
 	STA INDIR_JMP_HIGH
 	TYA 
 	LDY #$00
-	ADC OBJ_ZP_$42,X
-	STA OBJ_ZP_$42,X
+	ADC OBJ_ZP_STATE_TIMER?,X
+	STA OBJ_ZP_STATE_TIMER?,X
 	BPL L_18CC
 	DEY 
 L_18CC:
 	ASL INDIR_JMP_HIGH
-	ADC OBJ_ZP_$43,X
-	STA OBJ_ZP_$43,X
+	ADC OBJ_ZP_PTR_INDEX,X
+	STA OBJ_ZP_PTR_INDEX,X
 	TYA 
-	ADC OBJ_ZP_$44,X
-	STA OBJ_ZP_$44,X
+	ADC OBJ_ZP_STEP?,X
+	STA OBJ_ZP_STEP?,X
 	TXA 
 	BNE L_18B0
 	RTS 
@@ -3749,11 +3749,11 @@ L_1937:
 	LDA $95
 	RTS 
 L_193A:
-	INC $57
-	LDY $50
+	INC OBJ_ZP_COPY+39
+	LDY OBJ_ZP_COPY+32
 	CPY #$FF
 	BEQ L_1977
-	INC $50
+	INC OBJ_ZP_COPY+32
 	LDA L_2A50,Y
 	STA TMP_0C
 	STA TMP_0F
@@ -3761,8 +3761,8 @@ L_193A:
 	BEQ L_19B3
 	CMP #$BB
 	BEQ L_19BA
-	LDA $57
-	CMP $51
+	LDA OBJ_ZP_COPY+39
+	CMP OBJ_ZP_COPY+33
 	BEQ L_19C7
 L_1959:
 	LDX #$00
@@ -3773,9 +3773,9 @@ L_195B:
 	TXA 
 	ASL A
 	TAX 
-	LDA $60,X
+	LDA OBJ_ZP_COPY+48,X
 	BEQ L_1970
-	LDA $61,X
+	LDA OBJ_ZP_COPY+49,X
 	BEQ L_1970
 	JSR L_19F6
 L_1970:
@@ -3784,10 +3784,10 @@ L_1970:
 	CPX #$06
 	BNE L_195B
 L_1977:
-	LDY $53
+	LDY OBJ_ZP_COPY+35
 	CPY #$FF
 	BEQ L_19E2
-	INC $53
+	INC OBJ_ZP_COPY+35
 	LDA L_2A8F,Y
 	STA TMP_0C
 	CMP #$AA
@@ -3807,9 +3807,9 @@ L_1993:
 	CLC 
 	ADC #$10
 	TAX 
-	LDA $60,X
+	LDA OBJ_ZP_COPY+48,X
 	BEQ L_19AB
-	LDA $61,X
+	LDA OBJ_ZP_COPY+49,X
 	BEQ L_19AB
 	JSR L_19F6
 L_19AB:
@@ -3820,44 +3820,44 @@ L_19AB:
 	RTS 
 L_19B3:
 	LDA #$FF
-	STA $50
+	STA OBJ_ZP_COPY+32
 	JMP L_1977
 L_19BA:
 	LDA #$01
-	STA $54
+	STA OBJ_ZP_COPY+36
 	LDA #$00
 	STA TMP_0C
 	STA TMP_0F
 	JMP L_1959
 L_19C7:
-	LDA $52
-	STA $53
+	LDA OBJ_ZP_COPY+34
+	STA OBJ_ZP_COPY+35
 	JMP L_1959
 L_19CE:
 	LDA #$FF
-	STA $53
+	STA OBJ_ZP_COPY+35
 	JMP L_19E2
 L_19D5:
 	LDA #$01
-	STA $55
+	STA OBJ_ZP_COPY+37
 	LDA #$00
 	STA TMP_0C
 	STA TMP_0F
 	JMP L_1991
 L_19E2:
-	LDA $50
+	LDA OBJ_ZP_COPY+32
 	CMP #$FF
 	BNE L_19F5
-	LDA $53
+	LDA OBJ_ZP_COPY+35
 	CMP #$FF
 	BNE L_19F5
 	JSR SPRITE_SOMETHING_2
 	LDA #$08
-	STA TRGT_STATE_PROCESS
+	STA OBJ_ZP_STATE
 L_19F5:
 	RTS 
 L_19F6:
-	LDA $57
+	LDA OBJ_ZP_COPY+39
 	AND #$03
 	STA UPDATE_GROUP?
 	LDA TMP_$0E
@@ -3899,7 +3899,7 @@ TABLE_UNK_IDK_01:
 	JSR L_1AB5
 L_1A26:
 	LDA TMP_0C
-	JSR L_112B
+	JSR TWO_COMPLIMENT
 	JMP L_1AA5
 TABLE_UNK_IDK_02:
 	LDA UPDATE_GROUP?
@@ -3908,7 +3908,7 @@ TABLE_UNK_IDK_02:
 	JMP TABLE_UNK_IDK_04
 TABLE_UNK_IDK_03:
 	LDA TMP_0F
-	JSR L_112B
+	JSR TWO_COMPLIMENT
 	JSR L_1AA5
 TABLE_UNK_IDK_04:
 	LDA TMP_0C
@@ -3931,7 +3931,7 @@ L_1A5C:
 	JMP L_1AA5
 TABLE_UNK_IDK_09:
 	LDA TMP_0F
-	JSR L_112B
+	JSR TWO_COMPLIMENT
 	JSR L_1AB5
 	JMP L_1A5C
 TABLE_UNK_IDK_0A:
@@ -3941,7 +3941,7 @@ TABLE_UNK_IDK_0A:
 	JSR L_1AA5
 TABLE_UNK_IDK_0C:
 	LDA TMP_0C
-	JSR L_112B
+	JSR TWO_COMPLIMENT
 	JMP L_1AB5
 TABLE_UNK_IDK_0B:
 	LDA TMP_0F
@@ -3951,7 +3951,7 @@ TABLE_UNK_IDK_0D:
 	JSR TABLE_UNK_IDK_0C
 L_1A88:
 	LDA TMP_0F
-	JSR L_112B
+	JSR TWO_COMPLIMENT
 	JMP L_1AA5
 TABLE_UNK_IDK_0E:
 	LDA UPDATE_GROUP?
@@ -3960,12 +3960,12 @@ TABLE_UNK_IDK_0E:
 	JMP L_1A26
 TABLE_UNK_IDK_0F:
 	LDA TMP_0F
-	JSR L_112B
+	JSR TWO_COMPLIMENT
 	JSR L_1AB5
 	JMP L_1A26
 L_1AA5:
 	CLC 
-	ADC $60,X
+	ADC OBJ_ZP_COPY+48,X
 	CMP #$07
 	BCC L_1AB0
 	CMP #$C7
@@ -3973,11 +3973,11 @@ L_1AA5:
 L_1AB0:
 	LDA #$00
 L_1AB2:
-	STA $60,X
+	STA OBJ_ZP_COPY+48,X
 	RTS 
 L_1AB5:
 	CLC 
-	ADC $61,X
+	ADC OBJ_ZP_COPY+49,X
 	CMP #$07
 	BCC L_1AC0
 	CMP #$F8
@@ -3985,516 +3985,554 @@ L_1AB5:
 L_1AC0:
 	LDA #$00
 L_1AC2:
-	STA $61,X
+	STA OBJ_ZP_COPY+49,X
 	RTS 
-	.db #$0F
-	.db #$DB
-	.db #$14
-	.db #$DB
-	.db #$1D
-	.db #$DB
-	.db #$26
-	.db #$DB
-	.db #$2F
-	.db #$DB
-	.db #$38
-	.db #$DB
-	.db #$41
-	.db #$DB
-	.db #$4A
-	.db #$DB
-	.db #$5B
-	.db #$DB
-	.db #$86
-	.db #$DB
-	.db #$6C
-	.db #$DB
-	.db #$79
-	.db #$DB
-	.db #$8F
-	.db #$DB
-	.db #$9C
-	.db #$DB
-	.db #$A9
-	.db #$DB
-	.db #$B6
-	.db #$DB
-	.db #$C3
-	.db #$DB
-	.db #$3A
-	.db #$DC
-	.db #$FA
-	.db #$DB
-	.db #$07
-	.db #$DC
-	.db #$0C
-	.db #$DC
-	.db #$25
-	.db #$DC
-	.db #$D0
-	.db #$DB
-	.db #$E5
-	.db #$DB
-	.db #$4B
-	.db #$DC
-	.db #$50
-	.db #$DC
-	.db #$61
-	.db #$DC
-	.db #$72
-	.db #$DC
-	.db #$7B
-	.db #$DC
-	.db #$88
-	.db #$DC
-	.db #$91
-	.db #$DC
-	.db #$9A
-	.db #$DC
-	.db #$9F
-	.db #$DC
-	.db #$A8
-	.db #$DC
-	.db #$AD
-	.db #$DC
-	.db #$B6
-	.db #$DC
-	.db #$BB
-	.db #$DC
-	.db #$DD
-	.db #$0C
-	.db #$F0
-	.db #$F0
+OBJ_DATA_UNK:
+	.LOW ANIM_FRAME_PTR_FILE_00 ;Animation frame ptrs.
+	.HIGH ANIM_FRAME_PTR_FILE_00
+	.LOW ANIM_FRAME_PTR_FILE_01
+	.HIGH ANIM_FRAME_PTR_FILE_01
+	.LOW ANIM_FRAME_PTR_FILE_02
+	.HIGH ANIM_FRAME_PTR_FILE_02
+	.LOW ANIM_FRAME_PTR_FILE_03
+	.HIGH ANIM_FRAME_PTR_FILE_03
+	.LOW ANIM_FRAME_PTR_FILE_04
+	.HIGH ANIM_FRAME_PTR_FILE_04
+	.LOW ANIM_FRAME_PTR_FILE_05
+	.HIGH ANIM_FRAME_PTR_FILE_05
+	.LOW ANIM_FRAME_PTR_FILE_06
+	.HIGH ANIM_FRAME_PTR_FILE_06
+	.LOW ANIM_FRAME_PTR_FILE_07
+	.HIGH ANIM_FRAME_PTR_FILE_07
+	.LOW ANIM_FRAME_PTR_FILE_08
+	.HIGH ANIM_FRAME_PTR_FILE_08
+	.LOW ANIM_FRAME_PTR_FILE_09
+	.HIGH ANIM_FRAME_PTR_FILE_09
+	.LOW ANIM_FRAME_PTR_FILE_0A
+	.HIGH ANIM_FRAME_PTR_FILE_0A
+	.LOW ANIM_FRAME_PTR_FILE_0B
+	.HIGH ANIM_FRAME_PTR_FILE_0B
+	.LOW ANIM_FRAME_PTR_FILE_0C
+	.HIGH ANIM_FRAME_PTR_FILE_0C
+	.LOW ANIM_FRAME_PTR_FILE_0D
+	.HIGH ANIM_FRAME_PTR_FILE_0D
+	.LOW ANIM_FRAME_PTR_FILE_0E
+	.HIGH ANIM_FRAME_PTR_FILE_0E
+	.LOW ANIM_FRAME_PTR_FILE_0F
+	.HIGH ANIM_FRAME_PTR_FILE_0F
+	.LOW ANIM_FRAME_PTR_FILE_10
+	.HIGH ANIM_FRAME_PTR_FILE_10
+	.LOW ANIM_FRAME_PTR_FILE_11
+	.HIGH ANIM_FRAME_PTR_FILE_11
+	.LOW ANIM_FRAME_PTR_FILE_12
+	.HIGH ANIM_FRAME_PTR_FILE_12
+	.LOW ANIM_FRAME_PTR_FILE_13
+	.HIGH ANIM_FRAME_PTR_FILE_13
+	.LOW ANIM_FRAME_PTR_FILE_14
+	.HIGH ANIM_FRAME_PTR_FILE_14
+	.LOW ANIM_FRAME_PTR_FILE_15
+	.HIGH ANIM_FRAME_PTR_FILE_15
+	.LOW ANIM_FRAME_PTR_FILE_16
+	.HIGH ANIM_FRAME_PTR_FILE_16
+	.LOW ANIM_FRAME_PTR_FILE_17
+	.HIGH ANIM_FRAME_PTR_FILE_17
+	.LOW ANIM_FRAME_PTR_FILE_18
+	.HIGH ANIM_FRAME_PTR_FILE_18
+	.LOW ANIM_FRAME_PTR_FILE_19
+	.HIGH ANIM_FRAME_PTR_FILE_19
+	.LOW ANIM_FRAME_PTR_FILE_1A
+	.HIGH ANIM_FRAME_PTR_FILE_1A
+	.LOW ANIM_FRAME_PTR_FILE_1B
+	.HIGH ANIM_FRAME_PTR_FILE_1B
+	.LOW ANIM_FRAME_PTR_FILE_1C
+	.HIGH ANIM_FRAME_PTR_FILE_1C
+	.LOW ANIM_FRAME_PTR_FILE_1D
+	.HIGH ANIM_FRAME_PTR_FILE_1D
+	.LOW ANIM_FRAME_PTR_FILE_1E
+	.HIGH ANIM_FRAME_PTR_FILE_1E
+	.LOW ANIM_FRAME_PTR_FILE_1F
+	.HIGH ANIM_FRAME_PTR_FILE_1F
+	.LOW ANIM_FRAME_PTR_FILE_20
+	.HIGH ANIM_FRAME_PTR_FILE_20
+	.LOW ANIM_FRAME_PTR_FILE_21
+	.HIGH ANIM_FRAME_PTR_FILE_21
+	.LOW ANIM_FRAME_PTR_FILE_22
+	.HIGH ANIM_FRAME_PTR_FILE_22
+	.LOW ANIM_FRAME_PTR_FILE_23
+	.HIGH ANIM_FRAME_PTR_FILE_23
+	.LOW ANIM_FRAME_PTR_FILE_24
+	.HIGH ANIM_FRAME_PTR_FILE_24
+ANIM_FRAME_PTR_FILE_00:
+	.HIGH FRAME_0_DATA_00
+	.LOW FRAME_0_DATA_00
+	.HIGH FRAME_13_DATA_01
+	.LOW FRAME_13_DATA_01
 	.db #$00
-	.db #$DD
-	.db #$24
-	.db #$F0
-	.db #$F0
-	.db #$DD
-	.db #$E1
-	.db #$EF
+ANIM_FRAME_PTR_FILE_01:
+	.HIGH FRAME_1_DATA_00
+	.LOW FRAME_1_DATA_00
+	.HIGH FRAME_13_DATA_01
+	.LOW FRAME_13_DATA_01
+	.HIGH FRAME_2_DATA_02
+	.LOW FRAME_2_DATA_02
+	.HIGH FRAME_1_DATA_03
+	.LOW FRAME_1_DATA_03
+	.db #$00
+ANIM_FRAME_PTR_FILE_02:
+	.HIGH FRAME_2_DATA_00
+	.LOW FRAME_2_DATA_00
+	.HIGH FRAME_13_DATA_01
+	.LOW FRAME_13_DATA_01
+	.HIGH FRAME_2_DATA_02
+	.LOW FRAME_2_DATA_02
+	.HIGH FRAME_2_DATA_03
+	.LOW FRAME_2_DATA_03
+	.db #$00
+ANIM_FRAME_PTR_FILE_03:
+	.HIGH FRAME_3_DATA_00
+	.LOW FRAME_3_DATA_00
+	.HIGH FRAME_14_DATA_05
+	.LOW FRAME_14_DATA_05
+	.HIGH FRAME_3_DATA_02
+	.LOW FRAME_3_DATA_02
+	.HIGH FRAME_3_DATA_03
+	.LOW FRAME_3_DATA_03
+	.db #$00
+ANIM_FRAME_PTR_FILE_04:
+	.HIGH FRAME_4_DATA_00
+	.LOW FRAME_4_DATA_00
+	.HIGH FRAME_14_DATA_05
+	.LOW FRAME_14_DATA_05
+	.HIGH FRAME_4_DATA_02
+	.LOW FRAME_4_DATA_02
+	.HIGH FRAME_4_DATA_03
+	.LOW FRAME_4_DATA_03
+	.db #$00
+ANIM_FRAME_PTR_FILE_05:
+	.HIGH FRAME_5_DATA_00
+	.LOW FRAME_5_DATA_00
+	.HIGH FRAME_14_DATA_05
+	.LOW FRAME_14_DATA_05
+	.HIGH FRAME_5_DATA_02
+	.LOW FRAME_5_DATA_02
+	.db #$04 ;flag?
+	.db #$F0 ;or bad?
+	.db #$00
+ANIM_FRAME_PTR_FILE_06:
+	.HIGH FRAME_6_DATA_00
+	.LOW FRAME_6_DATA_00
+	.HIGH FRAME_13_DATA_01
+	.LOW FRAME_13_DATA_01
+	.HIGH FRAME_8_DATA_06
+	.LOW FRAME_8_DATA_06
+	.HIGH FRAME_6_DATA_03
+	.LOW FRAME_6_DATA_03
+	.db #$00
+ANIM_FRAME_PTR_FILE_07:
+	.HIGH FRAME_7_DATA_00
+	.LOW FRAME_7_DATA_00
+	.HIGH FRAME_8_DATA_01
+	.LOW FRAME_8_DATA_01
+	.HIGH FRAME_8_DATA_02
+	.LOW FRAME_8_DATA_02
+	.HIGH FRAME_7_DATA_03
+	.LOW FRAME_7_DATA_03
+	.HIGH FRAME_8_DATA_04
+	.LOW FRAME_8_DATA_04
+	.HIGH FRAME_7_DATA_05
+	.LOW FRAME_7_DATA_05
+	.HIGH FRAME_7_DATA_06
+	.LOW FRAME_7_DATA_06
+	.HIGH FRAME_7_DATA_07
+	.LOW FRAME_7_DATA_07
+	.db #$00
+ANIM_FRAME_PTR_FILE_08:
+	.HIGH FRAME_8_DATA_00
+	.LOW FRAME_8_DATA_00
+	.HIGH FRAME_8_DATA_01
+	.LOW FRAME_8_DATA_01
+	.HIGH FRAME_8_DATA_02
+	.LOW FRAME_8_DATA_02
+	.HIGH FRAME_17_DATA_09
+	.LOW FRAME_17_DATA_09
+	.HIGH FRAME_8_DATA_04
+	.LOW FRAME_8_DATA_04
+	.HIGH FRAME_8_DATA_05
+	.LOW FRAME_8_DATA_05
+	.HIGH FRAME_8_DATA_06
+	.LOW FRAME_8_DATA_06
+	.HIGH FRAME_8_DATA_07
+	.LOW FRAME_8_DATA_07
+	.db #$00
+ANIM_FRAME_PTR_FILE_0A:
+	.HIGH FRAME_A_DATA_00
+	.LOW FRAME_A_DATA_00
+	.HIGH FRAME_A_DATA_01
+	.LOW FRAME_A_DATA_01
+	.HIGH FRAME_A_DATA_02
+	.LOW FRAME_A_DATA_02
+	.HIGH FRAME_A_DATA_03
+	.LOW FRAME_A_DATA_03
+	.HIGH FRAME_A_DATA_04
+	.LOW FRAME_A_DATA_04
 	.db #$08
-	.db #$00
-	.db #$DD
-	.db #$3A
-	.db #$F0
-	.db #$F0
-	.db #$DD
-	.db #$E1
-	.db #$EE
-	.db #$08
-	.db #$00
-	.db #$DD
-	.db #$53
-	.db #$F0
-	.db #$F8
-	.db #$DD
-	.db #$65
-	.db #$F4
-	.db #$F0
-	.db #$00
-	.db #$DD
-	.db #$6F
-	.db #$F0
-	.db #$F8
-	.db #$DD
-	.db #$81
-	.db #$FC
-	.db #$F0
-	.db #$00
-	.db #$DD
-	.db #$8A
-	.db #$F0
-	.db #$F8
-	.db #$DD
-	.db #$9C
 	.db #$04
-	.db #$F0
 	.db #$00
-	.db #$DD
-	.db #$C3
-	.db #$F0
-	.db #$F0
-	.db #$DD
-	.db #$D7
-	.db #$FC
-	.db #$10
-	.db #$00
-	.db #$DD
-	.db #$E6
-	.db #$F8
-	.db #$F8
-	.db #$DD
-	.db #$EF
-	.db #$FF
-	.db #$F0
-	.db #$DD
-	.db #$F4
-	.db #$F7
-	.db #$08
-	.db #$DD
-	.db #$DC
-	.db #$FB
-	.db #$10
-	.db #$00
-	.db #$DD
-	.db #$FA
-	.db #$F8
-	.db #$F8
-	.db #$DD
-	.db #$EF
-	.db #$FE
-	.db #$F0
-	.db #$DD
-	.db #$F4
-	.db #$F6
-	.db #$08
-	.db #$DD
-	.db #$D7
-	.db #$FA
-	.db #$10
-	.db #$00
-	.db #$DE
-	.db #$04
-	.db #$F0
-	.db #$F4
-	.db #$DE
-	.db #$12
-	.db #$F4
-	.db #$04
-	.db #$DE
-	.db #$17
-	.db #$08
-	.db #$04
-	.db #$00
-	.db #$DE
-	.db #$1C
-	.db #$F0
-	.db #$FC
-	.db #$DE
-	.db #$2A
-	.db #$F4
-	.db #$F4
-	.db #$DE
-	.db #$2F
+ANIM_FRAME_PTR_FILE_0B:
+	.HIGH FRAME_B_DATA_00
+	.LOW FRAME_B_DATA_00
+	.HIGH FRAME_B_DATA_01
+	.LOW FRAME_B_DATA_01
+	.HIGH FRAME_B_DATA_02
+	.LOW FRAME_B_DATA_02
+	.HIGH FRAME_B_DATA_03
+	.LOW FRAME_B_DATA_03
+	.HIGH FRAME_B_DATA_04
+	.LOW FRAME_B_DATA_04
 	.db #$08
 	.db #$F4
 	.db #$00
-	.db #$DD
-	.db #$A5
-	.db #$F0
-	.db #$F0
-	.db #$DD
-	.db #$BD
+ANIM_FRAME_PTR_FILE_09:
+	.HIGH FRAME_9_DATA_00
+	.LOW FRAME_9_DATA_00
+	.HIGH FRAME_13_DATA_01
+	.LOW FRAME_13_DATA_01
+	.HIGH FRAME_9_DATA_02
+	.LOW FRAME_9_DATA_02
 	.db #$08
 	.db #$FA
 	.db #$00
-	.db #$DE
-	.db #$90
-	.db #$F8
-	.db #$10
-	.db #$DE
-	.db #$34
-	.db #$F0
-	.db #$E8
-	.db #$DF
-	.db #$ED
-	.db #$E8
-	.db #$EA
+ANIM_FRAME_PTR_FILE_0C:
+	.HIGH FRAME_F_DATA_00
+	.LOW FRAME_F_DATA_00
+	.HIGH FRAME_10_DATA_01
+	.LOW FRAME_10_DATA_01
+	.HIGH FRAME_10_DATA_02
+	.LOW FRAME_10_DATA_02
+	.HIGH FRAME_11_DATA_05
+	.LOW FRAME_11_DATA_05
+	.HIGH FRAME_10_DATA_04
+	.LOW FRAME_10_DATA_04
+	.HIGH FRAME_10_DATA_05
+	.LOW FRAME_10_DATA_05
 	.db #$00
-	.db #$DE
-	.db #$90
-	.db #$F8
-	.db #$10
-	.db #$DE
-	.db #$4B
-	.db #$F0
-	.db #$E8
-	.db #$DF
-	.db #$F2
-	.db #$E0
-	.db #$F0
+ANIM_FRAME_PTR_FILE_0D:
+	.HIGH FRAME_F_DATA_00
+	.LOW FRAME_F_DATA_00
+	.HIGH FRAME_10_DATA_01
+	.LOW FRAME_10_DATA_01
+	.HIGH FRAME_0D_DATA_02
+	.LOW FRAME_0D_DATA_02
+	.HIGH FRAME_11_DATA_05
+	.LOW FRAME_11_DATA_05
+	.HIGH FRAME_F_DATA_04
+	.LOW FRAME_F_DATA_04
+	.HIGH FRAME_11_DATA_07
+	.LOW FRAME_11_DATA_07
 	.db #$00
-	.db #$DE
-	.db #$90
-	.db #$F8
-	.db #$10
-	.db #$DE
-	.db #$62
-	.db #$F0
-	.db #$E8
-	.db #$DF
-	.db #$ED
-	.db #$E8
-	.db #$EA
+ANIM_FRAME_PTR_FILE_0E:
+	.HIGH FRAME_F_DATA_00
+	.LOW FRAME_F_DATA_00
+	.HIGH FRAME_10_DATA_01
+	.LOW FRAME_10_DATA_01
+	.HIGH FRAME_E_DATA_02
+	.LOW FRAME_E_DATA_02
+	.HIGH FRAME_11_DATA_05
+	.LOW FRAME_11_DATA_05
+	.HIGH FRAME_10_DATA_04
+	.LOW FRAME_10_DATA_04
+	.HIGH FRAME_10_DATA_05
+	.LOW FRAME_10_DATA_05
 	.db #$00
-	.db #$DE
-	.db #$90
-	.db #$F8
-	.db #$10
-	.db #$DE
-	.db #$79
-	.db #$F0
-	.db #$E8
-	.db #$DF
-	.db #$F2
-	.db #$E0
-	.db #$F0
+ANIM_FRAME_PTR_FILE_0F:
+	.HIGH FRAME_F_DATA_00
+	.LOW FRAME_F_DATA_00
+	.HIGH FRAME_10_DATA_01
+	.LOW FRAME_10_DATA_01
+	.HIGH FRAME_F_DATA_02
+	.LOW FRAME_F_DATA_02
+	.HIGH FRAME_11_DATA_05
+	.LOW FRAME_11_DATA_05
+	.HIGH FRAME_F_DATA_04
+	.LOW FRAME_F_DATA_04
+	.HIGH FRAME_11_DATA_07
+	.LOW FRAME_11_DATA_07
 	.db #$00
-	.db #$DE
-	.db #$9A
-	.db #$F8
-	.db #$10
-	.db #$DE
-	.db #$34
-	.db #$F0
-	.db #$E8
-	.db #$DF
-	.db #$ED
-	.db #$E8
-	.db #$EA
+ANIM_FRAME_PTR_FILE_10:
+	.HIGH FRAME_10_DATA_00
+	.LOW FRAME_10_DATA_00
+	.HIGH FRAME_10_DATA_01
+	.LOW FRAME_10_DATA_01
+	.HIGH FRAME_10_DATA_02
+	.LOW FRAME_10_DATA_02
+	.HIGH FRAME_11_DATA_05
+	.LOW FRAME_11_DATA_05
+	.HIGH FRAME_10_DATA_04
+	.LOW FRAME_10_DATA_04
+	.HIGH FRAME_10_DATA_05
+	.LOW FRAME_10_DATA_05
 	.db #$00
-	.db #$DE
-	.db #$A4
-	.db #$F0
-	.db #$F8
-	.db #$DE
-	.db #$B8
-	.db #$10
-	.db #$F8
-	.db #$DE
-	.db #$C0
-	.db #$ED
-	.db #$F0
-	.db #$DE
-	.db #$C6
-	.db #$F0
-	.db #$08
-	.db #$DE
-	.db #$CB
-	.db #$FE
-	.db #$F0
-	.db #$00
-	.db #$DE
-	.db #$D3
-	.db #$F0
-	.db #$F8
-	.db #$DE
-	.db #$E7
+ANIM_FRAME_PTR_FILE_16:
+	.HIGH FRAME_16_DATA_00
+	.LOW FRAME_16_DATA_00
+	.HIGH FRAME_14_DATA_05
+	.LOW FRAME_14_DATA_05
+	.HIGH FRAME_16_DATA_02
+	.LOW FRAME_16_DATA_02
 	.db #$10
 	.db #$F8
-	.db #$DE
-	.db #$EF
-	.db #$ED
-	.db #$F0
-	.db #$DE
-	.db #$F5
-	.db #$F0
-	.db #$08
-	.db #$DE
-	.db #$FA
-	.db #$FE
-	.db #$F0
+	.HIGH FRAME_16_DATA_04
+	.LOW FRAME_16_DATA_04
+	.HIGH FRAME_14_DATA_01
+	.LOW FRAME_14_DATA_01
+	.HIGH FRAME_16_DATA_06
+	.LOW FRAME_16_DATA_06
+	.HIGH FRAME_17_DATA_07
+	.LOW FRAME_17_DATA_07
+	.HIGH FRAME_16_DATA_08
+	.LOW FRAME_16_DATA_08
+	.HIGH FRAME_17_DATA_09
+	.LOW FRAME_17_DATA_09
 	.db #$00
-	.db #$DF
-	.db #$02
-	.db #$E0
-	.db #$00
-	.db #$DF
-	.db #$0B
-	.db #$F0
+ANIM_FRAME_PTR_FILE_17:
+	.HIGH FRAME_17_DATA_00
+	.LOW FRAME_17_DATA_00
+	.HIGH FRAME_14_DATA_05
+	.LOW FRAME_14_DATA_05
+	.HIGH FRAME_17_DATA_02
+	.LOW FRAME_17_DATA_02
 	.db #$10
-	.db #$DF
-	.db #$10
-	.db #$F0
-	.db #$F0
+	.db #$F8
+	.HIGH FRAME_17_DATA_04
+	.LOW FRAME_17_DATA_04
+	.HIGH FRAME_14_DATA_01
+	.LOW FRAME_14_DATA_01
+	.HIGH FRAME_17_DATA_06
+	.LOW FRAME_17_DATA_06
+	.HIGH FRAME_17_DATA_07
+	.LOW FRAME_17_DATA_07
+	.HIGH FRAME_17_DATA_08
+	.LOW FRAME_17_DATA_08
+	.HIGH FRAME_17_DATA_09
+	.LOW FRAME_17_DATA_09
 	.db #$00
-	.db #$DF
-	.db #$29
-	.db #$F0
-	.db #$F0
+ANIM_FRAME_PTR_FILE_12:
+	.HIGH FRAME_12_DATA_00
+	.LOW FRAME_12_DATA_00
+	.HIGH FRAME_11_DATA_01
+	.LOW FRAME_11_DATA_01
+	.HIGH FRAME_12_DATA_02
+	.LOW FRAME_12_DATA_02
+	.HIGH FRAME_12_DATA_03
+	.LOW FRAME_12_DATA_03
+	.HIGH FRAME_12_DATA_04
+	.LOW FRAME_12_DATA_04
+	.HIGH FRAME_13_DATA_01
+	.LOW FRAME_13_DATA_01
 	.db #$00
-	.db #$DF
-	.db #$3F
-	.db #$ED
-	.db #$F0
-	.db #$DF
-	.db #$45
+ANIM_FRAME_PTR_FILE_13:
+	.HIGH FRAME_13_DATA_00
+	.LOW FRAME_13_DATA_00
+	.HIGH FRAME_13_DATA_01
+	.LOW FRAME_13_DATA_01
+	.db #$00
+ANIM_FRAME_PTR_FILE_14:
+	.HIGH FRAME_14_DATA_00
+	.LOW FRAME_14_DATA_00
+	.HIGH FRAME_14_DATA_01
+	.LOW FRAME_14_DATA_01
+	.HIGH FRAME_14_DATA_02
+	.LOW FRAME_14_DATA_02
 	.db #$03
 	.db #$F0
-	.db #$DF
-	.db #$4B
-	.db #$F0
-	.db #$F8
-	.db #$DF
-	.db #$55
+	.HIGH FRAME_14_DATA_04
+	.LOW FRAME_14_DATA_04
+	.HIGH FRAME_14_DATA_05
+	.LOW FRAME_14_DATA_05
+	.HIGH FRAME_15_DATA_08
+	.LOW FRAME_15_DATA_08
 	.db #$10
 	.db #$F8
-	.db #$DF
-	.db #$5D
-	.db #$F0
-	.db #$00
-	.db #$DF
-	.db #$80
+	.HIGH FRAME_15_DATA_02
+	.LOW FRAME_15_DATA_02
+	.HIGH FRAME_15_DATA_03
+	.LOW FRAME_15_DATA_03
+	.HIGH FRAME_14_DATA_0A
+	.LOW FRAME_14_DATA_0A
 	.db #$04
 	.db #$18
 	.db #$00
-	.db #$DF
-	.db #$85
-	.db #$F0
-	.db #$E0
-	.db #$DF
-	.db #$5D
-	.db #$F0
-	.db #$00
-	.db #$DF
-	.db #$AB
+ANIM_FRAME_PTR_FILE_15:
+	.HIGH FRAME_15_DATA_00
+	.LOW FRAME_15_DATA_00
+	.HIGH FRAME_15_DATA_01
+	.LOW FRAME_15_DATA_01
+	.HIGH FRAME_15_DATA_02
+	.LOW FRAME_15_DATA_02
+	.HIGH FRAME_15_DATA_03
+	.LOW FRAME_15_DATA_03
+	.HIGH FRAME_15_DATA_04
+	.LOW FRAME_15_DATA_04
 	.db #$04
 	.db #$E0
-	.db #$DF
-	.db #$B0
+	.HIGH FRAME_15_DATA_06
+	.LOW FRAME_15_DATA_06
 	.db #$04
 	.db #$18
-	.db #$DF
-	.db #$55
+	.HIGH FRAME_15_DATA_08
+	.LOW FRAME_15_DATA_08
 	.db #$10
 	.db #$F8
 	.db #$00
-	.db #$DF
-	.db #$B5
-	.db #$E0
-	.db #$00
-	.db #$DF
-	.db #$CB
-	.db #$00
-	.db #$00
-	.db #$DF
-	.db #$DA
-	.db #$F0
-	.db #$E8
-	.db #$DF
-	.db #$F8
-	.db #$E0
-	.db #$F0
-	.db #$00
-	.db #$DF
-	.db #$FE
-	.db #$F8
-	.db #$F4
-	.db #$00
-	.db #$E0
-	.db #$0F
-	.db #$FC
-	.db #$F5
-	.db #$E0
-	.db #$14
-	.db #$FC
-	.db #$03
-	.db #$E0
-	.db #$19
-	.db #$F9
-	.db #$FC
-	.db #$E0
-	.db #$1E
-	.db #$FE
-	.db #$FC
-	.db #$00
-	.db #$E0
-	.db #$0F
-	.db #$FC
-	.db #$F7
-	.db #$E0
-	.db #$14
-	.db #$FC
-	.db #$01
-	.db #$E0
-	.db #$19
-	.db #$FA
-	.db #$FC
-	.db #$E0
-	.db #$1E
-	.db #$FD
-	.db #$FC
-	.db #$00
-	.db #$E0
-	.db #$0F
-	.db #$FC
-	.db #$F8
-	.db #$E0
-	.db #$14
-	.db #$FC
+ANIM_FRAME_PTR_FILE_11:
+	.HIGH FRAME_11_DATA_00
+	.LOW FRAME_11_DATA_00
+	.HIGH FRAME_11_DATA_01
+	.LOW FRAME_11_DATA_01
+	.HIGH FRAME_11_DATA_02
+	.LOW FRAME_11_DATA_02
 	.db #$00
 	.db #$00
-	.db #$E0
-	.db #$23
-	.db #$FC
-	.db #$F7
-	.db #$E0
-	.db #$23
-	.db #$FC
-	.db #$F9
-	.db #$E0
-	.db #$28
-	.db #$FC
-	.db #$01
+	.HIGH FRAME_11_DATA_04
+	.LOW FRAME_11_DATA_04
+	.HIGH FRAME_11_DATA_05
+	.LOW FRAME_11_DATA_05
+	.HIGH FRAME_11_DATA_06
+	.LOW FRAME_11_DATA_06
+	.HIGH FRAME_11_DATA_07
+	.LOW FRAME_11_DATA_07
 	.db #$00
-	.db #$E0
-	.db #$23
-	.db #$FC
-	.db #$F8
-	.db #$E0
-	.db #$28
-	.db #$FC
+ANIM_FRAME_PTR_FILE_18:
+	.HIGH FRAME_18_DATA_00
+	.LOW FRAME_18_DATA_00
+	.HIGH FRAME_18_DATA_01
+	.LOW FRAME_18_DATA_01
 	.db #$00
+ANIM_FRAME_PTR_FILE_19:
+	.HIGH FRAME_1B_DATA_00
+	.LOW FRAME_1B_DATA_00
+	.HIGH FRAME_19_DATA_01
+	.LOW FRAME_19_DATA_01
+	.HIGH FRAME_1B_DATA_02
+	.LOW FRAME_1B_DATA_02
+	.HIGH FRAME_19_DATA_03
+	.LOW FRAME_19_DATA_03
+	.HIGH FRAME_1A_DATA_04
+	.LOW FRAME_1A_DATA_04
+	.HIGH FRAME_19_DATA_05
+	.LOW FRAME_19_DATA_05
+	.HIGH FRAME_1A_DATA_06
+	.LOW FRAME_1A_DATA_06
+	.HIGH FRAME_19_DATA_07
+	.LOW FRAME_19_DATA_07
 	.db #$00
-	.db #$E0
-	.db #$23
-	.db #$FC
-	.db #$F9
-	.db #$E0
-	.db #$28
-	.db #$FC
-	.db #$FF
+ANIM_FRAME_PTR_FILE_1A:
+	.HIGH FRAME_1B_DATA_00
+	.LOW FRAME_1B_DATA_00
+	.HIGH FRAME_1C_DATA_01
+	.LOW FRAME_1C_DATA_01
+	.HIGH FRAME_1B_DATA_02
+	.LOW FRAME_1B_DATA_02
+	.HIGH FRAME_1C_DATA_05
+	.LOW FRAME_1C_DATA_05
+	.HIGH FRAME_1A_DATA_04
+	.LOW FRAME_1A_DATA_04
+	.HIGH FRAME_1A_DATA_05
+	.LOW FRAME_1A_DATA_05
+	.HIGH FRAME_1A_DATA_06
+	.LOW FRAME_1A_DATA_06
+	.HIGH FRAME_1A_DATA_07
+	.LOW FRAME_1A_DATA_07
 	.db #$00
-	.db #$E0
-	.db #$2D
-	.db #$FC
-	.db #$FC
+ANIM_FRAME_PTR_FILE_1B:
+	.HIGH FRAME_1B_DATA_00
+	.LOW FRAME_1B_DATA_00
+	.HIGH FRAME_24_DATA_01
+	.LOW FRAME_24_DATA_01
+	.HIGH FRAME_1B_DATA_02
+	.LOW FRAME_1B_DATA_02
+	.HIGH FRAME_1D_DATA_03
+	.LOW FRAME_1D_DATA_03
 	.db #$00
-	.db #$E0
-	.db #$32
-	.db #$FC
-	.db #$FC
-	.db #$E0
-	.db #$32
-	.db #$FC
-	.db #$FB
+ANIM_FRAME_PTR_FILE_1C:
+	.HIGH FRAME_1E_DATA_00
+	.LOW FRAME_1E_DATA_00
+	.HIGH FRAME_1C_DATA_01
+	.LOW FRAME_1C_DATA_01
+	.HIGH FRAME_1E_DATA_00
+	.LOW FRAME_1E_DATA_00
+	.HIGH FRAME_1E_DATA_01
+	.LOW FRAME_1E_DATA_01
+	.HIGH FRAME_1E_DATA_02
+	.LOW FRAME_1E_DATA_02
+	.HIGH FRAME_1C_DATA_05
+	.LOW FRAME_1C_DATA_05
 	.db #$00
-	.db #$E0
-	.db #$32
-	.db #$FC
-	.db #$FC
+ANIM_FRAME_PTR_FILE_1D:
+	.HIGH FRAME_1E_DATA_00
+	.LOW FRAME_1E_DATA_00
+	.HIGH FRAME_24_DATA_01
+	.LOW FRAME_24_DATA_01
+	.HIGH FRAME_1E_DATA_02
+	.LOW FRAME_1E_DATA_02
+	.HIGH FRAME_1D_DATA_03
+	.LOW FRAME_1D_DATA_03
 	.db #$00
-	.db #$E0
-	.db #$37
-	.db #$FC
-	.db #$FC
-	.db #$E0
-	.db #$37
-	.db #$FC
-	.db #$FD
+ANIM_FRAME_PTR_FILE_1E:
+	.HIGH FRAME_1E_DATA_00
+	.LOW FRAME_1E_DATA_00
+	.HIGH FRAME_1E_DATA_01
+	.LOW FRAME_1E_DATA_01
+	.HIGH FRAME_1E_DATA_02
+	.LOW FRAME_1E_DATA_02
+	.HIGH FRAME_1E_DATA_03
+	.LOW FRAME_1E_DATA_03
 	.db #$00
-	.db #$E0
-	.db #$37
-	.db #$FC
-	.db #$FC
+ANIM_FRAME_PTR_FILE_1F:
+	.HIGH FRAME_1F_DATA_00
+	.LOW FRAME_1F_DATA_00
+	.HIGH FRAME_23_DATA_01
+	.LOW FRAME_23_DATA_01
 	.db #$00
-	.db #$E0
-	.db #$3C
-	.db #$FC
-	.db #$F8
+ANIM_FRAME_PTR_FILE_20:
+	.HIGH FRAME_21_DATA_00
+	.LOW FRAME_21_DATA_00
+	.HIGH FRAME_23_DATA_01
+	.LOW FRAME_23_DATA_01
+	.HIGH FRAME_21_DATA_00
+	.LOW FRAME_21_DATA_00
+	.HIGH FRAME_20_DATA_03
+	.LOW FRAME_20_DATA_03
 	.db #$00
-L_1CC0:
+ANIM_FRAME_PTR_FILE_21:
+	.HIGH FRAME_21_DATA_00
+	.LOW FRAME_21_DATA_00
+	.HIGH FRAME_23_DATA_01
+	.LOW FRAME_23_DATA_01
+	.db #$00
+ANIM_FRAME_PTR_FILE_22:
+	.HIGH FRAME_23_DATA_00
+	.LOW FRAME_23_DATA_00
+	.HIGH FRAME_23_DATA_01
+	.LOW FRAME_23_DATA_01
+	.HIGH FRAME_23_DATA_00
+	.LOW FRAME_23_DATA_00
+	.HIGH FRAME_22_DATA_03
+	.LOW FRAME_22_DATA_03
+	.db #$00
+ANIM_FRAME_PTR_FILE_23:
+	.HIGH FRAME_23_DATA_00
+	.LOW FRAME_23_DATA_00
+	.HIGH FRAME_23_DATA_01
+	.LOW FRAME_23_DATA_01
+	.db #$00
+ANIM_FRAME_PTR_FILE_24:
+	.HIGH FRAME_24_DATA_00
+	.LOW FRAME_24_DATA_00
+	.HIGH FRAME_24_DATA_01
+	.LOW FRAME_24_DATA_01
+	.db #$00
+SPR_DATA_UNK_ARRAY:
 	.db #$00
 	.db #$00
 	.db #$08
@@ -4571,6 +4609,7 @@ L_1CC0:
 	.db #$18
 	.db #$08
 	.db #$18
+FRAME_0_DATA_00:
 	.db #$01
 	.db #$FD
 	.db #$00
@@ -4595,6 +4634,7 @@ L_1CC0:
 	.db #$0B
 	.db #$0C
 	.db #$FF
+FRAME_1_DATA_00:
 	.db #$01
 	.db #$FD
 	.db #$00
@@ -4617,6 +4657,7 @@ L_1CC0:
 	.db #$16
 	.db #$17
 	.db #$FF
+FRAME_2_DATA_00:
 	.db #$01
 	.db #$FD
 	.db #$00
@@ -4642,6 +4683,7 @@ L_1CC0:
 	.db #$00
 	.db #$22
 	.db #$FF
+FRAME_3_DATA_00:
 	.db #$00
 	.db #$FD
 	.db #$00
@@ -4660,6 +4702,7 @@ L_1CC0:
 	.db #$41
 	.db #$28
 	.db #$FF
+FRAME_3_DATA_02:
 	.db #$03
 	.db #$FD
 	.db #$00
@@ -4670,6 +4713,7 @@ L_1CC0:
 	.db #$23
 	.db #$24
 	.db #$FF
+FRAME_4_DATA_00:
 	.db #$00
 	.db #$FD
 	.db #$00
@@ -4688,6 +4732,7 @@ L_1CC0:
 	.db #$41
 	.db #$2D
 	.db #$FF
+FRAME_4_DATA_02:
 	.db #$03
 	.db #$FD
 	.db #$00
@@ -4697,6 +4742,7 @@ L_1CC0:
 	.db #$40
 	.db #$29
 	.db #$FF
+FRAME_5_DATA_00:
 	.db #$00
 	.db #$FD
 	.db #$00
@@ -4715,6 +4761,7 @@ L_1CC0:
 	.db #$41
 	.db #$32
 	.db #$FF
+FRAME_5_DATA_02:
 	.db #$03
 	.db #$FD
 	.db #$00
@@ -4724,6 +4771,7 @@ L_1CC0:
 	.db #$40
 	.db #$2E
 	.db #$FF
+FRAME_9_DATA_00:
 	.db #$01
 	.db #$FD
 	.db #$00
@@ -4748,12 +4796,14 @@ L_1CC0:
 	.db #$3C
 	.db #$3D
 	.db #$FF
+FRAME_9_DATA_02:
 	.db #$01
 	.db #$FD
 	.db #$01
 	.db #$3E
 	.db #$3F
 	.db #$FF
+FRAME_6_DATA_00:
 	.db #$01
 	.db #$FD
 	.db #$00
@@ -4774,21 +4824,25 @@ L_1CC0:
 	.db #$01
 	.db #$49
 	.db #$FF
+FRAME_8_DATA_06:
 	.db #$00
 	.db #$FD
 	.db #$01
 	.db #$4A
 	.db #$FF
+FRAME_7_DATA_06:
 	.db #$00
 	.db #$FD
 	.db #$01
 	.db #$F6
 	.db #$FF
+FRAME_2_DATA_02:
 	.db #$00
 	.db #$FD
 	.db #$01
 	.db #$03
 	.db #$FF
+FRAME_7_DATA_00:
 	.db #$02
 	.db #$FD
 	.db #$01
@@ -4798,17 +4852,20 @@ L_1CC0:
 	.db #$A2
 	.db #$A3
 	.db #$FF
+FRAME_8_DATA_02:
 	.db #$00
 	.db #$FD
 	.db #$01
 	.db #$45
 	.db #$FF
+FRAME_8_DATA_04:
 	.db #$00
 	.db #$FD
 	.db #$00
 	.db #$44
 	.db #$48
 	.db #$FF
+FRAME_8_DATA_00:
 	.db #$02
 	.db #$FD
 	.db #$01
@@ -4819,6 +4876,7 @@ L_1CC0:
 	.db #$A8
 	.db #$A9
 	.db #$FF
+FRAME_A_DATA_00:
 	.db #$00
 	.db #$FD
 	.db #$01
@@ -4833,16 +4891,19 @@ L_1CC0:
 	.db #$80
 	.db #$E5
 	.db #$FF
+FRAME_A_DATA_02:
 	.db #$00
 	.db #$FD
 	.db #$81
 	.db #$EA
 	.db #$FF
+FRAME_A_DATA_04:
 	.db #$00
 	.db #$FD
 	.db #$81
 	.db #$E9
 	.db #$FF
+FRAME_B_DATA_00:
 	.db #$00
 	.db #$FD
 	.db #$41
@@ -4857,16 +4918,19 @@ L_1CC0:
 	.db #$AB
 	.db #$AC
 	.db #$FF
+FRAME_B_DATA_02:
 	.db #$00
 	.db #$FD
 	.db #$C1
 	.db #$EA
 	.db #$FF
+FRAME_B_DATA_04:
 	.db #$00
 	.db #$FD
 	.db #$C1
 	.db #$E9
 	.db #$FF
+FRAME_10_DATA_02:
 	.db #$01
 	.db #$FD
 	.db #$03
@@ -4890,6 +4954,7 @@ L_1CC0:
 	.db #$5E
 	.db #$65
 	.db #$FF
+FRAME_0D_DATA_02:
 	.db #$01
 	.db #$FD
 	.db #$03
@@ -4913,6 +4978,7 @@ L_1CC0:
 	.db #$5E
 	.db #$74
 	.db #$FF
+FRAME_E_DATA_02:
 	.db #$01
 	.db #$FD
 	.db #$03
@@ -4936,6 +5002,7 @@ L_1CC0:
 	.db #$5E
 	.db #$7F
 	.db #$FF
+FRAME_F_DATA_02:
 	.db #$01
 	.db #$FD
 	.db #$03
@@ -4959,6 +5026,7 @@ L_1CC0:
 	.db #$84
 	.db #$89
 	.db #$FF
+FRAME_F_DATA_00:
 	.db #$02
 	.db #$FD
 	.db #$02
@@ -4969,6 +5037,7 @@ L_1CC0:
 	.db #$60
 	.db #$67
 	.db #$FF
+FRAME_10_DATA_00:
 	.db #$02
 	.db #$FD
 	.db #$02
@@ -4979,6 +5048,7 @@ L_1CC0:
 	.db #$4F
 	.db #$50
 	.db #$FF
+FRAME_16_DATA_00:
 	.db #$00
 	.db #$FD
 	.db #$02
@@ -4999,6 +5069,7 @@ L_1CC0:
 	.db #$03
 	.db #$D3
 	.db #$FF
+FRAME_16_DATA_02:
 	.db #$01
 	.db #$FD
 	.db #$03
@@ -5007,17 +5078,20 @@ L_1CC0:
 	.db #$43
 	.db #$D1
 	.db #$FF
+FRAME_16_DATA_04:
 	.db #$03
 	.db #$FD
 	.db #$02
 	.db #$C9
 	.db #$CA
 	.db #$FF
+FRAME_16_DATA_06:
 	.db #$00
 	.db #$FD
 	.db #$02
 	.db #$D4
 	.db #$FF
+FRAME_16_DATA_08:
 	.db #$03
 	.db #$FD
 	.db #$03
@@ -5026,6 +5100,7 @@ L_1CC0:
 	.db #$D5
 	.db #$D6
 	.db #$FF
+FRAME_17_DATA_00:
 	.db #$00
 	.db #$FD
 	.db #$02
@@ -5046,6 +5121,7 @@ L_1CC0:
 	.db #$03
 	.db #$D3
 	.db #$FF
+FRAME_17_DATA_02:
 	.db #$01
 	.db #$FD
 	.db #$03
@@ -5054,17 +5130,20 @@ L_1CC0:
 	.db #$43
 	.db #$D1
 	.db #$FF
+FRAME_17_DATA_04:
 	.db #$03
 	.db #$FD
 	.db #$02
 	.db #$C9
 	.db #$CA
 	.db #$FF
+FRAME_17_DATA_06:
 	.db #$00
 	.db #$FD
 	.db #$02
 	.db #$D4
 	.db #$FF
+FRAME_17_DATA_08:
 	.db #$03
 	.db #$FD
 	.db #$03
@@ -5073,6 +5152,7 @@ L_1CC0:
 	.db #$D5
 	.db #$D6
 	.db #$FF
+FRAME_12_DATA_00:
 	.db #$02
 	.db #$FD
 	.db #$03
@@ -5082,11 +5162,13 @@ L_1CC0:
 	.db #$B9
 	.db #$BA
 	.db #$FF
+FRAME_12_DATA_02:
 	.db #$00
 	.db #$FD
 	.db #$02
 	.db #$BF
 	.db #$FF
+FRAME_12_DATA_04:
 	.db #$01
 	.db #$FD
 	.db #$03
@@ -5112,6 +5194,7 @@ L_1CC0:
 	.db #$BE
 	.db #$C0
 	.db #$FF
+FRAME_13_DATA_00:
 	.db #$01
 	.db #$FD
 	.db #$03
@@ -5134,18 +5217,21 @@ L_1CC0:
 	.db #$FE
 	.db #$C8
 	.db #$FF
+FRAME_14_DATA_00:
 	.db #$00
 	.db #$FD
 	.db #$02
 	.db #$C9
 	.db #$CA
 	.db #$FF
+FRAME_14_DATA_02:
 	.db #$00
 	.db #$FD
 	.db #$03
 	.db #$DB
 	.db #$DC
 	.db #$FF
+FRAME_14_DATA_04:
 	.db #$00
 	.db #$FD
 	.db #$02
@@ -5156,6 +5242,7 @@ L_1CC0:
 	.db #$DF
 	.db #$E0
 	.db #$FF
+FRAME_15_DATA_08:
 	.db #$01
 	.db #$FD
 	.db #$03
@@ -5164,6 +5251,7 @@ L_1CC0:
 	.db #$43
 	.db #$D1
 	.db #$FF
+FRAME_15_DATA_02:
 	.db #$01
 	.db #$FD
 	.db #$42
@@ -5199,11 +5287,13 @@ L_1CC0:
 	.db #$E4
 	.db #$E8
 	.db #$FF
+FRAME_14_DATA_0A:
 	.db #$00
 	.db #$FD
 	.db #$01
 	.db #$EA
 	.db #$FF
+FRAME_15_DATA_00:
 	.db #$01
 	.db #$FD
 	.db #$41
@@ -5242,16 +5332,19 @@ L_1CC0:
 	.db #$03
 	.db #$E0
 	.db #$FF
+FRAME_15_DATA_04:
 	.db #$00
 	.db #$FD
 	.db #$41
 	.db #$EA
 	.db #$FF
+FRAME_15_DATA_06:
 	.db #$00
 	.db #$FD
 	.db #$01
 	.db #$EA
 	.db #$FF
+FRAME_11_DATA_00:
 	.db #$01
 	.db #$FD
 	.db #$03
@@ -5274,6 +5367,7 @@ L_1CC0:
 	.db #$95
 	.db #$96
 	.db #$FF
+FRAME_11_DATA_02:
 	.db #$01
 	.db #$FD
 	.db #$03
@@ -5289,6 +5383,7 @@ L_1CC0:
 	.db #$9B
 	.db #$9C
 	.db #$FF
+FRAME_11_DATA_04:
 	.db #$01
 	.db #$FD
 	.db #$03
@@ -5308,25 +5403,30 @@ L_1CC0:
 	.db #$62
 	.db #$63
 	.db #$FF
+FRAME_10_DATA_04:
 	.db #$01
 	.db #$FD
 	.db #$03
 	.db #$51
 	.db #$FF
+FRAME_F_DATA_04:
 	.db #$02
 	.db #$FD
 	.db #$03
 	.db #$68
 	.db #$69
 	.db #$FF
+FRAME_11_DATA_06:
 	.db #$00
 	.db #$FD
 	.db #$03
 	.db #$9D
 	.db #$9E
 	.db #$FF
+FRAME_18_DATA_00:
 	.db #$01
 	.db #$FD
+FRAME_11_DATA_01:
 	.db #$00
 	.db #$F2
 	.db #$F3
@@ -5342,51 +5442,61 @@ L_1CC0:
 	.db #$40
 	.db #$F4
 	.db #$FF
+FRAME_1B_DATA_00:
 	.db #$00
 	.db #$FD
 	.db #$00
 	.db #$EB
 	.db #$FF
+FRAME_1B_DATA_02:
 	.db #$00
 	.db #$FD
 	.db #$40
 	.db #$EB
 	.db #$FF
+FRAME_1A_DATA_04:
 	.db #$00
 	.db #$FD
 	.db #$00
 	.db #$F3
 	.db #$FF
+FRAME_1A_DATA_06:
 	.db #$00
 	.db #$FD
 	.db #$00
 	.db #$F5
 	.db #$FF
+FRAME_1E_DATA_00:
 	.db #$01
 	.db #$FD
 	.db #$00
 	.db #$EC
 	.db #$FF
+FRAME_1E_DATA_02:
 	.db #$01
 	.db #$FD
 	.db #$40
 	.db #$EC
 	.db #$FF
+FRAME_1F_DATA_00:
 	.db #$01
 	.db #$FD
 	.db #$00
 	.db #$EF
 	.db #$FF
+FRAME_21_DATA_00:
 	.db #$00
 	.db #$FD
 	.db #$00
 	.db #$F0
 	.db #$FF
+FRAME_23_DATA_00:
 	.db #$00
 	.db #$FD
 	.db #$00
 	.db #$F1
 	.db #$FF
+FRAME_24_DATA_00:
 	.db #$01
 	.db #$FD
 	.db #$00
@@ -5568,6 +5678,7 @@ DUCK_HUNT_PPU_FILE:
 	.db #$4F
 	.db #$4D
 	.db #$4E
+FRAME_11_DATA_07:
 	.db #$4F
 	.db #$49
 	.db #$4A
@@ -6659,23 +6770,23 @@ PPU_FILE_DUCKHUNT_SCREEN:
 	.db #$01
 	.db #$55
 	.db #$00
-PALLETE_FILES_LOW:
-	.db #$40
-PALLETE_FILES_HIGH:
-	.db #$E5
-	.db #$58
-	.db #$E5
-	.db #$7C
-	.db #$E5
-	.db #$A0
-	.db #$E5
-	.db #$A9
-	.db #$E5
-	.db #$C7
-	.db #$E5
-	.db #$B4
-	.db #$E5
-PPU_FILE_0:
+PALLETE_PTR_L:
+	.LOW PALLETTE_PTR_00
+PALLETE_PTR_H:
+	.HIGH PALLETTE_PTR_00
+	.LOW PALLETTE_PTR_01
+	.HIGH PALLETTE_PTR_01
+	.LOW PALLETTE_PTR_02
+	.HIGH PALLETTE_PTR_02
+	.LOW PALLETTE_PTR_03
+	.HIGH PALLETTE_PTR_03
+	.LOW PALLETTE_PTR_04
+	.HIGH PALLETTE_PTR_04
+	.LOW PALLETTE_PTR_05
+	.HIGH PALLETTE_PTR_05
+	.LOW PALLETTE_PTR_06
+	.HIGH PALLETTE_PTR_06
+PALLETTE_PTR_00:
 	.db #$3F ;3F00 addr
 	.db #$00
 	.db #$10 ;16 bytes, half pallet.
@@ -6700,7 +6811,7 @@ PPU_FILE_0:
 	.db #$50 ;3F10, 10 bytes, single block.
 	.db #$0F
 	.db #$00
-PPU_FILE_1:
+PALLETTE_PTR_01:
 	.db #$3F ;3F00 addr
 	.db #$00
 	.db #$20 ;whole pallet, 32 bytes.
@@ -6737,7 +6848,7 @@ PPU_FILE_1:
 	.db #$17
 	.db #$0F
 	.db #$00
-PPU_FILE_2:
+PALLETTE_PTR_02:
 	.db #$3F ;addr 3f00
 	.db #$00
 	.db #$20 ;32 bytes, whole pallet.
@@ -6774,7 +6885,7 @@ PPU_FILE_2:
 	.db #$17
 	.db #$0F
 	.db #$00
-PPU_FILE_3:
+PALLETTE_PTR_03:
 	.db #$3F ;ADDR 3F00, fired screen?
 	.db #$00
 	.db #$60 ;clear whole pallet, 32 bytes of 0F
@@ -6784,7 +6895,7 @@ PPU_FILE_3:
 	.db #$01
 	.db #$30
 	.db #$00
-PPU_FILE_4:
+PALLETTE_PTR_04:
 	.db #$3F ;3F00 addr, all black bg, sprites white.
 	.db #$00
 	.db #$60 ;clear whole pallet, 32 bytes of 0F.
@@ -6796,7 +6907,7 @@ PPU_FILE_4:
 	.db #$30
 	.db #$30
 	.db #$00
-PPU_FILE_6:
+PALLETTE_PTR_06:
 	.db #$3F ;3F10 ADDR
 	.db #$10
 	.db #$10 ;16 bytes
@@ -6816,7 +6927,7 @@ PPU_FILE_6:
 	.db #$07
 	.db #$17
 	.db #$0F
-PPU_FILE_5:
+PALLETTE_PTR_05:
 	.db #$3F ;3F00 Addr
 	.db #$00
 	.db #$10 ;16 bytes
@@ -7253,14 +7364,14 @@ TARGET_DATA_INDEX?:
 	.db #$21
 	.db #$22
 TARGET_3_DATA:
-	.db #$01 ;start data.
-	.db #$01
-	.db #$AC
-	.db #$18
+	.db #$01 ;type?
+	.db #$01 ;state?
+	.db #$AC ;Y coord.
+	.db #$18 ;X coord.
 	.db #$00
 	.db #$00
 	.db #$00
-	.db #$BF
+	.db #$BF ;not sure.
 	.db #$00
 	.db #$00
 	.db #$00
@@ -7285,15 +7396,16 @@ TARGET_3_DATA:
 	.db #$00
 	.db #$00
 	.db #$00 ;end of target 3 data.
-	.db #$06
-	.db #$0C
+UNK_OBJ3_DATA:
+	.db #$06 ;timer for change. 6 frames.
+	.db #$0C ;display frame.
 	.db #$06
 	.db #$0D
 	.db #$06
 	.db #$0E
 	.db #$06
 	.db #$0F
-	.db #$FE
+	.db #$FE ;index to 4?
 	.db #$00
 	.db #$08
 	.db #$0C
@@ -7634,6 +7746,7 @@ L_28DA:
 	.db #$00
 	.db #$00
 	.db #$01
+FRAME_10_DATA_05:
 	.db #$00
 	.db #$00
 	.db #$00
@@ -8972,6 +9085,7 @@ UNK_OBJ_DATA_OBJ_STATE_2_04:
 	.db #$30
 	.db #$04
 	.db #$40
+FRAME_14_DATA_01:
 	.db #$05
 	.db #$80
 	.db #$0B
@@ -8997,6 +9111,7 @@ UNK_OBJ_DATA_OBJ_STATE_2_05:
 	.db #$08
 	.db #$00
 	.db #$08
+FRAME_2_DATA_03:
 	.db #$0E
 	.db #$08
 	.db #$0D
@@ -9262,6 +9377,7 @@ UNK_OBJ_DATA_OBJ_STATE_2_0E:
 	.db #$28
 	.db #$0D
 	.db #$20
+FRAME_1_DATA_03:
 	.db #$02
 	.db #$80
 	.db #$01
@@ -9527,6 +9643,7 @@ UNK_OBJ_DATA_OBJ_STATE_2_1F:
 	.db #$FF
 	.db #$FF
 	.db #$FF
+FRAME_15_DATA_03:
 	.db #$FF
 	.db #$FF
 	.db #$FF
@@ -9535,6 +9652,7 @@ UNK_OBJ_DATA_OBJ_STATE_2_1F:
 	.db #$FF
 	.db #$FF
 	.db #$FF
+FRAME_17_DATA_07:
 	.db #$FF
 	.db #$FF
 	.db #$FF
@@ -9543,6 +9661,7 @@ UNK_OBJ_DATA_OBJ_STATE_2_1F:
 	.db #$FF
 	.db #$FF
 	.db #$FF
+FRAME_12_DATA_03:
 	.db #$FF
 	.db #$FF
 	.db #$FF
@@ -9728,6 +9847,7 @@ UNK_OBJ_DATA_OBJ_STATE_2_1F:
 	.db #$FF
 	.db #$FF
 	.db #$FF
+FRAME_12_DATA_01:
 	.db #$FF
 	.db #$FF
 	.db #$FF
@@ -9751,6 +9871,7 @@ UNK_OBJ_DATA_OBJ_STATE_2_1F:
 	.db #$FF
 	.db #$FF
 	.db #$FF
+FRAME_15_DATA_01:
 	.db #$FF
 	.db #$FF
 	.db #$FF
@@ -9759,6 +9880,7 @@ UNK_OBJ_DATA_OBJ_STATE_2_1F:
 	.db #$FF
 	.db #$FF
 	.db #$FF
+FRAME_11_DATA_05:
 	.db #$FF
 	.db #$FF
 	.db #$FF
@@ -9767,18 +9889,22 @@ UNK_OBJ_DATA_OBJ_STATE_2_1F:
 	.db #$FF
 	.db #$FF
 	.db #$FF
+FRAME_13_DATA_01:
 	.db #$FF
 	.db #$FF
 	.db #$FF
 	.db #$FF
+FRAME_A_DATA_01:
 	.db #$FF
 	.db #$FF
 	.db #$FF
 	.db #$FF
+FRAME_14_DATA_05:
 	.db #$FF
 	.db #$FF
 	.db #$FF
 	.db #$FF
+FRAME_B_DATA_01:
 	.db #$FF
 	.db #$FF
 	.db #$FF
@@ -10509,6 +10635,7 @@ L_3401:
 L_3402:
 	.db #$18
 	.db #$10
+FRAME_A_DATA_03:
 	.db #$01
 	.db #$18
 	.db #$00
@@ -10645,6 +10772,7 @@ L_34D1:
 	TYA 
 	BPL L_34FA
 	JSR L_3544
+FRAME_B_DATA_03:
 	LDY $D3
 	INC $D3
 	LDA ($FE),Y
@@ -11377,10 +11505,12 @@ L_384E:
 	.db #$28
 	.db #$28
 	.db #$81
+FRAME_18_DATA_01:
 	.db #$2A
 	.db #$02
 	.db #$40
 	.db #$83
+FRAME_8_DATA_01:
 	.db #$02
 	.db #$81
 	.db #$02
@@ -11641,6 +11771,7 @@ L_384E:
 	.db #$24
 	.db #$22
 	.db #$02
+FRAME_19_DATA_05:
 	.db #$20
 	.db #$02
 	.db #$1E
@@ -11661,6 +11792,7 @@ L_384E:
 	.db #$44
 	.db #$40
 	.db #$85
+FRAME_8_DATA_07:
 	.db #$3E
 	.db #$81
 	.db #$40
@@ -11897,6 +12029,7 @@ L_384E:
 	.db #$06
 	.db #$09
 	.db #$03
+FRAME_1A_DATA_05:
 	.db #$06
 	.db #$FF
 	.db #$FF
@@ -11918,6 +12051,7 @@ SND_SAMPLE_1:
 	.db #$49
 	.db #$BB
 	.db #$55
+FRAME_7_DATA_07:
 	.db #$45
 	.db #$A9
 	.db #$6E
@@ -12159,10 +12293,12 @@ SND_INDIR_DAT:
 	.db #$FE
 	.db #$3F
 	.db #$00
-SND_SAMPLE_2:
+FRAME_1D_DATA_03:
 	.db #$E8
+FRAME_1C_DATA_05:
 	.db #$03
 	.db #$F4
+FRAME_19_DATA_03:
 	.db #$BF
 	.db #$E4
 	.db #$5E
@@ -12176,6 +12312,7 @@ SND_SAMPLE_2:
 	.db #$00
 	.db #$FC
 	.db #$7F
+FRAME_6_DATA_03:
 	.db #$00
 	.db #$F8
 	.db #$7F
@@ -12400,21 +12537,30 @@ SND_SAMPLE_2:
 	.db #$AB
 	.db #$14
 	.db #$A5
+FRAME_4_DATA_03:
 	.db #$AD
 	.db #$4A
 	.db #$A4
 	.db #$BE
 	.db #$AB
+FRAME_19_DATA_01:
 	.db #$14
 	.db #$49
+FRAME_1C_DATA_01:
 	.db #$EB
+FRAME_24_DATA_01:
 	.db #$56
+FRAME_1E_DATA_01:
 	.db #$25
 	.db #$D1
+FRAME_20_DATA_03:
 	.db #$6E
+FRAME_23_DATA_01:
 	.db #$4B
+FRAME_22_DATA_03:
 	.db #$91
 	.db #$54
+FRAME_1E_DATA_03:
 	.db #$EB
 	.db #$AA
 	.db #$52
@@ -12668,6 +12814,7 @@ SND_SAMPLE_2:
 	.db #$13
 	.db #$94
 	.db #$FB
+FRAME_1A_DATA_07:
 	.db #$12
 	.db #$65
 	.db #$4B
@@ -12912,6 +13059,7 @@ SND_SAMPLE_2:
 	.db #$6A
 	.db #$95
 	.db #$94
+FRAME_17_DATA_09:
 	.db #$AA
 	.db #$5B
 	.db #$15
@@ -12924,6 +13072,7 @@ SND_SAMPLE_2:
 	.db #$FA
 	.db #$5F
 	.db #$44
+FRAME_19_DATA_07:
 	.db #$4A
 	.db #$AB
 	.db #$D6
@@ -13168,6 +13317,7 @@ SND_SAMPLE_2:
 	.db #$FF
 	.db #$FF
 	.db #$FF
+FRAME_7_DATA_03:
 	.db #$FF
 	.db #$FF
 	.db #$FF

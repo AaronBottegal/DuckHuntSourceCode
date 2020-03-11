@@ -1266,8 +1266,8 @@ GAME_STATE_INDIRECT_02:
 GAME_STATE_INDIRECT_03:
 	JSR ZAP_PROC_TRIGGER
 	JSR PROCESS_ZAPPER
-	JSR FORWARD_TARGET_3 ;dog? main inits?
-	JSR FORWARD_TARGETS_1+2 ;ducks?
+	JSR FORWARD_TARGET_3 ;dog obj handling.
+	JSR FORWARD_TARGETS_1+2 ;target handling.
 	JSR PPU_DISP_SHOTS_LEFT
 	JSR UPDATE_ACTIVE_TARGET_STATUS
 	JSR PPU_DISP_SOMETHING?
@@ -1284,15 +1284,15 @@ FORWARD_TARGETS_1+2:
 	LDY #$00
 	STY OBJ_ZP_ORIGIN_SLOT# ;where obj came from
 	JSR COPY_OBJ_$3YY_TO_OBJ_ZP ;move obj data.
-	JSR PROCESS_OBJ_ZP
+	JSR PROCESS_OBJ_TARGET
 	JSR MOVE_$50B_BACK
 FORWARD_TARGET_2:
 	LDA TRGT2_TYPE
 	BEQ Zapper_shot? ;not active
 	LDY #$50
-	INC OBJ_ZP_ORIGIN_SLOT#
+	INC OBJ_ZP_ORIGIN_SLOT# ;apparently active target will ALWAYS be in slot 1?
 	JSR COPY_OBJ_$3YY_TO_OBJ_ZP
-	JSR PROCESS_OBJ_ZP
+	JSR PROCESS_OBJ_TARGET
 	JSR MOVE_$50B_BACK
 Zapper_shot?:
 	LDA ZAP_SHOT_ENABLED
@@ -1316,7 +1316,7 @@ WRITE_COUNTDOWN:
 	BNE RTS ;has time, rts
 	LDA #$0A ;state
 	LDY #$07 ;palette
-	LDX UNK_BD
+	LDX TRGT_SHOT_DURING_ATTEMPT
 	BEQ BD_IS_0
 	LDA #$0C ;state
 	LDY #$02 ;palette
@@ -1336,7 +1336,7 @@ DEC_A6:
 	DEC UNK_$A6 ;if not zero, dec.
 RTS:
 	RTS 
-PROCESS_OBJ_ZP:
+PROCESS_OBJ_TARGET:
 	LDA OBJ_ZP_STATE
 	JSR GOTO_TABLE_PAST_JSR
 	.LOW RTS
@@ -1367,9 +1367,9 @@ LOOP:
 	LDA OBJ_ZP_ORIGIN_SLOT# ;if origin was obj 0?
 	BEQ TARGET_ZERO ;not sure why. find last shot? idk.
 	LDA #$40
-	STA OBJ_36 ;different obj data?
+	STA OBJ_INDEX_START ;different obj data?
 	LDA #$7F
-	STA OBJ_FINAL_2XX_VALUE? ;store idk why.
+	STA OBJ_INDEX_FINAL ;store idk why.
 TARGET_ZERO:
 	INC OBJ_ZP_STATE ;inc target state.
 RTS:
@@ -1413,8 +1413,8 @@ NOT_EQ:
 	LDY #$00 ;reset index
 	LDA (OBJ_ZP_STEP?),Y ;load data pointer.
 	INY 
-	STY OBJ_ZP_COPY+23 ;store next index
-	STA OBJ_ZP_X_COORD. ;store loaded data.
+	STY OBJ_ZP_COPY_47 ;store next index
+	STA OBJ_ZP_X_COORD ;store loaded data.
 	LDY #$00
 	LDX UNK_$99 ;set something.
 	BEQ $99_CLEAR
@@ -1423,7 +1423,7 @@ $99_CLEAR:
 	STY OBJ_ZP_DISP_ATTR? ;store
 	INC UNK_$99 ;INC
 	LDX DUCK_TYPE?_98
-	LDA TARGET_DATA_INDEX?,X
+	LDA TARGET_DATA_COMBO,X
 	CPY #$00
 	BEQ SHIFT_DATA ;shift if =0
 	AND #$0F ;get lower byte data if not.
@@ -1482,7 +1482,7 @@ L_09D0:
 L_09E2:
 	STA OBJ_ZP_COPY+10
 	LDA #$00
-	STA OBJ_ZP_COPY+22
+	STA OBJ_ZP_COPY_46
 	STA OBJ_ZP_ANIM_TIMER
 	STA OBJ_ZP_COPY+30
 	STA OBJ_ZP_COPY+31
@@ -1504,8 +1504,8 @@ L_0A08:
 	LDA #$00
 	STA $AF
 L_0A0E:
-	INC UNK_BB
-	LDA UNK_BB
+	INC GAME_TARGETS_SHOWN?
+	LDA GAME_TARGETS_SHOWN?
 	STA OBJ_ZP_$3B
 	DEC NUMBER_OF_TARGETS_IN_GAME_MODE
 	INC OBJ_ZP_STATE
@@ -1527,7 +1527,7 @@ L_0A29:
 	LDA #$01
 	STA OBJ_ZP_COPY+30
 	LDA #$F0
-	STA OBJ_ZP_COPY+22
+	STA OBJ_ZP_COPY_46
 	LDA #$00
 	JMP L_0B77
 L_0A3E:
@@ -1538,7 +1538,7 @@ L_0A42:
 L_0A45:
 	LDA OBJ_ZP_$4B
 	BEQ L_0A53
-	LDA OBJ_ZP_COPY+2
+	LDA OBJ_ZP_Y_COORD
 	CMP #$88
 	BCS L_0A42
 	LDA #$00
@@ -1578,13 +1578,13 @@ L_0A70:
 L_0A8A:
 	JMP L_0F16
 L_0A8D:
-	LDA OBJ_ZP_COPY+2
+	LDA OBJ_ZP_Y_COORD
 	CMP #$20
 	BCC L_0AD1
 	CMP #$90
 	BCS L_0AD7
 	LDX #$00
-	LDA OBJ_ZP_X_COORD.
+	LDA OBJ_ZP_X_COORD
 	CMP #$10
 	BCC L_0AE3
 	LDX #$08
@@ -1620,11 +1620,11 @@ L_0ACA:
 	LSR A
 	JMP L_0B56
 L_0AD1:
-	INC OBJ_ZP_COPY+2
+	INC OBJ_ZP_Y_COORD
 	LDY #$00
 	BEQ L_0ADB
 L_0AD7:
-	DEC OBJ_ZP_COPY+2
+	DEC OBJ_ZP_Y_COORD
 	LDY #$02
 L_0ADB:
 	LDA OBJ_ZP_$48
@@ -1632,11 +1632,11 @@ L_0ADB:
 	TAX 
 	JMP L_0AED
 L_0AE3:
-	INC OBJ_ZP_X_COORD.
+	INC OBJ_ZP_X_COORD
 	LDY #$04
 	BNE L_0AED
 L_0AE9:
-	DEC OBJ_ZP_X_COORD.
+	DEC OBJ_ZP_X_COORD
 	LDY #$02
 L_0AED:
 	STX TMP_0C
@@ -1702,9 +1702,9 @@ L_0B52:
 L_0B56:
 	JMP L_0B77
 L_0B59:
-	LDA OBJ_ZP_COPY+22
+	LDA OBJ_ZP_COPY_46
 	BNE L_0BC3
-	LDY OBJ_ZP_COPY+23
+	LDY OBJ_ZP_COPY_47
 	LDA (OBJ_ZP_STEP?),Y
 	INY 
 	CMP #$FF
@@ -1716,10 +1716,10 @@ L_0B59:
 	STA OBJ_ZP_ANIM_TIMER
 	RTS 
 L_0B70:
-	STA OBJ_ZP_COPY+22
+	STA OBJ_ZP_COPY_46
 	LDA (OBJ_ZP_STEP?),Y
 	INY 
-	STY OBJ_ZP_COPY+23
+	STY OBJ_ZP_COPY_47
 L_0B77:
 	STA OBJ_ZP_$48
 	TAX 
@@ -1768,15 +1768,15 @@ L_0BC3:
 	JSR L_181B
 L_0BC6:
 	PHA 
-	LDA OBJ_ZP_COPY+2
+	LDA OBJ_ZP_Y_COORD
 	CMP #$F0
 	BCC L_0BD1
 	PLA 
 	JMP L_0F2A
 L_0BD1:
-	LDA OBJ_ZP_COPY+22
+	LDA OBJ_ZP_COPY_46
 	BEQ L_0BD7
-	DEC OBJ_ZP_COPY+22
+	DEC OBJ_ZP_COPY_46
 L_0BD7:
 	LDY OBJ_ZP_$49
 L_0BD9:
@@ -1788,7 +1788,7 @@ L_0BD9:
 	JMP L_0BD9
 L_0BE6:
 	CLC 
-	ADC OBJ_ZP_COPY+2
+	ADC OBJ_ZP_Y_COORD
 	LDX OBJ_ZP_$4B
 	BNE L_0BF9
 	LDX $AE
@@ -1798,13 +1798,13 @@ L_0BE6:
 	CMP #$92
 	BCS L_0BFB
 L_0BF9:
-	STA OBJ_ZP_COPY+2
+	STA OBJ_ZP_Y_COORD
 L_0BFB:
 	LDA L_2661,Y
 	INY 
 	STY OBJ_ZP_$49
 	CLC 
-	ADC OBJ_ZP_X_COORD.
+	ADC OBJ_ZP_X_COORD
 	LDX OBJ_ZP_$4B
 	BNE L_0C14
 	LDX $AE
@@ -1814,13 +1814,13 @@ L_0BFB:
 	CMP #$F2
 	BCS L_0C16
 L_0C14:
-	STA OBJ_ZP_X_COORD.
+	STA OBJ_ZP_X_COORD
 L_0C16:
 	PLA 
 	SEC 
 	SBC #$01
 	BNE L_0BC6
-	JMP TARGET_STATE_INDIR_11
+	JMP TARGET_ANIM_TIMER_CHECK/DISP
 TARGET_STATES_INDIRECT_04:
 	LDX OBJ_ZP_$3B
 	LDA #$01
@@ -1846,11 +1846,11 @@ TARGET_STATES_INDIRECT_05:
 	BNE L_0C4C
 	JSR SND_SET_F2_#$02
 L_0C4C:
-	JMP TARGET_STATE_INDIR_11
+	JMP TARGET_ANIM_TIMER_CHECK/DISP
 TARGET_STATES_INDIRECT_06:
 	JSR SPRITE_SOMETHING_2
 	JSR SND_SET_F0_#$10
-	LDA OBJ_ZP_X_COORD.
+	LDA OBJ_ZP_X_COORD
 	LDX #$48
 	CMP #$48
 	BCC L_0C64 ;<48...range?
@@ -1871,7 +1871,7 @@ L_0C64:
 	LDY #$E7
 	BNE L_0C37 ;setup obj data.
 TARGET_STATES_INDIRECT_07:
-	LDA OBJ_ZP_COPY+2 ;Y-coord?
+	LDA OBJ_ZP_Y_COORD ;Y-coord?
 	CMP #$B0
 	BCS GREATER_THAN_#$B0 ;>=
 	JMP L_0BC3 ;idfk
@@ -1882,7 +1882,7 @@ GREATER_THAN_#$B0:
 TARGET_STATES_INDIRECT_08:
 	LDA #$00
 	STA OBJ_ZP_STATE
-	LDX OBJ_36
+	LDX OBJ_INDEX_START
 	JMP SPRITE_OFF_SCREEN ;take away sprite?
 FORWARD_TARGET_3:
 	LDA TRGT3_TYPE
@@ -1891,52 +1891,52 @@ FORWARD_TARGET_3:
 	STA OBJ_ZP_ORIGIN_SLOT#
 	LDY #$A0
 	JSR COPY_OBJ_$3YY_TO_OBJ_ZP ;move object to $30
-	JSR GOTO_OBJ_STATE
+	JSR PROCESS_OBJ_DOG
 	JSR MOVE_$50B_BACK ;put into high RAM
 RTS:
 	RTS 
-GOTO_OBJ_STATE:
+PROCESS_OBJ_DOG:
 	LDA OBJ_ZP_STATE
 	JSR GOTO_TABLE_PAST_JSR
 	.LOW RTS ;RTS, default state?
 	.HIGH RTS
-	.LOW TARGET_STATE_INDIR_01 ;setup dog, moves to 2.
-	.HIGH TARGET_STATE_INDIR_01
-	.LOW TARGET_STATE_INDIR_02 ;setup obj anim ptr.
-	.HIGH TARGET_STATE_INDIR_02
-	.LOW TARGET_STATE_INDIR_03 ;watch for something.
-	.HIGH TARGET_STATE_INDIR_03
-	.LOW TARGET_STATE_INDIR_04 ;setup something else.
-	.HIGH TARGET_STATE_INDIR_04
-	.LOW TARGET_STATE_INDIR_11 ;copy of state 0x11
-	.HIGH TARGET_STATE_INDIR_11
-	.LOW TARGET_STATE_INDIR_06 ;setup.
-	.HIGH TARGET_STATE_INDIR_06
-	.LOW TARGET_STATE_INDIR_11 ;another copy.
-	.HIGH TARGET_STATE_INDIR_11
-	.LOW TARGET_STATE_INDIR_08 ;setup
-	.HIGH TARGET_STATE_INDIR_08
-	.LOW TARGET_STATE_INDIR_09 ;9E, sound.
-	.HIGH TARGET_STATE_INDIR_09
-	.LOW TARGET_STATE_INDIR_0A ;sound, setup.
-	.HIGH TARGET_STATE_INDIR_0A
-	.LOW TARGET_STATE_INDIR_11 ;unused?
-	.HIGH TARGET_STATE_INDIR_11
-	.LOW TARGET_STATE_INDIR_0C ;2B,setup,sound.
-	.HIGH TARGET_STATE_INDIR_0C
-	.LOW TARGET_STATE_INDIR_11 ;unused?
-	.HIGH TARGET_STATE_INDIR_11
-	.LOW TARGET_STATE_INDIR_0E ;init game and other?
-	.HIGH TARGET_STATE_INDIR_0E
+	.LOW TRGT_STATE_1_SETUP_GAME_VARS ;setup dog, moves to 2.
+	.HIGH TRGT_STATE_1_SETUP_GAME_VARS
+	.LOW TRGT_STATE_2_ANIMATE_DOG_INTRO/LEVEL ;setup obj anim ptr, display.
+	.HIGH TRGT_STATE_2_ANIMATE_DOG_INTRO/LEVEL
+	.LOW TRGT_STATE_3_COUNT_FRAME ;watch counter, animate, go to state 6 or 4.
+	.HIGH TRGT_STATE_3_COUNT_FRAME
+	.LOW TRGT_STATE_4_STEP_0+SCRIPT ;step 0, setup animation script.
+	.HIGH TRGT_STATE_4_STEP_0+SCRIPT
+	.LOW TARGET_ANIM_TIMER_CHECK/DISP ;copy of state 0x11
+	.HIGH TARGET_ANIM_TIMER_CHECK/DISP
+	.LOW TRGT_STATE_6_SETUP_ANIM_SCRIPT ;setup.
+	.HIGH TRGT_STATE_6_SETUP_ANIM_SCRIPT
+	.LOW TARGET_ANIM_TIMER_CHECK/DISP ;another copy.
+	.HIGH TARGET_ANIM_TIMER_CHECK/DISP
+	.LOW TRGT_STATE_8_SET_SND_COUNTDOWN+SCRIPT ;setup script, set 9E=4
+	.HIGH TRGT_STATE_8_SET_SND_COUNTDOWN+SCRIPT
+	.LOW TRGT_STATE_9_CNTDWN_TO_SND ;9E, sound.
+	.HIGH TRGT_STATE_9_CNTDWN_TO_SND
+	.LOW TRGT_STATE_A_FTIMER_CNTDWN2SND+_SETXY+SCRIPT ;as named, lots here.
+	.HIGH TRGT_STATE_A_FTIMER_CNTDWN2SND+_SETXY+SCRIPT
+	.LOW TARGET_ANIM_TIMER_CHECK/DISP ;unused?
+	.HIGH TARGET_ANIM_TIMER_CHECK/DISP
+	.LOW TRGT_STATE_C_CNTDOWNTMR2SND_SETY_SCRIPT1/2 ;2B,setup,sound.
+	.HIGH TRGT_STATE_C_CNTDOWNTMR2SND_SETY_SCRIPT1/2
+	.LOW TARGET_ANIM_TIMER_CHECK/DISP ;unused?
+	.HIGH TARGET_ANIM_TIMER_CHECK/DISP
+	.LOW TRGT_STATE_E_SETUP_BETWEEN_ROUNDS? ;init game and other?
+	.HIGH TRGT_STATE_E_SETUP_BETWEEN_ROUNDS?
 	.LOW TARGET_STATE_INDIR_0F ;end of round?
 	.HIGH TARGET_STATE_INDIR_0F
-	.LOW TARGET_STATE_INDIR_10 ;set something for object.
+	.LOW TARGET_STATE_INDIR_10 ;pigeons start from state 1?
 	.HIGH TARGET_STATE_INDIR_10
-	.LOW TARGET_STATE_INDIR_11 ;disp obj?
-	.HIGH TARGET_STATE_INDIR_11
-	.LOW TARGET_STATE_INDIR_12 ;clears sprites of some sort.
+	.LOW TARGET_ANIM_TIMER_CHECK/DISP ;disp obj?
+	.HIGH TARGET_ANIM_TIMER_CHECK/DISP
+	.LOW TARGET_STATE_INDIR_12 ;clears sprites when animation ends.
 	.HIGH TARGET_STATE_INDIR_12
-TARGET_STATE_INDIR_01:
+TRGT_STATE_1_SETUP_GAME_VARS:
 	LDX #$1F ;index
 MOVE_DATA:
 	LDA TARGET_3_DATA,X ;move initial data here to OBJ_ZP_COPY
@@ -1965,7 +1965,7 @@ GAME_HAS_DOG:
 	LDY #$50 ;puts dog mid screen.
 	LDX #$18
 IS_LEVEL_1_FARTHER_AWAY:
-	STY OBJ_ZP_X_COORD. ;X coord.
+	STY OBJ_ZP_X_COORD ;X coord.
 	STX OBJ_ZP_STEP? ;animation step? Not sure.
 	LDA #$01
 	STA FLAG_9D_INDEX ;anim flag?
@@ -1973,81 +1973,81 @@ IS_LEVEL_1_FARTHER_AWAY:
 	JSR PLAY_SOUNDS ;init sounds to clear garbage up?
 	INC OBJ_ZP_STATE ;inc object state to 2.
 	RTS 
-TARGET_STATE_INDIR_02:
-	LDX #$8E ;points to $E78E
-	LDY #$E7
+TRGT_STATE_2_ANIMATE_DOG_INTRO/LEVEL:
+	LDX #$8E ;points to $E78E, animation script.
+	LDY #$E7 ;this is the dog walking across the screen.
 	JMP SETUP_INC_TRGT_GOTO_11
-TARGET_STATE_INDIR_03:
-	LDA OBJ_ZP_FRAME
-	CMP #$0C
-	BNE L_0D2E
-	INC OBJ_ZP_STEP?
-	LDA OBJ_ZP_STEP?
-	CMP #$20
-	BCC L_0D2E
-	INC OBJ_ZP_STATE
+TRGT_STATE_3_COUNT_FRAME:
+	LDA OBJ_ZP_FRAME ;get frame showing.
+	CMP #$0C ;if is frame X.
+	BNE FRAME_NOT_C
+	INC OBJ_ZP_STEP? ;next step.
+	LDA OBJ_ZP_STEP? ;get step counter.
+	CMP #$20 ;if is 20...
+	BCC FRAME_NOT_C
+	INC OBJ_ZP_STATE ;go to next state.
 RTS:
 	RTS 
-L_0D2E:
-	JSR TARGET_STATE_INDIR_11
-	LDA OBJ_ZP_X_COORD.
-	CMP OBJ_ZP_COPY+21
-	BNE RTS
+FRAME_NOT_C:
+	JSR TARGET_ANIM_TIMER_CHECK/DISP ;check animation/disp.
+	LDA OBJ_ZP_X_COORD
+	CMP OBJ_ZP_COPY+21 ;idk what for yet. is pointer data? why this?
+	BNE RTS ;if not eq, rts.
 	LDA #$06
-	STA OBJ_ZP_STATE
+	STA OBJ_ZP_STATE ;set state to 6 when eq.
 	RTS 
-TARGET_STATE_INDIR_04:
+TRGT_STATE_4_STEP_0+SCRIPT:
 	LDA #$00
 	STA OBJ_ZP_STEP?
 	LDX #$98
-	LDY #$E7
+	LDY #$E7 ;script at E798
 SETUP_INC_TRGT_GOTO_11:
 	JSR SETUP_OBJ_PTR+INIT_SUBSTATE+INDEX
-	INC OBJ_ZP_STATE ;OBJ_ZP = 3
-	JMP TARGET_STATE_INDIR_11 ;display this obj NOW.
-TARGET_STATE_INDIR_06:
-	LDX #$A7
+	INC OBJ_ZP_STATE ;State++
+	JMP TARGET_ANIM_TIMER_CHECK/DISP ;display this obj NOW.
+TRGT_STATE_6_SETUP_ANIM_SCRIPT:
+	LDX #$A7 ;Animation ptr to script.
 	LDY #$E7
 	BNE SETUP_INC_TRGT_GOTO_11
-TARGET_STATE_INDIR_08:
+TRGT_STATE_8_SET_SND_COUNTDOWN+SCRIPT:
 	LDA #$04
-	STA UNK_9E
+	STA OBJ3_SOUND_COUNT_DOWN ;unk why.
 	LDX #$AC
-	LDY #$E7
+	LDY #$E7 ;animation script.
 	BNE SETUP_INC_TRGT_GOTO_11
-TARGET_STATE_INDIR_09:
-	DEC UNK_9E
-	LDA UNK_9E
-	BNE L_0D69 ;if 9E != 0, goto.
-	LDA #$10
-	STA UNK_9E
+TRGT_STATE_9_CNTDWN_TO_SND:
+	DEC OBJ3_SOUND_COUNT_DOWN
+	LDA OBJ3_SOUND_COUNT_DOWN
+	BNE ANIMATE_ONLY ;if 9E != 0, no sound, just animate.
+	LDA #$10 ;new timer.
+	STA OBJ3_SOUND_COUNT_DOWN ;save.
 	JSR SND_SET_F2_#$01 ;play sound.
-L_0D69:
-	JMP TARGET_STATE_INDIR_11
-TARGET_STATE_INDIR_0A:
+ANIMATE_ONLY:
+	JMP TARGET_ANIM_TIMER_CHECK/DISP ;animate, abuse their rts.
+TRGT_STATE_A_FTIMER_CNTDWN2SND+_SETXY+SCRIPT:
 	LDA FAST_TIMERS
-	BNE RTS
-	JSR SND_SET_F0_#$40
+	BNE RTS ;if timer not 0.
+	JSR SND_SET_F0_#$40 ;play sound.
 	LDA #$80
-	STA OBJ_ZP_X_COORD.
-	JSR CLEAR_46-47,#$AC->32
-	LDX #$46
+	STA OBJ_ZP_X_COORD ;move obj to near center screen.
+	JSR CLEAR_46-47,SET OBJ_Y
+	LDX #$46 ;anim script ptr to E846
 	LDY #$E8
 	BNE SETUP_INC_TRGT_GOTO_11
-TARGET_STATE_INDIR_0C:
+TRGT_STATE_C_CNTDOWNTMR2SND_SETY_SCRIPT1/2:
 	LDA FAST_TIMERS
-	BNE RTS
-	JSR SND_SET_F1
-	JSR CLEAR_46-47,#$AC->32
+	BNE RTS ;if timer not 0, leave.
+	JSR SND_SET_F1 ;set sound.
+	JSR CLEAR_46-47,SET OBJ_Y ;more clearing of stuff.
 	LDX #$94
-	LDY #$E8
-	LDA UNK_BD
+	LDY #$E8 ;loads animation ptr. E894
+	LDA TRGT_SHOT_DURING_ATTEMPT
 	CMP #$01
-	BEQ SETUP_INC_TRGT_GOTO_11
-	LDX #$A3
+	BEQ SETUP_INC_TRGT_GOTO_11 ;use this animation script if BD=1
+	LDX #$A3 ;load this ptr instead, E8A3.
 	LDY #$E8
 	BNE SETUP_INC_TRGT_GOTO_11
-TARGET_STATE_INDIR_0E:
+TRGT_STATE_E_SETUP_BETWEEN_ROUNDS?:
 	LDA #$30 ;mostly self explainatory.
 	STA UNK_$A6
 	LDA #$01
@@ -2057,7 +2057,7 @@ TARGET_STATE_INDIR_0E:
 	LDA #$01
 	STA SHOT_FIRED
 	LDA #$00
-	STA UNK_BD
+	STA TRGT_SHOT_DURING_ATTEMPT
 	LDA #$02 ;targets in mode
 	LDY #$01 ;target 2 state+type
 	LDX GAME_MODE_IN
@@ -2084,7 +2084,7 @@ FIRST_LEVEL:
 	LDY #$00
 	STY UNK_$99 ;idk
 	TAX 
-	LDA TARGET_DATA_INDEX?,X ;get types from array
+	LDA TARGET_DATA_COMBO,X ;get types from array
 	STA TMP_0C ;store
 	AND #$F0 ;get high data
 	LSR A ;index multiplied by 8
@@ -2111,35 +2111,35 @@ FIRST_LEVEL:
 	STA OBJ_ZP_ANIM_TIMER ;init
 	RTS 
 TARGET_STATE_INDIR_0F:
-	LDA UNK_BB
-	CMP #$0A
-	BNE L_0E29
+	LDA GAME_TARGETS_SHOWN?
+	CMP #$0A ;is targets shown 100%?
+	BNE GOTO_STATE_E ;if not complete, continue.
 	LDA #$00
-	STA STATE_A9
+	STA STATE_A9 ;clear A9 state.
 	LDA #$04
-	STA IN_GAME_STATE
+	STA IN_GAME_STATE ;move to state end of round.
 	JMP CLEAR_SPRITES
-L_0E29:
+GOTO_STATE_E:
 	LDA #$0E
-	STA OBJ_ZP_STATE
+	STA OBJ_ZP_STATE ;sets up round of targets and whatnot.
 	RTS 
 TARGET_STATE_INDIR_10:
 	LDA #$80
-	STA OBJ_ZP_X_COORD.
+	STA OBJ_ZP_X_COORD ;sets x coord to $80.
 	LDA #$01
-	STA OBJ_ZP_COPY_BEHIND_BG?
-	JSR CLEAR_46-47,#$AC->32
-	LDX #$B2
+	STA OBJ_ZP_COPY_BEHIND_BG? ;set to behind BG.
+	JSR CLEAR_46-47,SET OBJ_Y ;set Y, unsure what 46+47 are.
+	LDX #$B2 ;animation script ptr E8B2
 	LDY #$E8
 	JMP SETUP_INC_TRGT_GOTO_11
 TARGET_STATE_INDIR_12:
 	LDA OBJ_ZP_ANIM_TIMER
-	BNE TARGET_STATE_INDIR_11
+	BNE TARGET_ANIM_TIMER_CHECK/DISP ;Do animation stuff if timer valid.
 	LDA #$00
-	STA OBJ_ZP_STATE
-	LDX OBJ_36
+	STA OBJ_ZP_STATE ;clear state, disable object.
+	LDX OBJ_INDEX_START ;get start of index to clear.
 	JMP SPRITE_OFF_SCREEN
-TARGET_STATE_INDIR_11:
+TARGET_ANIM_TIMER_CHECK/DISP:
 	LDA OBJ_ZP_ANIM_TIMER ;obj substate?
 	BEQ UPDATE_ANIMATION_TO_PTR ;if update time...?
 	DEC OBJ_ZP_ANIM_TIMER ;not sure why dec.
@@ -2152,16 +2152,16 @@ UPDATE_ANIMATION_TO_PTR:
 	INC OBJ_ZP_PTR_INDEX ;next index.
 	SEC 
 	SBC #$FA ;if >= #$FA, make index 0 to 5.
-	JSR GOTO_TABLE_PAST_JSR
-	.LOW RTS ;FA
+	JSR GOTO_TABLE_PAST_JSR ;ANIMATION COMMANDS BELOW.
+	.LOW RTS ;FA, does nothing.
 	.HIGH RTS
-	.LOW RTS ;FB
+	.LOW RTS ;FB, does nothing.
 	.HIGH RTS
-	.LOW OBJ_ZP_INDEX_TO_#$1E ;FC
+	.LOW OBJ_ZP_INDEX_TO_#$1E ;FC, sets animation index to #$1E.
 	.HIGH OBJ_ZP_INDEX_TO_#$1E
-	.LOW OBJ_ZP+8_TO_1 ;FD
+	.LOW OBJ_ZP+8_TO_1 ;FD, push animation behind BG.
 	.HIGH OBJ_ZP+8_TO_1
-	.LOW OBJ_ZP_PTR_INDEX=0 ;FE
+	.LOW OBJ_ZP_PTR_INDEX=0 ;FE, restarts animation.
 	.HIGH OBJ_ZP_PTR_INDEX=0
 	.LOW OBJ_ZP_NEW_STATE_FROM_PTR ;sets up substate from own ptr. FF
 	.HIGH OBJ_ZP_NEW_STATE_FROM_PTR
@@ -2169,44 +2169,44 @@ OBJ_ANIM_NO_FLAG:
 	LDY OBJ_ZP_PTR_INDEX ;get index int anim data.
 	LDX OBJ_ZP_ORIGIN_SLOT#
 	CPX #$02 ;if dog origin?
-	BNE OBJ_ORIGIN_NOT_3 ;if not dog, go here.
+	BNE OBJ_STATE_NOT_3 ;if not dog, go here.
 	LDX OBJ_ZP_STATE ;load dog state.
 	CPX #$09 ;state
-	BEQ L_0EAD ;if is
+	BEQ OBJ_STATE_9 ;if is
 	CPX #$0B ;state
-	BEQ L_0E8C ;if is
+	BEQ OBJ_STATE_B/D/11 ;if is
 	CPX #$0D ;state
-	BEQ L_0E8C ;if is
+	BEQ OBJ_STATE_B/D/11 ;if is
 	CPX #$11 ;state
 	BNE NOT_ANY_OBJ_STATE_WANTED ;Not any obj state we care for.
-L_0E8C:
-	LDX OBJ_ZP_COPY+22 ;load idk.
+OBJ_STATE_B/D/11:
+	LDX OBJ_ZP_COPY_46 ;load idk.
 	BEQ OBJ+22_IS_0 ;skip below if 0.
-	DEC OBJ_ZP_COPY+22 ;count down otherwise.
-	LDA OBJ_ZP_COPY+23 ;load OBJ+23
+	DEC OBJ_ZP_COPY_46 ;count down otherwise.
+	LDA OBJ_ZP_COPY_47 ;load OBJ+23
 	CLC 
-	ADC OBJ_ZP_COPY+2 ;Add to Y?
-	STA OBJ_ZP_COPY+2 ;store.
+	ADC OBJ_ZP_Y_COORD ;Add to Y?
+	STA OBJ_ZP_Y_COORD ;store.
 	JMP OBJ_TO_SCREEN_ROUTINE
 OBJ+22_IS_0:
-	STA OBJ_ZP_COPY+22 ;store data loaded by ptr
+	STA OBJ_ZP_COPY_46 ;store data loaded by ptr
 	INY  ;next byte.
 	LDA (OBJ_ZP_PTR_L_UNK),Y ;load next byte.
 	BPL IS_POSITIVE ;unsigned positive value.
 	AND #$7F ;get lower bits.
 	JSR TWO_COMPLIMENT_A_REG ;get inverse.
 IS_POSITIVE:
-	STA OBJ_ZP_COPY+23 ;store
+	STA OBJ_ZP_COPY_47 ;store
 	JMP MOVE_MORE_PTR_DATA
-L_0EAD:
+OBJ_STATE_9:
 	TAX 
 	BPL L_0EB5
 	AND #$7F
 	JSR TWO_COMPLIMENT_A_REG
 L_0EB5:
 	CLC 
-	ADC OBJ_ZP_COPY+2
-	STA OBJ_ZP_COPY+2
+	ADC OBJ_ZP_Y_COORD
+	STA OBJ_ZP_Y_COORD
 	INY 
 	LDA (OBJ_ZP_PTR_L_UNK),Y
 	LDX OBJ_ZP_DIRECTION
@@ -2214,8 +2214,8 @@ L_0EB5:
 	JSR TWO_COMPLIMENT_A_REG
 L_0EC4:
 	CLC 
-	ADC OBJ_ZP_X_COORD.
-	STA OBJ_ZP_X_COORD.
+	ADC OBJ_ZP_X_COORD
+	STA OBJ_ZP_X_COORD
 MOVE_MORE_PTR_DATA:
 	INY  ;next data ptr.
 	LDA (OBJ_ZP_PTR_L_UNK),Y ;load
@@ -2224,17 +2224,17 @@ MOVE_MORE_PTR_DATA:
 	STY OBJ_ZP_PTR_INDEX ;store pointer to next byte.
 	JMP OBJ_TO_SCREEN_ROUTINE ;sprite on screen.
 NOT_ANY_OBJ_STATE_WANTED:
-	CPX #$03 ;If OBJ_Origin = 3? Not used in this port?
-	BNE OBJ_ORIGIN_NOT_3
-	LDA #$02 ;Idk why value for dog.
+	CPX #$03 ;If state isn't currently 3.
+	BNE OBJ_STATE_NOT_3
+	LDA #$02 ;offset two each step?
 	LDX OBJ_ZP_DIRECTION ;get direction?
 	BEQ MOVING_RIGHT ;if right, dont invert.
 	JSR TWO_COMPLIMENT_A_REG ;invert for -2
 MOVING_RIGHT:
 	CLC 
-	ADC OBJ_ZP_X_COORD. ;add to coord.
-	STA OBJ_ZP_X_COORD. ;save to obj.
-OBJ_ORIGIN_NOT_3:
+	ADC OBJ_ZP_X_COORD ;add to coord.
+	STA OBJ_ZP_X_COORD ;save to obj.
+OBJ_STATE_NOT_3:
 	LDA (OBJ_ZP_PTR_L_UNK),Y ;get frame timer to hold this animation.
 	STA OBJ_ZP_ANIM_TIMER ;write that to obj timer.
 	JMP MOVE_MORE_PTR_DATA
@@ -2259,19 +2259,19 @@ OBJ_ZP_INDEX_TO_#$1E:
 	LDA #$1E
 	BNE WRITE_OBJ_PTR_INDEX ;always taken.
 SETUP_OBJ_PTR+INIT_SUBSTATE+INDEX:
-	STX OBJ_ZP_PTR_L_UNK ;Pointer from X+Y, animation related.
+	STX OBJ_ZP_PTR_L_UNK ;Pointer from X+Y, aination to play.
 	STY OBJ_ZP_PTR_H_UNK
 	LDA #$00
 	STA OBJ_ZP_PTR_INDEX ;index to obj data of some type.
 	STA OBJ_ZP_ANIM_TIMER ;substate counter?
 	RTS 
 L_0F16:
-	LDA OBJ_ZP_COPY+2
+	LDA OBJ_ZP_Y_COORD
 	CMP #$08
 	BCC L_0F2A
 	CMP #$90
 	BCS L_0F33
-	LDA OBJ_ZP_X_COORD.
+	LDA OBJ_ZP_X_COORD
 	CMP #$0C
 	BCC L_0F2A
 	CMP #$F4
@@ -2286,12 +2286,12 @@ L_0F33:
 	JMP L_0AD7
 L_0F36:
 	JMP L_0AA5
-CLEAR_46-47,#$AC->32:
+CLEAR_46-47,SET OBJ_Y:
 	LDA #$00
-	STA OBJ_ZP_COPY+22
-	STA OBJ_ZP_COPY+23
+	STA OBJ_ZP_COPY_46
+	STA OBJ_ZP_COPY_47
 	LDA #$AC
-	STA OBJ_ZP_COPY+2
+	STA OBJ_ZP_Y_COORD
 	RTS 
 MOVE_DATA_TO_403+Y:
 	TAX  ;A to index?
@@ -2341,7 +2341,7 @@ L_0F7F:
 	JSR SCORE_ADD/SUB
 	JMP SCORE_TO_SCREEN
 L_0F96:
-	LDA UNK_BD
+	LDA TRGT_SHOT_DURING_ATTEMPT
 	BNE L_0FB9
 	LDA #$06
 	JSR UPDATE_PPU_GROUP
@@ -2396,11 +2396,11 @@ SPRITE_SOMETHING_2:
 	BEQ IS_ZER0
 	LDX #$04
 IS_ZER0:
-	LDA OBJ_ZP_COPY+2 ;Y-coord?
+	LDA OBJ_ZP_Y_COORD ;Y-coord?
 	SEC 
 	SBC #$04
 	STA SPR_OBJ_Y,X ;store at index...
-	LDA OBJ_ZP_X_COORD. ;X coord?
+	LDA OBJ_ZP_X_COORD ;X coord?
 	SEC 
 	SBC #$08
 	STA SPR_OBJ_X,X ;store 
@@ -2412,7 +2412,7 @@ IS_ZER0:
 	STA SPR_ANIM_COUNTER,X ;X is either 4 or 0, hmm...
 	RTS 
 OBJ_TO_SCREEN_ROUTINE:
-	LDA OBJ_36 ;unk
+	LDA OBJ_INDEX_START ;unk
 	STA SPRITE_INDEX_VAL ;last index of sprite? not sure yet.
 	LDA OBJ_ZP_FRAME ;get frame to show.
 	ASL A ;make index val.
@@ -2428,7 +2428,7 @@ OBJ_TO_SCREEN_ROUTINE:
 	STA TMP_$11 ;$10 is now points to the file.
 	LDY #$00
 	STY FRAME_PTR_INDEX ;clear index into the frame pointer.
-END_FRAME_DATA:
+END_FRAME_DATA_CHECK:
 	LDY FRAME_PTR_INDEX ;get frame index to display now.
 	LDA (TMP_$10),Y ;load data from ANIM_FILE
 	CMP #$00 ;EOF. Bad code, no need to compare smh.
@@ -2437,7 +2437,7 @@ END_FRAME_DATA:
 SPRITE_OFF_SCREEN:
 	LDA #$F4 ;move sprite off screen.
 CLEAR_SPRITE_LOOP:
-	CPX OBJ_FINAL_2XX_VALUE?
+	CPX OBJ_INDEX_FINAL ;Last index of object?
 	BEQ RTS ;if at end, leave.
 	STA $0200,X ;store data.
 	INX  ;next byte.
@@ -2450,10 +2450,10 @@ NOT_END_OF_FRAME_FILE:
 	LDA (TMP_$10),Y ;load other pointer byte from ANIM_FILE.
 	INY 
 	STA TMP_12 ;$12 now points to FRAME_DATA
-	LDA (TMP_$10),Y ;Y offset? From file?
+	LDA (TMP_$10),Y ;Y offset
 	INY 
 	CLC 
-	ADC OBJ_ZP_COPY+2 ;Add to Y coord.
+	ADC OBJ_ZP_Y_COORD ;Add to Y coord.
 	STA TARGET_Y_COORD_CPY ;store copy of value for later use? speculation?
 	LDA (TMP_$10),Y ;X offset. From file?
 	INY 
@@ -2464,33 +2464,33 @@ NOT_END_OF_FRAME_FILE:
 	SBC #$08 ;subtract sprite width also, for right math.
 DIRECTION_RIGHT:
 	CLC 
-	ADC OBJ_ZP_X_COORD. ;X position of obj.
+	ADC OBJ_ZP_X_COORD ;X position of obj.
 	STA TARGET_X_COORD_CPY ;store to copy. speculation?
 	STY FRAME_PTR_INDEX ;store new $10 index.
 	LDY #$00 ;reset index to load ANIM_DATA
 	LDA (TMP_12),Y ;get anim data.
 	LDX #$00 ;set index for object.
-	CMP #$00 ;this cmp not needed if rearranged.
+	CMP #$00 ;this cmp not needed if rearranged. or use an array.
 	BEQ WRITE_UPDATE_GROUP ;if is, X index correct.
 	LDX #$10 ;index for this obj.
-	CMP #$01 ;all this code could be avoided with an array smh.
+	CMP #$01 ;position 1, index 10.
 	BEQ WRITE_UPDATE_GROUP
 	LDX #$38
-	CMP #$02
+	CMP #$02 ;position 2, index #$38.
 	BEQ WRITE_UPDATE_GROUP
 	LDX #$44 ;default
 WRITE_UPDATE_GROUP:
-	STX UPDATE_GROUP? ;put where this OBJ data goes in $2XX.
+	STX SPRITE_UPDATE_BASE ;index into $2XX to start at.
 ANIM_DATA_NEXT:
 	INY  ;next $12 ptr data.
 MORE_ANIM_DATA:
 	LDA (TMP_12),Y ;get anim data.
 	CMP #$FF ;EOF for anim data.
-	BEQ END_FRAME_DATA ;goes back to $10 stream data.
+	BEQ END_FRAME_DATA_CHECK ;goes back to $10 stream data.
 	CMP #$FE
 	BNE $12_NOT_#$FE
-	INC UPDATE_GROUP? ;FE value skips 1 sprite. 2 point offsets.
-	INC UPDATE_GROUP?
+	INC SPRITE_UPDATE_BASE ;FE value skips 1 sprite. 2 point offsets.
+	INC SPRITE_UPDATE_BASE
 	JMP ANIM_DATA_NEXT ;keep processing $12
 $12_NOT_#$FE:
 	CMP #$FD
@@ -2498,7 +2498,7 @@ $12_NOT_#$FE:
 	INY  ;FD command does...
 	LDA (TMP_12),Y ;gets the next byte.
 	CLC 
-	ADC OBJ_ZP_DISP_ATTR? ;add it to obj attr?
+	ADC OBJ_ZP_DISP_ATTR? ;add it to obj attr. for pallaette selection?
 	STA SPRITE_ATTR_COPY? ;store outside of obj data.
 	LDA OBJ_ZP_COPY_BEHIND_BG?
 	BEQ ANIM_DATA_NEXT ;but if it's 0, process more data.
@@ -2507,9 +2507,9 @@ $12_NOT_#$FE:
 	STA SPRITE_ATTR_COPY? ;save
 	JMP ANIM_DATA_NEXT ;do more data.
 SPRITE_OUTPUT_FINALLY:
-	LDX UPDATE_GROUP? ;which index updating.
-	LDA SPR_X/Y_OFFSETS_ARRAY,X ;get spr offset skeleton.
-	INC UPDATE_GROUP? ;next byte for array.
+	LDX SPRITE_UPDATE_BASE ;which index updating.
+	LDA SPR_X/Y_OFFSETS_ARRAY,X ;get spr skeleton from base index.
+	INC SPRITE_UPDATE_BASE ;next byte for array.
 	CLC 
 	ADC TARGET_Y_COORD_CPY ;add Y copy with data. does it do this to overflow if going to always?
 	JSR MAKE_Y_PROPER ;something to do with Y, proper value, and FF.
@@ -2528,15 +2528,15 @@ SPRITE_OUTPUT_FINALLY:
 	STA TMP_0C ;store to temp.
 	LDA SPRITE_ATTR_COPY? ;get attr again
 	AND #$40 ;get bit 0100 0000
-	EOR #$40 ;invert it. sprite flip horizontally?
-	ORA TMP_0C ;store to TMP
+	EOR #$40 ;invert bit, sets sprite to flip horiz.
+	ORA TMP_0C ;store in TMP. Does this because setting in obj would be screwed up.
 DIRECTION_RIGHT:
 	LDX SPRITE_INDEX_VAL ;get index.
 	STA $0200,X ;store sprite attr.
 	INC SPRITE_INDEX_VAL ;next index.
-	LDX UPDATE_GROUP? ;get group index.
+	LDX SPRITE_UPDATE_BASE ;get group index.
 	LDA SPR_X/Y_OFFSETS_ARRAY,X ;get value
-	INC UPDATE_GROUP? ;next data.
+	INC SPRITE_UPDATE_BASE ;next data.
 	LDX OBJ_ZP_DIRECTION ;get direction.
 	BEQ IS_RIGHT
 	JSR TWO_COMPLIMENT_A_REG ;invert if left. x?
@@ -2550,11 +2550,11 @@ IS_RIGHT:
 	JMP MORE_ANIM_DATA ;LOOP.
 MAKE_Y_PROPER:
 	PHA  ;save A
-	LDA OBJ_ZP_COPY+2 ;Y coord.
+	LDA OBJ_ZP_Y_COORD ;Y coord.
 	JMP MAKE_A_PROPER_VALUE
 MAKE_X_PROPER:
 	PHA  ;save return.
-	LDA OBJ_ZP_X_COORD. ;X coord.
+	LDA OBJ_ZP_X_COORD ;X coord.
 MAKE_A_PROPER_VALUE:
 	STA TMP_0F ;A to 0F
 	PLA  ;pull data on stack.
@@ -2723,7 +2723,7 @@ WRITE_RESULT_FROM_A:
 	JMP PPU_ENABLE_SPRITES/BG ;RTS's here, screen back.
 GAME_HIT:
 	INC TARGETS_IN_LEVEL
-	INC UNK_BD
+	INC TRGT_SHOT_DURING_ATTEMPT
 	LDX #$04
 	LDA LIGHT_STEP
 	BNE L_1256
@@ -2784,7 +2784,7 @@ NO_MORE_DATA:
 	STY HITS_REQUIRED_RAM_INDEX ;store back current index.
 	STA HITS_REQUIRED_RAM
 	LDA #$00
-	STA UNK_BB ;clear idk
+	STA GAME_TARGETS_SHOWN? ;clear idk
 	STA TARGETS_IN_LEVEL
 	LDA #$01
 	STA TRGT3_TYPE ;target type. dog?
@@ -3027,7 +3027,7 @@ UPDATE_PPU_GROUP:
 	JSR PLAY_SOUNDS
 	PLA 
 L_146C:
-	STA UPDATE_GROUP?
+	STA SPRITE_UPDATE_BASE
 	BEQ L_14BC ;not doing something diff...hmm...
 	ASL A
 	TAX  ;X is now index.
@@ -3047,7 +3047,7 @@ MORE_BYTES_IN_BLOCK:
 	INX 
 	DEC TMP_0F
 	BNE MORE_BYTES_IN_BLOCK
-	LDA UPDATE_GROUP?
+	LDA SPRITE_UPDATE_BASE
 	CMP #$01 ;level group?
 	BNE NO_LEVEL_IN_UPDATE
 	LDA LEVEL
@@ -3218,7 +3218,7 @@ GAME_STATE_INDIRECT_0A:
 LEVEL_MAXED:
 	STA LEVEL_TIED_VAR?
 	LDA #$80
-	STA UNK_$A6 ;set top bit of A6. BIT test?
+	STA UNK_$A6 ;set top bit of A6. Counter?
 	LDA #$01
 	STA SHOT_FIRED ;disable shooting.
 	LDA #$03
@@ -3228,7 +3228,7 @@ LEVEL_MAXED:
 	LDA #$00
 	STA ZAPPER_TRIG_RELEASED ;disable trigger.
 	STA ZAP_SHOT_ENABLED ;disable shots.
-	STA UNK_BD ;clear BD
+	STA TRGT_SHOT_DURING_ATTEMPT ;clear BD
 	JSR PPU_DISP_SHOTS_LEFT ;show shots.
 	JSR PPU_DISP_TARGET_STATUS ;show targets.
 	LDA #$0B
@@ -3281,7 +3281,7 @@ IS_ACTIVE:
 	JSR PPU_DISP_SHOT_TEXT ;display text
 	LDA #$00
 	STA ZAP_SHOT_ENABLED ;disable shot.
-	LDA UNK_BB
+	LDA GAME_TARGETS_SHOWN?
 	CMP #$0A ;state?
 	BEQ CLEAR_A9_IN_GAME_0C
 	LDA #$0A
@@ -3364,11 +3364,11 @@ L_1697:
 	LDA L_296B,X
 	STA OBJ_ZP_ANIM_TIMER
 	LDA L_296C,X
-	STA OBJ_ZP_COPY+23
+	STA OBJ_ZP_COPY_47
 	LDA L_296D,X
 	STA OBJ_ZP_COPY+28
-	INC UNK_BB
-	LDA UNK_BB
+	INC GAME_TARGETS_SHOWN?
+	LDA GAME_TARGETS_SHOWN?
 	STA OBJ_ZP_$3B
 	DEC NUMBER_OF_TARGETS_IN_GAME_MODE
 	LDA #$FF
@@ -3418,10 +3418,10 @@ L_1700:
 	CMP #$30
 	BCS L_174D
 	JSR L_182F
-	LDA OBJ_ZP_COPY+2
+	LDA OBJ_ZP_Y_COORD
 	SEC 
 	SBC #$40
-	STA OBJ_ZP_COPY+2
+	STA OBJ_ZP_Y_COORD
 	LDA OBJ_ZP_$49
 	LSR A
 	TAX 
@@ -3472,23 +3472,23 @@ L_1762:
 	STA OBJ_ZP_COPY+39
 	LDX #$00
 L_1774:
-	LDA OBJ_ZP_COPY+2
+	LDA OBJ_ZP_Y_COORD
 	JSR L_1AA5
-	LDA OBJ_ZP_X_COORD.
+	LDA OBJ_ZP_X_COORD
 	JSR L_1AB5
 	INX 
 	INX 
 	CPX #$20
 	BNE L_1774
 	JSR L_0F56
-	LDX OBJ_36
+	LDX OBJ_INDEX_START
 	JSR SPRITE_OFF_SCREEN
 	INC OBJ_ZP_STATE
 	RTS 
 TARGET_HANDLE_05:
 	JSR L_1805
 	JSR L_193A
-	LDA OBJ_36
+	LDA OBJ_INDEX_START
 	STA SPRITE_INDEX_VAL
 	LDY OBJ_ZP_COPY+32
 	INY 
@@ -3518,7 +3518,7 @@ L_17BE:
 TARGET_HANDLE_08:
 	LDA #$00
 	STA OBJ_ZP_STATE
-	LDX OBJ_36
+	LDX OBJ_INDEX_START
 	JMP SPRITE_OFF_SCREEN
 L_17CE:
 	STA TMP_0D
@@ -3558,12 +3558,12 @@ L_1805:
 	BEQ L_181A
 	LDA #$00
 	STA $A7
-	LDX OBJ_36
+	LDX OBJ_INDEX_START
 	JSR SPRITE_OFF_SCREEN
 	LDA #$50
-	STA OBJ_36
+	STA OBJ_INDEX_START
 	LDA #$9F
-	STA OBJ_FINAL_2XX_VALUE?
+	STA OBJ_INDEX_FINAL
 L_181A:
 	RTS 
 L_181B:
@@ -3645,7 +3645,7 @@ L_182F:
 	JSR L_1907
 	SBC #$00
 	EOR #$7F
-	STA OBJ_ZP_COPY+2
+	STA OBJ_ZP_Y_COORD
 	LDA OBJ_ZP_PTR_INDEX
 	SEC 
 	SBC #$00
@@ -3655,7 +3655,7 @@ L_182F:
 	TAX 
 	JSR L_1907
 	EOR #$80
-	STA OBJ_ZP_X_COORD.
+	STA OBJ_ZP_X_COORD
 	RTS 
 L_18AE:
 	LDA #$0F
@@ -3859,7 +3859,7 @@ L_19F5:
 L_19F6:
 	LDA OBJ_ZP_COPY+39
 	AND #$03
-	STA UPDATE_GROUP?
+	STA SPRITE_UPDATE_BASE
 	LDA TMP_$0E
 	JSR GOTO_TABLE_PAST_JSR
 	.LOW RTS
@@ -3902,7 +3902,7 @@ L_1A26:
 	JSR TWO_COMPLIMENT_A_REG
 	JMP L_1AA5
 TABLE_UNK_IDK_02:
-	LDA UPDATE_GROUP?
+	LDA SPRITE_UPDATE_BASE
 	BEQ L_1A26
 	JSR L_1A26
 	JMP TABLE_UNK_IDK_04
@@ -3919,7 +3919,7 @@ L_1A48:
 	LDA TMP_0F
 	JMP L_1AA5
 TABLE_UNK_IDK_06:
-	LDA UPDATE_GROUP?
+	LDA SPRITE_UPDATE_BASE
 	BEQ L_1A48
 	JSR L_1A5C
 	JMP TABLE_UNK_IDK_04
@@ -3935,7 +3935,7 @@ TABLE_UNK_IDK_09:
 	JSR L_1AB5
 	JMP L_1A5C
 TABLE_UNK_IDK_0A:
-	LDA UPDATE_GROUP?
+	LDA SPRITE_UPDATE_BASE
 	BEQ L_1A48
 	LDA TMP_0C
 	JSR L_1AA5
@@ -3954,7 +3954,7 @@ L_1A88:
 	JSR TWO_COMPLIMENT_A_REG
 	JMP L_1AA5
 TABLE_UNK_IDK_0E:
-	LDA UPDATE_GROUP?
+	LDA SPRITE_UPDATE_BASE
 	BEQ L_1A88
 	JSR TABLE_UNK_IDK_0C
 	JMP L_1A26
@@ -7354,15 +7354,15 @@ UNK_DATA_275A:
 	.db #$24
 	.db #$24
 	.db #$28
-TARGET_DATA_INDEX?:
-	.db #$00
-	.db #$01
+TARGET_DATA_COMBO:
+	.db #$00 ;format [trgt 2, trgt 1]
+	.db #$01 ;first level range is up to 3, meaning can't get 2 (red) target.
 	.db #$10
 	.db #$11
-	.db #$12
+	.db #$12 ;only at index 4 can you get red ducks.
 	.db #$20
 	.db #$21
-	.db #$22
+	.db #$22 ;and up to 0x7 is all combos of ducks available.
 TARGET_3_DATA:
 	.db #$01 ;type?
 	.db #$01 ;state?
@@ -7396,7 +7396,7 @@ TARGET_3_DATA:
 	.db #$00
 	.db #$00
 	.db #$00 ;end of target 3 data.
-OBJ3_ANIMATION_DATA:
+OBJ3_ANIMATION_SCRIPT_STATE_2:
 	.db #$06 ;speed to change frames in the file. E78E
 	.db #$0C ;file to play.
 	.db #$06 ;speed
@@ -7405,8 +7405,9 @@ OBJ3_ANIMATION_DATA:
 	.db #$0E ;file
 	.db #$06 ;speed
 	.db #$0F ;file
-	.db #$FE ;flag special. in code. index to 4?
+	.db #$FE ;flag special. in code. index to 0. repeat animation
 	.db #$00
+OBJ3_ANIMATION_SCRIPT_STATE_4:
 	.db #$08
 	.db #$0C
 	.db #$08
@@ -7422,11 +7423,13 @@ OBJ3_ANIMATION_DATA:
 	.db #$FF
 	.db #$02
 	.db #$01
-	.db #$10
+OBJ3_ANIMATION_SCRIPT_STATE_6:
+	.db #$10 ;Dog state 6 animation script.
 	.db #$11
 	.db #$FF
 	.db #$08
 	.db #$01
+OBJ3_ANIMATION_SCRIPT_STATE_8:
 	.db #$90
 	.db #$03
 	.db #$12
@@ -7581,6 +7584,7 @@ OBJ3_ANIMATION_DATA:
 	.db #$FF
 	.db #$0E
 	.db #$00
+OBJ3_ANIMATION_SCRIPT_STATE_A:
 	.db #$04
 	.db #$81
 	.db #$16
@@ -7659,6 +7663,7 @@ OBJ3_ANIMATION_DATA:
 	.db #$FF
 	.db #$0F
 	.db #$20
+OBJ3_ANIMATION_SCRIPT_STATE_C_2:
 	.db #$14
 	.db #$82
 	.db #$14
@@ -7674,6 +7679,7 @@ OBJ3_ANIMATION_DATA:
 	.db #$FF
 	.db #$0F
 	.db #$20
+OBJ3_ANIMATION_SCRIPT_STATE_C_2:
 	.db #$14
 	.db #$82
 	.db #$15
@@ -7689,6 +7695,7 @@ OBJ3_ANIMATION_DATA:
 	.db #$FF
 	.db #$0F
 	.db #$20
+OBJ3_ANIMATION_SCRIPT_STATE_10:
 	.db #$04
 	.db #$81
 	.db #$16

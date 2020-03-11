@@ -1360,7 +1360,7 @@ PROCESS_OBJ_TARGET:
 TARGET_STATES_INDIRECT_01:
 	LDX #$1F ;move 0 to 1F bytes.
 LOOP:
-	LDA TARGET_INIT_DATA?,X ;initial target data?
+	LDA TARGET_INIT_DATA_PIGEON/DUCK,X ;initial target data?
 	STA OBJ_ZP_COPY,X ;store to in-ram buffer.
 	DEX 
 	BPL LOOP ;move 1F to 0
@@ -1413,7 +1413,7 @@ NOT_EQ:
 	LDY #$00 ;reset index
 	LDA (OBJ_ZP_STEP?),Y ;load data pointer.
 	INY 
-	STY OBJ_ZP_COPY_47 ;store next index
+	STY OBJ_ZP_POPUP_OFFSET ;store next index
 	STA OBJ_ZP_X_COORD ;store loaded data.
 	LDY #$00
 	LDX UNK_$99 ;set something.
@@ -1482,7 +1482,7 @@ L_09D0:
 L_09E2:
 	STA OBJ_ZP_COPY+10
 	LDA #$00
-	STA OBJ_ZP_COPY_46
+	STA OBJ_ZP_TIMER_POPUP
 	STA OBJ_ZP_ANIM_TIMER
 	STA OBJ_ZP_COPY+30
 	STA OBJ_ZP_COPY+31
@@ -1527,7 +1527,7 @@ L_0A29:
 	LDA #$01
 	STA OBJ_ZP_COPY+30
 	LDA #$F0
-	STA OBJ_ZP_COPY_46
+	STA OBJ_ZP_TIMER_POPUP
 	LDA #$00
 	JMP L_0B77
 L_0A3E:
@@ -1702,9 +1702,9 @@ L_0B52:
 L_0B56:
 	JMP L_0B77
 L_0B59:
-	LDA OBJ_ZP_COPY_46
+	LDA OBJ_ZP_TIMER_POPUP
 	BNE L_0BC3
-	LDY OBJ_ZP_COPY_47
+	LDY OBJ_ZP_POPUP_OFFSET
 	LDA (OBJ_ZP_STEP?),Y
 	INY 
 	CMP #$FF
@@ -1716,10 +1716,10 @@ L_0B59:
 	STA OBJ_ZP_ANIM_TIMER
 	RTS 
 L_0B70:
-	STA OBJ_ZP_COPY_46
+	STA OBJ_ZP_TIMER_POPUP
 	LDA (OBJ_ZP_STEP?),Y
 	INY 
-	STY OBJ_ZP_COPY_47
+	STY OBJ_ZP_POPUP_OFFSET
 L_0B77:
 	STA OBJ_ZP_$48
 	TAX 
@@ -1774,9 +1774,9 @@ L_0BC6:
 	PLA 
 	JMP L_0F2A
 L_0BD1:
-	LDA OBJ_ZP_COPY_46
+	LDA OBJ_ZP_TIMER_POPUP
 	BEQ L_0BD7
-	DEC OBJ_ZP_COPY_46
+	DEC OBJ_ZP_TIMER_POPUP
 L_0BD7:
 	LDY OBJ_ZP_$49
 L_0BD9:
@@ -1928,14 +1928,14 @@ PROCESS_OBJ_DOG:
 	.HIGH TARGET_ANIM_TIMER_CHECK/DISP
 	.LOW TRGT_STATE_E_SETUP_BETWEEN_ROUNDS? ;init game and other?
 	.HIGH TRGT_STATE_E_SETUP_BETWEEN_ROUNDS?
-	.LOW TARGET_STATE_INDIR_0F ;end of round?
-	.HIGH TARGET_STATE_INDIR_0F
-	.LOW TARGET_STATE_INDIR_10 ;pigeons start from state 1?
-	.HIGH TARGET_STATE_INDIR_10
+	.LOW TRGT_STATE_F_CHK_TRGTS+IDK ;end of round?
+	.HIGH TRGT_STATE_F_CHK_TRGTS+IDK
+	.LOW TRGT_STATE_10_SET_X_BEHIND_BG_SETY_SCRIPT ;pigeons start from state 1?
+	.HIGH TRGT_STATE_10_SET_X_BEHIND_BG_SETY_SCRIPT
 	.LOW TARGET_ANIM_TIMER_CHECK/DISP ;disp obj?
 	.HIGH TARGET_ANIM_TIMER_CHECK/DISP
-	.LOW TARGET_STATE_INDIR_12 ;clears sprites when animation ends.
-	.HIGH TARGET_STATE_INDIR_12
+	.LOW TRGT_STATE_12_CLR_WHEN_SCRIPT_DONE ;clears sprites when animation ends.
+	.HIGH TRGT_STATE_12_CLR_WHEN_SCRIPT_DONE
 TRGT_STATE_1_SETUP_GAME_VARS:
 	LDX #$1F ;index
 MOVE_DATA:
@@ -2086,8 +2086,8 @@ FIRST_LEVEL:
 	TAX 
 	LDA TARGET_DATA_COMBO,X ;get types from array
 	STA TMP_0C ;store
-	AND #$F0 ;get high data
-	LSR A ;index multiplied by 8
+	AND #$F0 ;get high group of 4 bits.
+	LSR A ;index mul by 8, basically.
 	LDY #$00 ;index
 	JSR MOVE_DATA_TO_403+Y ;init state data?
 	LDA TMP_0C ;get target info again
@@ -2110,20 +2110,20 @@ FIRST_LEVEL:
 	LDA #$00
 	STA OBJ_ZP_ANIM_TIMER ;init
 	RTS 
-TARGET_STATE_INDIR_0F:
+TRGT_STATE_F_CHK_TRGTS+IDK:
 	LDA GAME_TARGETS_SHOWN?
 	CMP #$0A ;is targets shown 100%?
-	BNE GOTO_STATE_E ;if not complete, continue.
+	BNE OBJ_GOTO_STATE_E ;if not complete, continue.
 	LDA #$00
 	STA STATE_A9 ;clear A9 state.
 	LDA #$04
 	STA IN_GAME_STATE ;move to state end of round.
 	JMP CLEAR_SPRITES
-GOTO_STATE_E:
+OBJ_GOTO_STATE_E:
 	LDA #$0E
 	STA OBJ_ZP_STATE ;sets up round of targets and whatnot.
 	RTS 
-TARGET_STATE_INDIR_10:
+TRGT_STATE_10_SET_X_BEHIND_BG_SETY_SCRIPT:
 	LDA #$80
 	STA OBJ_ZP_X_COORD ;sets x coord to $80.
 	LDA #$01
@@ -2132,10 +2132,10 @@ TARGET_STATE_INDIR_10:
 	LDX #$B2 ;animation script ptr E8B2
 	LDY #$E8
 	JMP SETUP_INC_TRGT_GOTO_11
-TARGET_STATE_INDIR_12:
+TRGT_STATE_12_CLR_WHEN_SCRIPT_DONE:
 	LDA OBJ_ZP_ANIM_TIMER
 	BNE TARGET_ANIM_TIMER_CHECK/DISP ;Do animation stuff if timer valid.
-	LDA #$00
+	LDA #$00 ;else, clear obj and remove from screen.
 	STA OBJ_ZP_STATE ;clear state, disable object.
 	LDX OBJ_INDEX_START ;get start of index to clear.
 	JMP SPRITE_OFF_SCREEN
@@ -2180,23 +2180,23 @@ OBJ_ANIM_NO_FLAG:
 	CPX #$11 ;state
 	BNE NOT_ANY_OBJ_STATE_WANTED ;Not any obj state we care for.
 OBJ_STATE_B/D/11:
-	LDX OBJ_ZP_COPY_46 ;load idk.
-	BEQ OBJ+22_IS_0 ;skip below if 0.
-	DEC OBJ_ZP_COPY_46 ;count down otherwise.
-	LDA OBJ_ZP_COPY_47 ;load OBJ+23
+	LDX OBJ_ZP_TIMER_POPUP ;load idk.
+	BEQ OBJ_POPUP_ZERO ;skip if 0.
+	DEC OBJ_ZP_TIMER_POPUP ;count down otherwise.
+	LDA OBJ_ZP_POPUP_OFFSET ;load popup amount.
 	CLC 
-	ADC OBJ_ZP_Y_COORD ;Add to Y?
-	STA OBJ_ZP_Y_COORD ;store.
+	ADC OBJ_ZP_Y_COORD ;Add to Y.
+	STA OBJ_ZP_Y_COORD ;store changed.
 	JMP OBJ_TO_SCREEN_ROUTINE
-OBJ+22_IS_0:
-	STA OBJ_ZP_COPY_46 ;store data loaded by ptr
+OBJ_POPUP_ZERO:
+	STA OBJ_ZP_TIMER_POPUP ;store data loaded by ptr
 	INY  ;next byte.
 	LDA (OBJ_ZP_PTR_L_UNK),Y ;load next byte.
 	BPL IS_POSITIVE ;unsigned positive value.
 	AND #$7F ;get lower bits.
 	JSR TWO_COMPLIMENT_A_REG ;get inverse.
 IS_POSITIVE:
-	STA OBJ_ZP_COPY_47 ;store
+	STA OBJ_ZP_POPUP_OFFSET ;store
 	JMP MOVE_MORE_PTR_DATA
 OBJ_STATE_9:
 	TAX 
@@ -2288,8 +2288,8 @@ L_0F36:
 	JMP L_0AA5
 CLEAR_46-47,SET OBJ_Y:
 	LDA #$00
-	STA OBJ_ZP_COPY_46
-	STA OBJ_ZP_COPY_47
+	STA OBJ_ZP_TIMER_POPUP
+	STA OBJ_ZP_POPUP_OFFSET
 	LDA #$AC
 	STA OBJ_ZP_Y_COORD
 	RTS 
@@ -2299,7 +2299,7 @@ MOVE_DATA_TO_403+Y:
 	STA TMP_0D ;counter
 LOOP_DATA_8:
 	LDA TARGET_3_STATE_INIT?,X
-	STA $0403,Y ;store to $403+Y
+	STA UNK_403,Y ;store to $403+Y
 	INX 
 	INY 
 	DEC TMP_0D
@@ -2352,7 +2352,7 @@ L_0F96:
 	LDA #$01
 	STA WHITE_BOX_DISPLAYED
 	LDA #$36
-	STA $0403
+	STA UNK_403
 	STA $0407
 	STA $040B
 	STA $040F
@@ -3364,7 +3364,7 @@ L_1697:
 	LDA L_296B,X
 	STA OBJ_ZP_ANIM_TIMER
 	LDA L_296C,X
-	STA OBJ_ZP_COPY_47
+	STA OBJ_ZP_POPUP_OFFSET
 	LDA L_296D,X
 	STA OBJ_ZP_COPY+28
 	INC GAME_TARGETS_SHOWN?
@@ -6967,38 +6967,38 @@ DEFAULT_HIGH_SCORES:
 	.db #$01
 	.db #$20
 	.db #$00
-TARGET_INIT_DATA?:
-	.db #$01
-	.db #$01
-	.db #$A8
-	.db #$80
+TARGET_INIT_DATA_PIGEON/DUCK:
+	.db #$01 ;target type, ZP $30
+	.db #$01 ;target state, ZP $31
+	.db #$A8 ;Y coord. ZP $32
+	.db #$80 ;X coord.
+	.db #$00 ;ZP $34
 	.db #$00
+	.db #$00 ;ZP $36
+	.db #$3F ;OBJ_INDEX_FINAL
+	.db #$01 ;ZP $38
 	.db #$00
+	.db #$03 ;ZP $3A
 	.db #$00
-	.db #$3F
-	.db #$01
+	.db #$00 ;ZP $3C
 	.db #$00
+	.db #$00 ;ZP $3E
+	.db #$00
+	.db #$00 ;ZP $40
+	.db #$00
+	.db #$00 ;ZP $42
+	.db #$00
+	.db #$00 ;ZP $44
+	.db #$00
+	.db #$00 ;ZP $46
+	.db #$00
+	.db #$00 ;CP $48
+	.db #$00
+	.db #$00 ;ZP $4A
 	.db #$03
+	.db #$00 ;ZP $4C
 	.db #$00
-	.db #$00
-	.db #$00
-	.db #$00
-	.db #$00
-	.db #$00
-	.db #$00
-	.db #$00
-	.db #$00
-	.db #$00
-	.db #$00
-	.db #$00
-	.db #$00
-	.db #$00
-	.db #$00
-	.db #$00
-	.db #$03
-	.db #$00
-	.db #$00
-	.db #$00
+	.db #$00 ;ZP $4E
 	.db #$00
 OBJ_DATA_UNK_HIGH:
 	.LOW UNK_OBJ_DATA_OBJ_STATE_2_00 ;not sure what any of this is rn.

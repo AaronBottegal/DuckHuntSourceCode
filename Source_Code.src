@@ -1341,10 +1341,10 @@ PROCESS_OBJ_TARGET:
 	JSR GOTO_TABLE_PAST_JSR
 	.LOW RTS
 	.HIGH RTS ;RTS
-	.LOW TARGET_STATES_INDIRECT_01 ;inits target data in $30 area
-	.HIGH TARGET_STATES_INDIRECT_01
-	.LOW TARGET_STATES_INDIRECT_02 ;does a lot of stuff.
-	.HIGH TARGET_STATES_INDIRECT_02
+	.LOW TRGT_STATE_1_INIT_OBJ+MODIFY ;inits target data in $30 area, sets tile range.
+	.HIGH TRGT_STATE_1_INIT_OBJ+MODIFY
+	.LOW TRGT_STATE_2_UNK ;does a lot of stuff.
+	.HIGH TRGT_STATE_2_UNK
 	.LOW TARGET_STATES_INDIRECT_03 ;something to do with shooting.
 	.HIGH TARGET_STATES_INDIRECT_03
 	.LOW TARGET_STATES_INDIRECT_04 ;something with target hit.
@@ -1355,9 +1355,9 @@ PROCESS_OBJ_TARGET:
 	.HIGH TARGET_STATES_INDIRECT_06
 	.LOW TARGET_STATES_INDIRECT_07 ;falling?
 	.HIGH TARGET_STATES_INDIRECT_07
-	.LOW TARGET_STATES_INDIRECT_08 ;take spr off screen?
-	.HIGH TARGET_STATES_INDIRECT_08
-TARGET_STATES_INDIRECT_01:
+	.LOW TRGT_STATE_8_REMOVE_OBJ ;take spr off screen?
+	.HIGH TRGT_STATE_8_REMOVE_OBJ
+TRGT_STATE_1_INIT_OBJ+MODIFY:
 	LDX #$1F ;move 0 to 1F bytes.
 LOOP:
 	LDA TARGET_INIT_DATA_PIGEON/DUCK,X ;initial target data?
@@ -1367,14 +1367,14 @@ LOOP:
 	LDA OBJ_ZP_ORIGIN_SLOT# ;if origin was obj 0?
 	BEQ TARGET_ZERO ;not sure why. find last shot? idk.
 	LDA #$40
-	STA OBJ_INDEX_START ;different obj data?
+	STA OBJ_INDEX_START ;different obj area for target 1.
 	LDA #$7F
-	STA OBJ_INDEX_FINAL ;store idk why.
+	STA OBJ_INDEX_FINAL ;ending inded for obj.
 TARGET_ZERO:
 	INC OBJ_ZP_STATE ;inc target state.
 RTS:
 	RTS 
-TARGET_STATES_INDIRECT_02:
+TRGT_STATE_2_UNK:
 	LDA ZAP_SHOT_ENABLED ;is zapper enabled?
 	BEQ RTS ;leave if not enabled
 	LDA UNK_$A6 ;unk
@@ -1833,7 +1833,7 @@ TARGET_STATES_INDIRECT_04:
 	JSR L_0F68
 	LDX #$13
 	LDY #$E7
-L_0C37:
+SETUP_SCRIPT_NEXT_STATE:
 	JSR SETUP_OBJ_PTR+INIT_SUBSTATE+INDEX
 	INC OBJ_ZP_STATE
 	RTS 
@@ -1851,39 +1851,39 @@ TARGET_STATES_INDIRECT_06:
 	JSR SPRITE_SOMETHING_2
 	JSR SND_SET_F0_#$10
 	LDA OBJ_ZP_X_COORD
-	LDX #$48
+	LDX #$48 ;Ranged value.
 	CMP #$48
-	BCC L_0C64 ;<48...range?
-	LDX #$A0
+	BCC RANGE_DATA ;<48 on screen.
+	LDX #$A0 ;Ranged value.
 	CMP #$A0
-	BCS L_0C64 ;>A0...range?
+	BCS RANGE_DATA ;>A0
 	TAX 
-L_0C64:
-	STX $03A3 ;store to target 3 always..hmm...
+RANGE_DATA:
+	STX $03A3 ;Range dog sprite on screen.
 	LDA #$01
 	STA OBJ_ZP_$4B
 	LDX #$10
 	STX OBJ_ZP_$48
-	LDA UNK_OBJ_DATA_264B,X
-	STA OBJ_ZP_$49
+	LDA UNK_OBJ_DATA_264B,X ;alwys X=$10?
+	STA OBJ_ZP_$49 ;store 2x?
 	STA OBJ_ZP_$4A
 	LDX #$18
-	LDY #$E7
-	BNE L_0C37 ;setup obj data.
+	LDY #$E7 ;script $E718
+	BNE SETUP_SCRIPT_NEXT_STATE ;setup script+state
 TARGET_STATES_INDIRECT_07:
 	LDA OBJ_ZP_Y_COORD ;Y-coord?
 	CMP #$B0
 	BCS GREATER_THAN_#$B0 ;>=
-	JMP L_0BC3 ;idfk
+	JMP L_0BC3 ;falling?
 GREATER_THAN_#$B0:
 	JSR SND_SET_F2_#$08 ;thump sound?
-	INC OBJ_ZP_STATE ;next state when sound.
+	INC OBJ_ZP_STATE ;next state, removed from screen.
 	RTS 
-TARGET_STATES_INDIRECT_08:
+TRGT_STATE_8_REMOVE_OBJ:
 	LDA #$00
-	STA OBJ_ZP_STATE
-	LDX OBJ_INDEX_START
-	JMP SPRITE_OFF_SCREEN ;take away sprite?
+	STA OBJ_ZP_STATE ;disable object.
+	LDX OBJ_INDEX_START ;get its start.
+	JMP SPRITE_OFF_SCREEN ;put off screen.
 FORWARD_TARGET_3:
 	LDA TRGT3_TYPE
 	BEQ RTS ;deativated, nothing to display.
@@ -2174,12 +2174,12 @@ OBJ_ANIM_NO_FLAG:
 	CPX #$09 ;state
 	BEQ OBJ_STATE_9 ;if is
 	CPX #$0B ;state
-	BEQ OBJ_STATE_B/D/11 ;if is
+	BEQ OBJ_STATE_B/D/11_(POPUP) ;if is
 	CPX #$0D ;state
-	BEQ OBJ_STATE_B/D/11 ;if is
+	BEQ OBJ_STATE_B/D/11_(POPUP) ;if is
 	CPX #$11 ;state
 	BNE NOT_ANY_OBJ_STATE_WANTED ;Not any obj state we care for.
-OBJ_STATE_B/D/11:
+OBJ_STATE_B/D/11_(POPUP):
 	LDX OBJ_ZP_TIMER_POPUP ;load idk.
 	BEQ OBJ_POPUP_ZERO ;skip if 0.
 	DEC OBJ_ZP_TIMER_POPUP ;count down otherwise.
@@ -6974,7 +6974,7 @@ TARGET_INIT_DATA_PIGEON/DUCK:
 	.db #$80 ;X coord.
 	.db #$00 ;ZP $34
 	.db #$00
-	.db #$00 ;ZP $36
+	.db #$00 ;ZP $36, OBJ_INDEX_START
 	.db #$3F ;OBJ_INDEX_FINAL
 	.db #$01 ;ZP $38
 	.db #$00
@@ -7273,6 +7273,7 @@ L_2661:
 	.db #$FF
 	.db #$06
 	.db #$01
+TARGET_0_STATE_6_SCRIPT:
 	.db #$04
 	.db #$0A
 	.db #$04

@@ -573,20 +573,20 @@ SET_PPU_SCROLL:
 	STA PPU_Scroll
 	PLA  ;good for avoiding bugs. :D
 	RTS 
-PPU_UPDATE_BLOCK:
-	LDA #$01
+PPU_UPDATE_BLOCK_CREATE:
+	LDA #$01 ;this creates the update block. FMT: [ADDR_W,DATA,0x00]
 	STA PPU_UPDATE_FLAG ;set update flag
 	LDY #$00 ;start at beginning
-	LDA (TMP_02),Y ;setup byte at pointed data
+	LDA (TMP_02),Y ;setup byte load.
 	AND #$0F
-	STA TMP_05 ;number of bytes in group, upto 15
+	STA TMP_05 ;%0000 1111 = Bytes in group.
 	LDA (TMP_02),Y
 	LSR A
 	LSR A
 	LSR A
 	LSR A
 	STA TMP_04 ;number of groups, upto 15
-	LDX PPU_UPD8_BUF_INDEX
+	LDX PPU_UPD8_BUF_INDEX ;should start at 0, or if multiple updates, indexed.
 PROCESS_GROUP:
 	LDA TMP_01
 	STA PPU_UPDATE_BUF,X ;store high addr of ppu addr
@@ -594,8 +594,8 @@ PROCESS_GROUP:
 	LDA TMP_00
 	STA PPU_UPDATE_BUF,X ;store low ppu addr
 	JSR INCREASE_PPU_UPD8_INDEX
-	LDA TMP_05
-	STA TMP_06 ;num bytes counter
+	LDA TMP_05 ;Bytes static.
+	STA TMP_06 ;Bytes static.
 	STA PPU_UPDATE_BUF,X ;store to update buf
 MORE_BYTES_IN_GROUP:
 	JSR INCREASE_PPU_UPD8_INDEX
@@ -603,7 +603,7 @@ MORE_BYTES_IN_GROUP:
 	LDA (TMP_02),Y
 	STA PPU_UPDATE_BUF,X
 	DEC TMP_06 ;dec num bytes left
-	BNE MORE_BYTES_IN_GROUP
+	BNE MORE_BYTES_IN_GROUP ;0 is end for bytes.
 	JSR INCREASE_PPU_UPD8_INDEX
 	STX PPU_UPD8_BUF_INDEX ;save new index.
 	CLC 
@@ -614,7 +614,7 @@ MORE_BYTES_IN_GROUP:
 	ADC TMP_01
 	STA TMP_01
 	DEC TMP_04 ;more groups?
-	BNE PROCESS_GROUP
+	BNE PROCESS_GROUP ;0 is end for groups.
 	LDA #$00 ;null terminate
 	STA PPU_UPDATE_BUF,X ;end of data
 	RTS 
@@ -626,7 +626,7 @@ INCREASE_PPU_UPD8_INDEX:
 	LDX PPU_UPD8_BUF_INDEX ;Stop overflow if >=4F.
 	LDA #$00 ;terminate
 	STA PPU_UPDATE_BUF,X
-	PLA  ;leave 2 routines back, wtf?
+	PLA  ;leave 2 routines back since JSR.
 	PLA 
 NO_TERM:
 	RTS 
@@ -1081,8 +1081,8 @@ MAKE_SETUP_PPU_BLOCK:
 	LDX #$00
 	LDY #$05
 	STX TMP_02
-	STY TMP_03 ;setup ram pointer
-	JMP PPU_UPDATE_BLOCK ;WARNING-2RTS'S POSSIBLE
+	STY TMP_03 ;setup ram pointer to self.
+	JMP PPU_UPDATE_BLOCK_CREATE
 GAME_STATE_7_SCORE+TRGT3:
 	LDA TIMER_SLOW
 	BEQ SCORE_SOMETHING ;wait until 0 to score.
@@ -1279,74 +1279,74 @@ GAME_STATE_3_ZAP+TRGTS(+STATUS)+SHOT:
 	NOP 
 	RTS  ;return.
 FORWARD_TARGETS_1+2:
-	LDA TRGT1_TYPE
+	LDA TRGT1_TYPE ;get if is target.
 	BEQ FORWARD_TARGET_2 ;not active
 	LDY #$00
 	STY OBJ_ZP_ORIGIN_SLOT# ;where obj came from
 	JSR COPY_OBJ_$3YY_TO_OBJ_ZP ;move obj data.
-	JSR PROCESS_OBJ_TARGET
+	JSR PROCESS_OBJ_TARGET ;here we go...
 	JSR MOVE_$50B_BACK
 FORWARD_TARGET_2:
 	LDA TRGT2_TYPE
-	BEQ Zapper_shot? ;not active
+	BEQ Zapper_shot_check? ;not active, go here.
 	LDY #$50
 	INC OBJ_ZP_ORIGIN_SLOT# ;apparently active target will ALWAYS be in slot 1?
 	JSR COPY_OBJ_$3YY_TO_OBJ_ZP
 	JSR PROCESS_OBJ_TARGET
 	JSR MOVE_$50B_BACK
-Zapper_shot?:
+Zapper_shot_check?:
 	LDA ZAP_SHOT_ENABLED
-	BEQ RTS ;Zapper shot disabled.
-	LDY DEACTIVATE_SHOOTING_COUNDOWN?
+	BEQ RTS ;Zapper shot disabled, leave.
+	LDY ACTIVATE_SHOOTING_COUNTDOWN? ;if 
 	BNE WRITE_COUNTDOWN ;count down
-	LDY #$41 ;set value
-	LDA SHOTS_REMAINING
-	BNE WRITE_COUNTDOWN ;if has shots.
+	LDY #$41 ;set value, unk.
+	LDA SHOTS_REMAINING ;see if shots remaining.
+	BNE WRITE_COUNTDOWN ;if has shots, go here.
 	LDY #$15 ;otherwise, this value if no shots.
 WRITE_COUNTDOWN:
-	DEY 
-	STY DEACTIVATE_SHOOTING_COUNDOWN?
+	DEY  ;dec countdown.
+	STY ACTIVATE_SHOOTING_COUNTDOWN? ;store back to now.
 	LDA #_TRGTS_IN_MODE
-	BNE DEC_A6 ;bc_exists
+	BNE DEC_A6 ;If targets in mode, dec A6.
 	LDA TRGT1_STATE
-	BNE RTS ;in state, rts
+	BNE RTS ;in state, rts.
 	LDA TRGT2_STATE
 	BNE RTS ;in state, rts
 	LDA FAST_TIMERS
 	BNE RTS ;has time, rts
-	LDA #$0A ;state
+	LDA #$0A ;state for laugh?
 	LDY #$07 ;palette
 	LDX TRGT_SHOT_DURING_ATTEMPT
-	BEQ BD_IS_0
-	LDA #$0C ;state
+	BEQ TARGET_3_STATE_DECIDED ;target not shot.
+	LDA #$0C ;state for success?
 	LDY #$02 ;palette
-BD_IS_0:
+TARGET_3_STATE_DECIDED:
 	STA TRGT3_STATE
-	STY PALETTE_UPLOAD
+	STY PALETTE_UPLOAD ;put this pallette in for it.
 	JSR WAIT_FOR_NMI
-	JSR PPU_DISP_SHOT_TEXT
+	JSR DISP_SHOT_TEXT
 	LDA #$40
 	STA FAST_TIMERS ;store timer
 	LDA #$00
 	STA ZAP_SHOT_ENABLED ;disable shots
 	JMP UPDATE_PPU_GROUP
 DEC_A6:
-	LDA UNK_$A6
+	LDA COUNTDOWN_TO_ENABLE_TARGETS?
 	BEQ RTS
-	DEC UNK_$A6 ;if not zero, dec.
+	DEC COUNTDOWN_TO_ENABLE_TARGETS? ;if not zero, dec.
 RTS:
 	RTS 
 PROCESS_OBJ_TARGET:
 	LDA OBJ_ZP_STATE
 	JSR GOTO_TABLE_PAST_JSR
 	.LOW RTS
-	.HIGH RTS ;RTS
-	.LOW TRGT_STATE_1_INIT_OBJ+MODIFY ;inits target data in $30 area, sets tile range.
-	.HIGH TRGT_STATE_1_INIT_OBJ+MODIFY
-	.LOW TRGT_STATE_2_UNK ;does a lot of stuff.
-	.HIGH TRGT_STATE_2_UNK
-	.LOW TARGET_STATES_INDIRECT_03 ;something to do with shooting.
-	.HIGH TARGET_STATES_INDIRECT_03
+	.HIGH RTS ;RTS, uninit'd.
+	.LOW TRGT_STATE_1_INIT_OBJ ;inits target data in $30 area, sets tile range.
+	.HIGH TRGT_STATE_1_INIT_OBJ
+	.LOW TARGET_STATE_2_SPAWN ;does a lot of stuff.
+	.HIGH TARGET_STATE_2_SPAWN
+	.LOW TARGET_STATE_3_FLY+BOX+STATE4 ;something to do with shooting.
+	.HIGH TARGET_STATE_3_FLY+BOX+STATE4
 	.LOW TARGET_STATES_INDIRECT_04 ;something with target hit.
 	.HIGH TARGET_STATES_INDIRECT_04
 	.LOW TARGET_STATES_INDIRECT_05 ;shot? something sound.
@@ -1357,7 +1357,7 @@ PROCESS_OBJ_TARGET:
 	.HIGH TARGET_STATES_INDIRECT_07
 	.LOW TRGT_STATE_8_REMOVE_OBJ ;take spr off screen?
 	.HIGH TRGT_STATE_8_REMOVE_OBJ
-TRGT_STATE_1_INIT_OBJ+MODIFY:
+TRGT_STATE_1_INIT_OBJ:
 	LDX #$1F ;move 0 to 1F bytes.
 LOOP:
 	LDA TARGET_INIT_DATA_PIGEON/DUCK,X ;initial target data?
@@ -1367,51 +1367,51 @@ LOOP:
 	LDA OBJ_ZP_ORIGIN_SLOT# ;if origin was obj 0?
 	BEQ TARGET_ZERO ;not sure why. find last shot? idk.
 	LDA #$40
-	STA OBJ_INDEX_START ;different obj area for target 1.
+	STA OBJ_INDEX_START ;different spr area for target 2
 	LDA #$7F
-	STA OBJ_INDEX_FINAL ;ending inded for obj.
+	STA OBJ_INDEX_FINAL ;ending for spr area.
 TARGET_ZERO:
 	INC OBJ_ZP_STATE ;inc target state.
 RTS:
 	RTS 
-TRGT_STATE_2_UNK:
+TARGET_STATE_2_SPAWN:
 	LDA ZAP_SHOT_ENABLED ;is zapper enabled?
 	BEQ RTS ;leave if not enabled
-	LDA UNK_$A6 ;unk
-	BNE RTS ;if equal leave
+	LDA COUNTDOWN_TO_ENABLE_TARGETS?
+	BNE RTS ;if not 0 leave.
 	JSR RNG_ADVANCE ;get random number.
 	AND #$0F
 	LDY GAME_MODE_IN
-	BNE Don't Add 10
+	BNE TWO_TARGETS
 	CLC 
 	ADC #$10 ;up to 1F now.
-Don't Add 10:
-	CMP UNK_$9C ;not sure what is comparing against.
-	BNE NOT_EQ ;not eq
+TWO_TARGETS:
+	CMP UNK_$9C_INDEX ;9C unk
+	BNE WRITE_9C ;if not same, leave+write.
 	CLC 
 	ADC #$01 ;up to #$20 now.
 	CMP #$10
-	BEQ IS_10 ;is eq
+	BEQ SUB_10 ;sub 10 if =10, idk why.
 	CMP #$20
-	BNE NOT_EQ ;not 20
-IS_10:
+	BNE WRITE_9C ;not 20
+SUB_10:
 	SEC 
 	SBC #$10 ;subtract 10.
-NOT_EQ:
-	STA UNK_$9C ;update 9C...hmm...
+WRITE_9C:
+	STA UNK_$9C_INDEX ;store
 	ASL A
 	TAX 
 	LDA OBJ_DATA_UNK_HIGH,X
-	STA OBJ_ZP_STEP?
+	STA OBJ_ZP_EXTRA_PTR/DATA
 	LDA OBJ_DATA_UNK_LOW,X
-	STA OBJ_ZP_COPY+21
+	STA OBJ_ZP_EXTRA_PTR/DATA+1
 	JSR RNG_ADVANCE ;get new rand number.
 	AND #$3F ;range
 	TAY 
-	INY  ;1 to 40
-	STY UNK_$A6 ;store
+	INY  ;1 to 40, 0 is done so can't be 0.
+	STY COUNTDOWN_TO_ENABLE_TARGETS? ;store next target time.
 	LDY #$00 ;reset index
-	LDA (OBJ_ZP_STEP?),Y ;load data pointer.
+	LDA (OBJ_ZP_EXTRA_PTR/DATA),Y ;load data pointer.
 	INY 
 	STY OBJ_ZP_POPUP_OFFSET ;store next index
 	STA OBJ_ZP_X_COORD ;store loaded data.
@@ -1482,7 +1482,7 @@ L_09D0:
 L_09E2:
 	STA OBJ_ZP_COPY+10
 	LDA #$00
-	STA OBJ_ZP_TIMER_POPUP
+	STA OBJ_ZP_TIMER_MISC?POPUP?
 	STA OBJ_ZP_ANIM_TIMER
 	STA OBJ_ZP_COPY+30
 	STA OBJ_ZP_COPY+31
@@ -1510,58 +1510,58 @@ L_0A0E:
 	DEC #_TRGTS_IN_MODE
 	INC OBJ_ZP_STATE
 	RTS 
-TARGET_STATES_INDIRECT_03:
+TARGET_STATE_3_FLY+BOX+STATE4:
 	LDA FRAME_COUNTER
 	AND #$07
-	BNE L_0A22
-	JSR SND_SET_F0_#$08
-L_0A22:
-	LDA DEACTIVATE_SHOOTING_COUNDOWN?
-	BNE L_0A29
-	JSR SND_SET_F2_#$02
-L_0A29:
+	BNE SKIP_SET_SOUND ;not sure why 7
+	JSR SND_SET_F0_#$08 ;set sound.
+SKIP_SET_SOUND:
+	LDA ACTIVATE_SHOOTING_COUNTDOWN?
+	BNE DON'T_SET_SOUND ;if =0, set sound.
+	JSR SND_SET_F2_#$02 ;set sound.
+DON'T_SET_SOUND:
 	LDA SHOTS_REMAINING
-	BNE L_0A3E
-	LDA OBJ_ZP_COPY+30
-	BNE L_0A3E
+	BNE VALID_??? ;if shots, valid.
+	LDA OBJ_ZP_COPY+30 ;unk rn
+	BNE VALID_???
 	LDA #$01
-	STA OBJ_ZP_COPY+30
+	STA OBJ_ZP_COPY+30 ;set to 1, idk why.
 	LDA #$F0
-	STA OBJ_ZP_TIMER_POPUP
-	LDA #$00
-	JMP L_0B77
-L_0A3E:
+	STA OBJ_ZP_TIMER_MISC?POPUP? ;set pop up timer.
+	LDA #$00 ;clear...
+	JMP OBJ_DIRECTION_STUFF
+VALID_???:
 	LDA GAME_MODE_IN
-	BEQ L_0A45
-L_0A42:
-	JMP L_0B59
-L_0A45:
-	LDA OBJ_ZP_$4B
-	BEQ L_0A53
-	LDA OBJ_ZP_Y_COORD
+	BEQ GAME_MODE_1_TRGT
+TWO_TARGET_GAME:
+	JMP GAME_MODE_2_TARGETS
+GAME_MODE_1_TRGT:
+	LDA OBJ_ZP_$4B ;get data.
+	BEQ $4B_NOT_SET
+	LDA OBJ_ZP_Y_COORD ;get obj Y
 	CMP #$88
-	BCS L_0A42
+	BCS TWO_TARGET_GAME ;if A>=#$88, go. unk function.
 	LDA #$00
-	STA OBJ_ZP_$4B
-L_0A53:
+	STA OBJ_ZP_$4B ;clear $4B
+$4B_NOT_SET:
 	LDX #$01
 	LDA OBJ_ZP_COPY+28
-	BEQ L_0A70
+	BEQ IS_ZERO
 	LDA SHOTS_REMAINING
-	BNE L_0A66
+	BNE HAS_SHOTS_REMAINING
 	STA OBJ_ZP_COPY+28
 L_0A5F:
-	JSR L_0F96
+	JSR DISP_CHANGE_SOMETHING
 	LDX #$01
-	BNE L_0A70
-L_0A66:
+	BNE IS_ZERO ;always taken
+HAS_SHOTS_REMAINING:
 	DEX 
 	LDA FRAME_COUNTER
 	LSR A
-	BCC L_0A70
+	BCC IS_ZERO
 	DEC OBJ_ZP_COPY+28
 	BEQ L_0A5F
-L_0A70:
+IS_ZERO:
 	STX $AE
 	CPX #$01
 	BEQ L_0A8A
@@ -1591,7 +1591,7 @@ L_0A8D:
 	CMP #$F0
 	BCS L_0AE9
 L_0AA5:
-	JMP L_0BC3
+	JMP POPUP_TIMER_SET
 L_0AA8:
 	CMP $AF
 	BEQ L_0A8A
@@ -1627,7 +1627,7 @@ L_0AD7:
 	DEC OBJ_ZP_Y_COORD
 	LDY #$02
 L_0ADB:
-	LDA OBJ_ZP_$48
+	LDA OBJ_ZP_INDEX_UNK
 	AND #$08
 	TAX 
 	JMP L_0AED
@@ -1641,7 +1641,7 @@ L_0AE9:
 L_0AED:
 	STX TMP_0C
 	STY TMP_0F
-	LDA OBJ_ZP_$48
+	LDA OBJ_ZP_INDEX_UNK
 	AND #$07
 	EOR #$07
 	ORA TMP_0C
@@ -1700,71 +1700,71 @@ L_0B52:
 	LDA TMP_$0E
 	AND #$0F
 L_0B56:
-	JMP L_0B77
-L_0B59:
-	LDA OBJ_ZP_TIMER_POPUP
-	BNE L_0BC3
-	LDY OBJ_ZP_POPUP_OFFSET
-	LDA (OBJ_ZP_STEP?),Y
+	JMP OBJ_DIRECTION_STUFF
+GAME_MODE_2_TARGETS:
+	LDA OBJ_ZP_TIMER_MISC?POPUP?
+	BNE POPUP_TIMER_SET ;if set, do something.
+	LDY OBJ_ZP_POPUP_OFFSET ;index is offset.
+	LDA (OBJ_ZP_EXTRA_PTR/DATA),Y ;get data.
 	INY 
-	CMP #$FF
-	BNE L_0B70
-	LDA (OBJ_ZP_STEP?),Y
+	CMP #$FF ;if EOF.
+	BNE NOT_EXTRA_PTR_EOF
+	LDA (OBJ_ZP_EXTRA_PTR/DATA),Y ;get data.
 	INY 
-	STA OBJ_ZP_STATE
-	LDA (OBJ_ZP_STEP?),Y
-	STA OBJ_ZP_ANIM_TIMER
+	STA OBJ_ZP_STATE ;store to obj state.
+	LDA (OBJ_ZP_EXTRA_PTR/DATA),Y ;get next data.
+	STA OBJ_ZP_ANIM_TIMER ;timer for animation.
 	RTS 
-L_0B70:
-	STA OBJ_ZP_TIMER_POPUP
-	LDA (OBJ_ZP_STEP?),Y
+NOT_EXTRA_PTR_EOF:
+	STA OBJ_ZP_TIMER_MISC?POPUP? ;store data here.
+	LDA (OBJ_ZP_EXTRA_PTR/DATA),Y ;get next data.
 	INY 
-	STY OBJ_ZP_POPUP_OFFSET
-L_0B77:
-	STA OBJ_ZP_$48
+	STY OBJ_ZP_POPUP_OFFSET ;store popup offset.
+OBJ_DIRECTION_STUFF:
+	STA OBJ_ZP_INDEX_UNK ;store data after EOF to index for idk.
 	TAX 
 	LDA UNK_OBJ_DATA_264B,X
-	STA OBJ_ZP_$49
+	STA OBJ_ZP_$49 ;store 2 places.
 	STA OBJ_ZP_$4A
 	LDA #$00
-	STA OBJ_ZP_DIRECTION
-	LDA OBJ_ZP_$48
+	STA OBJ_ZP_DIRECTION ;clear direction?
+	LDA OBJ_ZP_INDEX_UNK ;get index.
 	CMP #$11
-	BCC L_0BA2
-	TAX 
-	LDA #$00
+	BCC <11
+	TAX  ;save to X,= to A, never changes. idk why used like so.
+	LDA #$00 ;Value...
 	CPX #$15
-	BEQ L_0BBC
+	BEQ SWITCH_STATE_SPECIFIC ;if X=15, goto that state...
 	CPX #$14
-	BEQ L_0BB0
+	BEQ DECIDE_STATE_MULTIPLE_OPTIONS ;multiple choices.
 	CPX #$13
-	BEQ L_0BA8
+	BEQ DECIDE_STATE_MULTIPLE_OPTIONS+MORE
 	INC OBJ_ZP_DIRECTION
 	CPX #$12
-	BEQ L_0BB0
-	BNE L_0BBC
-L_0BA2:
+	BEQ DECIDE_STATE_MULTIPLE_OPTIONS
+	BNE SWITCH_STATE_SPECIFIC
+<11:
 	CMP #$08
-	BCC L_0BA8
+	BCC DECIDE_STATE_MULTIPLE_OPTIONS+MORE
 	INC OBJ_ZP_DIRECTION
-L_0BA8:
+DECIDE_STATE_MULTIPLE_OPTIONS+MORE:
 	LDX #$0C
 	LDY #$E7
 	AND #$07
-	BEQ L_0BC0
-L_0BB0:
+	BEQ SWITCH_OBJ_STATE
+DECIDE_STATE_MULTIPLE_OPTIONS:
 	LDX #$05
 	LDY #$E7
 	CMP #$03
-	BCC L_0BC0
+	BCC SWITCH_OBJ_STATE
 	CMP #$06
-	BCS L_0BC0
-L_0BBC:
+	BCS SWITCH_OBJ_STATE
+SWITCH_STATE_SPECIFIC:
 	LDX #$1D
 	LDY #$E7
-L_0BC0:
+SWITCH_OBJ_STATE:
 	JSR SETUP_OBJ_PTR+INIT_SUBSTATE+INDEX
-L_0BC3:
+POPUP_TIMER_SET:
 	JSR L_181B
 L_0BC6:
 	PHA 
@@ -1774,9 +1774,9 @@ L_0BC6:
 	PLA 
 	JMP L_0F2A
 L_0BD1:
-	LDA OBJ_ZP_TIMER_POPUP
+	LDA OBJ_ZP_TIMER_MISC?POPUP?
 	BEQ L_0BD7
-	DEC OBJ_ZP_TIMER_POPUP
+	DEC OBJ_ZP_TIMER_MISC?POPUP?
 L_0BD7:
 	LDY OBJ_ZP_$49
 L_0BD9:
@@ -1863,7 +1863,7 @@ RANGE_DATA:
 	LDA #$01
 	STA OBJ_ZP_$4B
 	LDX #$10
-	STX OBJ_ZP_$48
+	STX OBJ_ZP_INDEX_UNK
 	LDA UNK_OBJ_DATA_264B,X ;alwys X=$10?
 	STA OBJ_ZP_$49 ;store 2x?
 	STA OBJ_ZP_$4A
@@ -1874,7 +1874,7 @@ TARGET_STATES_INDIRECT_07:
 	LDA OBJ_ZP_Y_COORD ;Y-coord?
 	CMP #$B0
 	BCS GREATER_THAN_#$B0 ;>=
-	JMP L_0BC3 ;falling?
+	JMP POPUP_TIMER_SET ;falling?
 GREATER_THAN_#$B0:
 	JSR SND_SET_F2_#$08 ;thump sound?
 	INC OBJ_ZP_STATE ;next state, removed from screen.
@@ -1966,7 +1966,7 @@ GAME_HAS_DOG:
 	LDX #$18
 IS_LEVEL_1_FARTHER_AWAY:
 	STY OBJ_ZP_X_COORD ;X coord.
-	STX OBJ_ZP_STEP? ;animation step? Not sure.
+	STX OBJ_ZP_EXTRA_PTR/DATA ;animation step? Not sure.
 	LDA #$01
 	STA MULTIPLE_BG_UPDATE_INDEX ;Set index 1 for stepped updates.
 	JSR WAIT_FOR_NMI
@@ -1981,8 +1981,8 @@ TRGT_STATE_3_COUNT_FRAME:
 	LDA OBJ_ZP_FRAME ;get frame showing.
 	CMP #$0C ;if is frame X.
 	BNE FRAME_NOT_C
-	INC OBJ_ZP_STEP? ;next step.
-	LDA OBJ_ZP_STEP? ;get step counter.
+	INC OBJ_ZP_EXTRA_PTR/DATA ;next step.
+	LDA OBJ_ZP_EXTRA_PTR/DATA ;get step counter.
 	CMP #$20 ;if is 20...
 	BCC FRAME_NOT_C
 	INC OBJ_ZP_STATE ;go to next state.
@@ -1991,14 +1991,14 @@ RTS:
 FRAME_NOT_C:
 	JSR TARGET_ANIM_TIMER_CHECK/DISP ;check animation/disp.
 	LDA OBJ_ZP_X_COORD
-	CMP OBJ_ZP_COPY+21 ;idk what for yet. is pointer data? why this?
+	CMP OBJ_ZP_EXTRA_PTR/DATA+1 ;idk what for yet. is pointer data? why this?
 	BNE RTS ;if not eq, rts.
 	LDA #$06
 	STA OBJ_ZP_STATE ;set state to 6 when eq.
 	RTS 
 TRGT_STATE_4_STEP_0+SCRIPT:
 	LDA #$00
-	STA OBJ_ZP_STEP?
+	STA OBJ_ZP_EXTRA_PTR/DATA
 	LDX #$98
 	LDY #$E7 ;script at E798
 SETUP_INC_TRGT_GOTO_11:
@@ -2049,7 +2049,7 @@ TRGT_STATE_C_CNTDOWNTMR2SND_SETY_SCRIPT1/2:
 	BNE SETUP_INC_TRGT_GOTO_11
 TRGT_STATE_E_SETUP_BETWEEN_ROUNDS?:
 	LDA #$30 ;mostly self explainatory.
-	STA UNK_$A6
+	STA COUNTDOWN_TO_ENABLE_TARGETS?
 	LDA #$01
 	STA ZAP_SHOT_ENABLED
 	LDA #$03
@@ -2180,16 +2180,16 @@ OBJ_ANIM_NO_FLAG:
 	CPX #$11 ;state
 	BNE NOT_ANY_OBJ_STATE_WANTED ;Not any obj state we care for.
 OBJ_STATE_B/D/11_(POPUP):
-	LDX OBJ_ZP_TIMER_POPUP ;load idk.
+	LDX OBJ_ZP_TIMER_MISC?POPUP? ;load idk.
 	BEQ OBJ_POPUP_ZERO ;skip if 0.
-	DEC OBJ_ZP_TIMER_POPUP ;count down otherwise.
+	DEC OBJ_ZP_TIMER_MISC?POPUP? ;count down otherwise.
 	LDA OBJ_ZP_POPUP_OFFSET ;load popup amount.
 	CLC 
 	ADC OBJ_ZP_Y_COORD ;Add to Y.
 	STA OBJ_ZP_Y_COORD ;store changed.
 	JMP OBJ_TO_SCREEN_ROUTINE
 OBJ_POPUP_ZERO:
-	STA OBJ_ZP_TIMER_POPUP ;store data loaded by ptr
+	STA OBJ_ZP_TIMER_MISC?POPUP? ;store data loaded by ptr
 	INY  ;next byte.
 	LDA (OBJ_ZP_PTR_L_UNK),Y ;load next byte.
 	BPL IS_POSITIVE ;unsigned positive value.
@@ -2288,7 +2288,7 @@ L_0F36:
 	JMP L_0AA5
 CLEAR_46-47,SET OBJ_Y:
 	LDA #$00
-	STA OBJ_ZP_TIMER_POPUP
+	STA OBJ_ZP_TIMER_MISC?POPUP?
 	STA OBJ_ZP_POPUP_OFFSET
 	LDA #$AC
 	STA OBJ_ZP_Y_COORD
@@ -2340,9 +2340,9 @@ L_0F7F:
 	LDA #$0F ;jsr setup
 	JSR SCORE_ADD/SUB
 	JMP SCORE_TO_SCREEN
-L_0F96:
+DISP_CHANGE_SOMETHING:
 	LDA TRGT_SHOT_DURING_ATTEMPT
-	BNE L_0FB9
+	BNE RTS ;leave if no hits.
 	LDA #$06
 	JSR UPDATE_PPU_GROUP
 	LDA #$30
@@ -2356,7 +2356,7 @@ L_0F96:
 	STA $0407
 	STA $040B
 	STA $040F
-L_0FB9:
+RTS:
 	RTS 
 DISP_SCORE_SPRITES:
 	LDX #$00 ;obj 0
@@ -2790,7 +2790,7 @@ NO_MORE_DATA:
 	STA TRGT3_TYPE ;target type. dog?
 	STA TRGT3_STATE ;enabled state?
 	LDA #$FF
-	STA UNK_$9C ;set idk.
+	STA UNK_$9C_INDEX ;set idk.
 	RTS 
 GAME_STATE_C_END_RND_OPTIONS:
 	LDA END_OF_ROUND_STATE
@@ -3000,12 +3000,12 @@ DISP_BLINK_WORD_SHOT:
 	BNE RTS ;if white box, rts
 	LDA SHOT_BLINK_COUNTER
 	AND #$08
-	BEQ PPU_DISP_SHOT_TEXT
+	BEQ DISP_SHOT_TEXT
 	LDA #$B7 ;blank shot text with tile.
 	TAX 
 	TAY 
 	BNE AXY_TO_UPDATEBUF_3BYTES
-PPU_DISP_SHOT_TEXT:
+DISP_SHOT_TEXT:
 	LDA #$DA ;SHOT text
 	LDX #$DB
 	LDY #$DC
@@ -3028,7 +3028,7 @@ UPDATE_PPU_GROUP:
 	PLA 
 SPR_BG_UNK:
 	STA SPRITE_UPDATE_BASE
-	BEQ MAKE_PPU_BLOCK_UNK ;not doing something diff...hmm...
+	BEQ DISP_CLEAR_FIELD ;if A=0, clear message.
 	ASL A
 	TAX  ;X is now index.
 	LDA UNK_TABLE_LOW,X
@@ -3056,36 +3056,36 @@ MORE_BYTES_IN_BLOCK:
 	LSR A
 	LSR A
 	BEQ ONLY_ONE_DIGIT
-	STA $0518 ;upper level digit if exists.
+	STA PPU_UPDATE_BUF+23 ;upper level digit if exists.
 ONLY_ONE_DIGIT:
 	LDA LEVEL
 	AND #$0F ;bottom level digit
-	STA $0519
+	STA PPU_UPDATE_BUF+24
 	JMP NO_BONUS?
 NO_LEVEL_IN_UPDATE:
 	CMP #$05 ;perfect level bonus?
 	BNE NO_BONUS?
 	LDA TMP_0C ;bonus score for level?
-	STA $0521
+	STA PPU_UPDATE_BUF+32
 	LDA TMP_0D
-	STA $0522
+	STA PPU_UPDATE_BUF+33
 	JMP NO_BONUS?
-MAKE_PPU_BLOCK_UNK:
-	LDX #$44
-	LDA #$24
-L_14C0:
+DISP_CLEAR_FIELD:
+	LDX #$44 ;68 bytes. DATA: 50 data, 10 addr. should be #60?
+	LDA #$24 ;Set to area to clear.
+LOOP_MAKE_BUF:
 	STA PPU_UPDATE_BUF,X
 	DEX 
-	BPL L_14C0
-	LDA #$6B
-	STA PPU_BLOCK_BUF_SETTING
-	LDX #$CB
-	BNE L_14D4
+	BPL LOOP_MAKE_BUF ;put clear tile loop.
+	LDA #$6B ;5 groups of 10 bytes.
+	STA PPU_BLOCK_BUF_SETTING ;save the setting to update buf.
+	LDX #$CB ;where putting, $20XX
+	BNE PPU_UPDATE_BLOCK_$20XX ;always taken.
 NO_BONUS?:
 	LDY #$00
 	LDA (INDIR_JMP_LOW),Y
 	TAX  ;get ppu high addr
-L_14D4:
+PPU_UPDATE_BLOCK_$20XX:
 	LDY #$20
 	JMP MAKE_SETUP_PPU_BLOCK
 CLEAR_MEMORIES:
@@ -3218,7 +3218,7 @@ GAME_STATE_A_SUBROUND_INIT:
 LEVEL_MAXED:
 	STA LEVEL_TIED_VAR? ;not sure
 	LDA #$80
-	STA UNK_$A6 ;set top bit of A6. Counter?
+	STA COUNTDOWN_TO_ENABLE_TARGETS? ;set top bit of A6. Counter?
 	LDA #$01
 	STA SHOT_FIRED ;disable shooting.
 	LDA #$03
@@ -3278,7 +3278,7 @@ IS_ACTIVE:
 	BNE RTS ;rts if any state
 	CPY #$00
 	BNE RTS ;rts if any state.
-	JSR PPU_DISP_SHOT_TEXT ;display text
+	JSR DISP_SHOT_TEXT ;display text
 	LDA #$00
 	STA ZAP_SHOT_ENABLED ;disable shot.
 	LDA GAME_TARGETS_SHOWN?
@@ -3294,9 +3294,9 @@ GAME_STATE_SWITCH.:
 	STA IN_GAME_STATE ;goto state.
 	JMP CLEAR_SPRITES ;clear sprites then RTS.
 BC_NOT_CLEAR:
-	LDA UNK_$A6 ;is a timer?
+	LDA COUNTDOWN_TO_ENABLE_TARGETS? ;is a timer?
 	BEQ RTS
-	DEC UNK_$A6
+	DEC COUNTDOWN_TO_ENABLE_TARGETS?
 RTS:
 	RTS 
 HANDLE_TARGET_STATE:
@@ -3331,7 +3331,7 @@ L_166B:
 	STA $A7
 	RTS 
 TARGET_HANDLE_02:
-	LDA UNK_$A6
+	LDA COUNTDOWN_TO_ENABLE_TARGETS?
 	BNE L_16D4
 	LDA #$01
 	STA ZAP_SHOT_ENABLED
@@ -3339,16 +3339,16 @@ TARGET_HANDLE_02:
 	AND #$3F
 	TAY 
 	INY 
-	STY UNK_$A6
+	STY COUNTDOWN_TO_ENABLE_TARGETS?
 	JSR RNG_ADVANCE
 	AND #$0F
-	CMP UNK_$9C
+	CMP UNK_$9C_INDEX
 	BNE L_1697
 	CLC 
 	ADC #$01
 	AND #$0F
 L_1697:
-	STA UNK_$9C
+	STA UNK_$9C_INDEX
 	ASL A
 	STA TMP_0C
 	ASL A
@@ -3356,7 +3356,7 @@ L_1697:
 	ADC TMP_0C
 	TAX 
 	LDA L_2968,X
-	STA OBJ_ZP_STEP?
+	STA OBJ_ZP_EXTRA_PTR/DATA
 	LDA L_2969,X
 	STA OBJ_ZP_PTR_INDEX
 	LDA L_296A,X
@@ -3605,7 +3605,7 @@ L_182F:
 	JSR L_18DB
 	STY TMP_12
 	STX TMP_13
-	LDA OBJ_ZP_$48
+	LDA OBJ_ZP_INDEX_UNK
 	SEC 
 	SBC #$00
 	TAY 
@@ -3650,7 +3650,7 @@ L_182F:
 	SEC 
 	SBC #$00
 	TAY 
-	LDA OBJ_ZP_STEP?
+	LDA OBJ_ZP_EXTRA_PTR/DATA
 	SBC #$09
 	TAX 
 	JSR L_1907
@@ -3683,8 +3683,8 @@ L_18CC:
 	ADC OBJ_ZP_PTR_INDEX,X
 	STA OBJ_ZP_PTR_INDEX,X
 	TYA 
-	ADC OBJ_ZP_STEP?,X
-	STA OBJ_ZP_STEP?,X
+	ADC OBJ_ZP_EXTRA_PTR/DATA,X
+	STA OBJ_ZP_EXTRA_PTR/DATA,X
 	TXA 
 	BNE L_18B0
 	RTS 
@@ -8640,10 +8640,10 @@ TIMER_9D_STUFF?:
 	.db #$08
 	.db #$00
 UNK_TABLE_LOW:
-	.LOW UNK_DATA_00_REAL ;copy protection pointer val?
+	.db #$00 ;PART OF ABOVE 
 UNK_TABLE_HIGH:
-	.HIGH UNK_DATA_00_REAL ;copy protection ptr val? 2A00 Offset.
-	.LOW UNK_DATA_00
+	.db #$AA ;PART OF 9D STUFF.
+	.LOW UNK_DATA_00 ;actual first index. 0 does different in this code.
 	.HIGH UNK_DATA_00
 	.LOW UNK_DATA_01
 	.HIGH UNK_DATA_01

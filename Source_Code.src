@@ -1306,7 +1306,7 @@ Zapper_shot_check?:
 WRITE_COUNTDOWN:
 	DEY  ;dec countdown.
 	STY ACTIVATE_SHOOTING_COUNTDOWN? ;store back to now.
-	LDA #_TRGTS_IN_MODE
+	LDA #_TARGETS_REMAINING
 	BNE DEC_A6 ;If targets in mode, dec A6.
 	LDA TRGT1_STATE
 	BNE RTS ;in state, rts.
@@ -1331,9 +1331,9 @@ TARGET_3_STATE_DECIDED:
 	STA ZAP_SHOT_ENABLED ;disable shots
 	JMP UPDATE_PPU_GROUP
 DEC_A6:
-	LDA COUNTDOWN_TO_ENABLE_TARGETS?
+	LDA COUNTDOWN_TO_ENABLE_TARGETS
 	BEQ RTS
-	DEC COUNTDOWN_TO_ENABLE_TARGETS? ;if not zero, dec.
+	DEC COUNTDOWN_TO_ENABLE_TARGETS ;if not zero, dec.
 RTS:
 	RTS 
 PROCESS_OBJ_TARGET:
@@ -1343,7 +1343,7 @@ PROCESS_OBJ_TARGET:
 	.HIGH RTS ;RTS, uninit'd.
 	.LOW TRGT_STATE_1_INIT_OBJ ;inits target data in $30 area, sets tile range.
 	.HIGH TRGT_STATE_1_INIT_OBJ
-	.LOW TARGET_STATE_2_SPAWN ;does a lot of stuff.
+	.LOW TARGET_STATE_2_SPAWN ;spawn objects.
 	.HIGH TARGET_STATE_2_SPAWN
 	.LOW TARGET_STATE_3_FLY+BOX+STATE4 ;something to do with shooting.
 	.HIGH TARGET_STATE_3_FLY+BOX+STATE4
@@ -1364,20 +1364,20 @@ LOOP:
 	STA OBJ_ZP_COPY,X ;store to in-ram buffer.
 	DEX 
 	BPL LOOP ;move 1F to 0
-	LDA OBJ_ZP_ORIGIN_SLOT# ;if origin was obj 0?
-	BEQ TARGET_ZERO ;not sure why. find last shot? idk.
-	LDA #$40
+	LDA OBJ_ZP_ORIGIN_SLOT# ;if obj slot 0
+	BEQ TARGET_INIT'D ;loaded data is correct.
+	LDA #$40 ;fix the values for sprites instead here.
 	STA OBJ_INDEX_START ;different spr area for target 2
 	LDA #$7F
-	STA OBJ_INDEX_FINAL ;ending for spr area.
-TARGET_ZERO:
+	STA OBJ_INDEX_FINAL ;ending for spr area for target 2.
+TARGET_INIT'D:
 	INC OBJ_ZP_STATE ;inc target state.
 RTS:
 	RTS 
 TARGET_STATE_2_SPAWN:
 	LDA ZAP_SHOT_ENABLED ;is zapper enabled?
 	BEQ RTS ;leave if not enabled
-	LDA COUNTDOWN_TO_ENABLE_TARGETS?
+	LDA COUNTDOWN_TO_ENABLE_TARGETS
 	BNE RTS ;if not 0 leave.
 	JSR RNG_ADVANCE ;get random number.
 	AND #$0F
@@ -1398,117 +1398,117 @@ SUB_10:
 	SEC 
 	SBC #$10 ;subtract 10.
 WRITE_9C:
-	STA UNK_$9C_INDEX ;store
-	ASL A
+	STA UNK_$9C_INDEX ;store. might be part of AI for movement?
+	ASL A ;make it an index.
 	TAX 
 	LDA OBJ_DATA_UNK_HIGH,X
 	STA OBJ_ZP_EXTRA_PTR/DATA
 	LDA OBJ_DATA_UNK_LOW,X
 	STA OBJ_ZP_EXTRA_PTR/DATA+1
 	JSR RNG_ADVANCE ;get new rand number.
-	AND #$3F ;range
+	AND #$3F ;Time between targets, 100%.
 	TAY 
 	INY  ;1 to 40, 0 is done so can't be 0.
-	STY COUNTDOWN_TO_ENABLE_TARGETS? ;store next target time.
+	STY COUNTDOWN_TO_ENABLE_TARGETS ;store next target time.
 	LDY #$00 ;reset index
 	LDA (OBJ_ZP_EXTRA_PTR/DATA),Y ;load data pointer.
 	INY 
-	STY OBJ_ZP_POPUP_OFFSET ;store next index
+	STY OBJ_ZP_POPUP_OFFSET?MUL-USE? ;store next index.
 	STA OBJ_ZP_X_COORD ;store loaded data.
-	LDY #$00
-	LDX UNK_$99 ;set something.
-	BEQ $99_CLEAR
-	LDY #$02 ;load 2 if $99 is 0. why?
-$99_CLEAR:
+	LDY #$00 ;not DEY smh. Means 1 duck game.
+	LDX TARGETS_ACTIVATED_COUNT? ;Get # duck on.
+	BEQ KEEP_Y ;no targets activated.
+	LDY #$02 ;2 duck game.
+KEEP_Y:
 	STY OBJ_ZP_DISP_ATTR? ;store
-	INC UNK_$99 ;INC
-	LDX DUCK_TYPE?_98
-	LDA TARGET_DATA_COMBO,X
+	INC TARGETS_ACTIVATED_COUNT? ;INC
+	LDX DUCK_COMBO_INDEX
+	LDA DUCK_DATA_COMBO,X ;get duck data.
 	CPY #$00
-	BEQ SHIFT_DATA ;shift if =0
-	AND #$0F ;get lower byte data if not.
+	BEQ SHIFT_DATA ;first target, use top.
+	AND #$0F ;get lower byte data for 2nd.
 	JMP DATA_LOW_START ;jump to code.
 SHIFT_DATA:
-	LSR A ;XXXX0000 -> 0000XXXX
+	LSR A ;move duck bits down.
 	LSR A
 	LSR A
 	LSR A
 DATA_LOW_START:
-	STA DUCK_COLOR_SHOT ;store.
-	LDX LEVEL
+	STA OBJ_ZP_DUCK_COLOR ;store color for target.
+	LDX LEVEL ;get level.
 	LDA GAME_MODE_IN
-	BNE ONE_TRGT_GAME?
-	LDA #$0B
-	CPX #$12
-	BCS L_09B2
-	LDA #$0A
-	CPX #$11
-	BCS L_09B2
-	LDA #$09
-	CPX #$10
-	BCS L_09B2
-	DEX 
-	TXA 
-L_09B2:
-	TAX 
-	LDA UNK_DATA_275A,X
-	JMP L_09D0
-ONE_TRGT_GAME?:
-	LDA #$1B
+	BNE TWO_TARGET_GAME
+	LDA #$0B ;index for...
+	CPX #$12 ;level #
+	BCS IS_MORE_EQUAL_THAN_LEVEL ;IF x >= 12, A->X
+	LDA #$0A ;index
+	CPX #$11 ;level
+	BCS IS_MORE_EQUAL_THAN_LEVEL
+	LDA #$09 ;index
+	CPX #$10 ;level
+	BCS IS_MORE_EQUAL_THAN_LEVEL
+	DEX  ;else, just DEX one from X. This probs where level 0 bug is.
+	TXA  ;X->A, raw index from level text.
+IS_MORE_EQUAL_THAN_LEVEL:
+	TAX  ;level index.
+	LDA LEVEL_DATA_UNK,X ;harder max, doesn't go based on color for add'l speed.
+	JMP OUTPUT_DIFFICULTY ;output difficulty.
+TWO_TARGET_GAME:
+	LDA #$1B ;max index.
 	LDX LEVEL
 	CPX #$10
-	BCS L_09C9
-	DEX 
-	TXA 
-	STA TMP_0C
-	ASL A
+	BCS LEVEL_>=10 ;level >= 10
+	DEX  ;dex. level 0 bug here too?
+	TXA  ;Level to A.
+	STA TMP_0C ;store
+	ASL A ;double A.
 	CLC 
-	ADC TMP_0C
-L_09C9:
+	ADC TMP_0C ;Add. Effectively multiplied by 3.
+LEVEL_>=10:
 	CLC 
-	ADC DUCK_COLOR_SHOT
-	TAX 
-	LDA L_273C,X
-L_09D0:
-	STA OBJ_ZP_$5E
+	ADC OBJ_ZP_DUCK_COLOR ;get difficulty per duck type.
+	TAX  ;get index into array.
+	LDA DIFFICULTY_2ND_TARGET,X
+OUTPUT_DIFFICULTY:
+	STA OBJ_ZP_DUCK_DIFF ;difficulty from arrays and duck types/data.
 	LDX LEVEL
-	LDA #$0B
-	CPX #$27
-	BCS L_09E2
-	LDA #$0A
-	CPX #$24
-	BCS L_09E2
-	LDA #$09
-L_09E2:
-	STA OBJ_ZP_COPY+10
-	LDA #$00
+	LDA #$0B ;index...
+	CPX #$27 ;for level ?? 27
+	BCS OUTPUT_INDEX ;>=
+	LDA #$0A ;index...
+	CPX #$24 ;for level ?? 24
+	BCS OUTPUT_INDEX ;>=
+	LDA #$09 ;else, default to this.
+OUTPUT_INDEX:
+	STA OBJ_ZP_COPY+10 ;unk value.
+	LDA #$00 ;reset all below.
 	STA OBJ_ZP_TIMER_MISC?POPUP?
 	STA OBJ_ZP_ANIM_TIMER
-	STA OBJ_ZP_COPY+30
-	STA OBJ_ZP_COPY+31
+	STA OBJ_ZP_COPY+30 ;unk
+	STA OBJ_ZP_COPY+31 ;unk
 	LDA #$01
-	STA OBJ_ZP_$4B
-	STA $AE
+	STA OBJ_ZP_$4B ;unk
+	STA UNK_$AE ;enable target 1 something always?
 	LDA GAME_MODE_IN
-	BNE L_0A0E
-	LDX LEVEL
-	LDA #$7D
-	CPX #$11
-	BCC L_0A08
-	LDA #$5D
-	CPX #$20
-	BCC L_0A08
-	LDA #$3E
+	BNE TWO_TARGET_GAME ;if 1 or 2, go here.
+	LDX LEVEL ;get level in X again.
+	LDA #$7D ;countdown value
+	CPX #$11 ;if level ?? 11
+	BCC L_0A08 ;<
+	LDA #$5D ;countdown value
+	CPX #$20 ;if level ?? 20
+	BCC L_0A08 ;<
+	LDA #$3E ;default, smallest.
 L_0A08:
-	STA OBJ_ZP_COPY+28
+	STA OBJ_ZP_COPY_DISABLE_FLYAWAY_CNTDOWN ;store countdown.
 	LDA #$00
-	STA $AF
-L_0A0E:
-	INC GAME_TARGETS_SHOWN?
-	LDA GAME_TARGETS_SHOWN?
-	STA OBJ_ZP_$3B
-	DEC #_TRGTS_IN_MODE
-	INC OBJ_ZP_STATE
+	STA UNK_$AE ;disable 2nd target? not sure 100% yet but related probs.
+TWO_TARGET_GAME:
+	INC GAME_TARGETS_SHOWN? ;inc objects init'd.
+	LDA GAME_TARGETS_SHOWN? ;get value.
+	STA OBJ_ZP_WHICH ;1 or 2, which target this is.
+	DEC #_TARGETS_REMAINING ;one less target.
+	INC OBJ_ZP_STATE ;init'd, play by going to next state.
 	RTS 
 TARGET_STATE_3_FLY+BOX+STATE4:
 	LDA FRAME_COUNTER
@@ -1545,11 +1545,11 @@ GAME_MODE_1_TRGT:
 	STA OBJ_ZP_$4B ;clear $4B
 $4B_NOT_SET:
 	LDX #$01
-	LDA OBJ_ZP_COPY+28
+	LDA OBJ_ZP_COPY_DISABLE_FLYAWAY_CNTDOWN
 	BEQ IS_ZERO
 	LDA SHOTS_REMAINING
 	BNE HAS_SHOTS_REMAINING
-	STA OBJ_ZP_COPY+28
+	STA OBJ_ZP_COPY_DISABLE_FLYAWAY_CNTDOWN
 L_0A5F:
 	JSR DISP_CHANGE_SOMETHING
 	LDX #$01
@@ -1559,10 +1559,10 @@ HAS_SHOTS_REMAINING:
 	LDA FRAME_COUNTER
 	LSR A
 	BCC IS_ZERO
-	DEC OBJ_ZP_COPY+28
+	DEC OBJ_ZP_COPY_DISABLE_FLYAWAY_CNTDOWN
 	BEQ L_0A5F
 IS_ZERO:
-	STX $AE
+	STX UNK_$AE
 	CPX #$01
 	BEQ L_0A8A
 	LDA CTRL_HELD
@@ -1572,8 +1572,8 @@ IS_ZERO:
 	AND #$0F
 	BNE L_0AA8
 	LDA #$00
-	STA $AF
-	LDA $AE
+	STA UNK_$AE
+	LDA UNK_$AE
 	BEQ L_0A8D
 L_0A8A:
 	JMP L_0F16
@@ -1593,9 +1593,9 @@ L_0A8D:
 L_0AA5:
 	JMP POPUP_TIMER_SET
 L_0AA8:
-	CMP $AF
+	CMP UNK_$AE
 	BEQ L_0A8A
-	STA $AF
+	STA UNK_$AE
 	LDX #$35
 	LSR A
 	BCS L_0ABF
@@ -1704,7 +1704,7 @@ L_0B56:
 GAME_MODE_2_TARGETS:
 	LDA OBJ_ZP_TIMER_MISC?POPUP?
 	BNE POPUP_TIMER_SET ;if set, do something.
-	LDY OBJ_ZP_POPUP_OFFSET ;index is offset.
+	LDY OBJ_ZP_POPUP_OFFSET?MUL-USE? ;index is offset.
 	LDA (OBJ_ZP_EXTRA_PTR/DATA),Y ;get data.
 	INY 
 	CMP #$FF ;if EOF.
@@ -1719,7 +1719,7 @@ NOT_EXTRA_PTR_EOF:
 	STA OBJ_ZP_TIMER_MISC?POPUP? ;store data here.
 	LDA (OBJ_ZP_EXTRA_PTR/DATA),Y ;get next data.
 	INY 
-	STY OBJ_ZP_POPUP_OFFSET ;store popup offset.
+	STY OBJ_ZP_POPUP_OFFSET?MUL-USE? ;store popup offset.
 OBJ_DIRECTION_STUFF:
 	STA OBJ_ZP_INDEX_UNK ;store data after EOF to index for idk.
 	TAX 
@@ -1791,7 +1791,7 @@ L_0BE6:
 	ADC OBJ_ZP_Y_COORD
 	LDX OBJ_ZP_$4B
 	BNE L_0BF9
-	LDX $AE
+	LDX UNK_$AE
 	BNE L_0BF9
 	CMP #$1E
 	BCC L_0BFB
@@ -1807,7 +1807,7 @@ L_0BFB:
 	ADC OBJ_ZP_X_COORD
 	LDX OBJ_ZP_$4B
 	BNE L_0C14
-	LDX $AE
+	LDX UNK_$AE
 	BNE L_0C14
 	CMP #$0E
 	BCC L_0C16
@@ -1822,12 +1822,12 @@ L_0C16:
 	BNE L_0BC6
 	JMP TARGET_ANIM_TIMER_CHECK/DISP
 TARGET_STATES_INDIRECT_04:
-	LDX OBJ_ZP_$3B
+	LDX OBJ_ZP_WHICH
 	LDA #$01
 	STA DUCKS_HIT_ARRAY-1,X
 	LDA #$01
 	STA UPDATE_TARGETS_HIT
-	STA OBJ_ZP_$5E
+	STA OBJ_ZP_DUCK_DIFF
 	LDA #$12
 	STA OBJ_ZP_$4D
 	JSR L_0F68
@@ -1961,10 +1961,10 @@ GAME_HAS_DOG:
 	LDY #$18 ;X coord for dog in intro, very left.
 	LDX #$00 ;not sure.
 	CMP #$01
-	BEQ IS_LEVEL_1_FARTHER_AWAY
-	LDY #$50 ;puts dog mid screen.
+	BEQ IS_LEVEL_1 ;put dog earlier, not closer to middle.
+	LDY #$50 ;puts dog mid screen here.
 	LDX #$18
-IS_LEVEL_1_FARTHER_AWAY:
+IS_LEVEL_1:
 	STY OBJ_ZP_X_COORD ;X coord.
 	STX OBJ_ZP_EXTRA_PTR/DATA ;animation step? Not sure.
 	LDA #$01
@@ -1981,8 +1981,8 @@ TRGT_STATE_3_COUNT_FRAME:
 	LDA OBJ_ZP_FRAME ;get frame showing.
 	CMP #$0C ;if is frame X.
 	BNE FRAME_NOT_C
-	INC OBJ_ZP_EXTRA_PTR/DATA ;next step.
-	LDA OBJ_ZP_EXTRA_PTR/DATA ;get step counter.
+	INC OBJ_ZP_EXTRA_PTR/DATA ;is counter on dog. inc count.
+	LDA OBJ_ZP_EXTRA_PTR/DATA ;get value.
 	CMP #$20 ;if is 20...
 	BCC FRAME_NOT_C
 	INC OBJ_ZP_STATE ;go to next state.
@@ -2049,7 +2049,7 @@ TRGT_STATE_C_CNTDOWNTMR2SND_SETY_SCRIPT1/2:
 	BNE SETUP_INC_TRGT_GOTO_11
 TRGT_STATE_E_SETUP_BETWEEN_ROUNDS?:
 	LDA #$30 ;mostly self explainatory.
-	STA COUNTDOWN_TO_ENABLE_TARGETS?
+	STA COUNTDOWN_TO_ENABLE_TARGETS
 	LDA #$01
 	STA ZAP_SHOT_ENABLED
 	LDA #$03
@@ -2065,7 +2065,7 @@ TRGT_STATE_E_SETUP_BETWEEN_ROUNDS?:
 	LDA #$01 ;one target
 	LDY #$00 ;disable target 2
 TWO_TARGET_GAME:
-	STA #_TRGTS_IN_MODE
+	STA #_TARGETS_REMAINING
 	STY TRGT2_TYPE
 	STY TRGT2_STATE ;enabled for 2 target games, disabled for 1 target.
 	LDA #$01 ;always enabled, enable.
@@ -2080,11 +2080,11 @@ TWO_TARGET_GAME:
 	LDA #$07 ;red ducks possible now.
 FIRST_LEVEL:
 	AND TMP_0C
-	STA DUCK_TYPE?_98 ;DUCK_TYPE
+	STA DUCK_COMBO_INDEX ;DUCK_TYPE
 	LDY #$00
-	STY UNK_$99 ;idk
+	STY TARGETS_ACTIVATED_COUNT? ;# targets activated.
 	TAX 
-	LDA TARGET_DATA_COMBO,X ;get types from array
+	LDA DUCK_DATA_COMBO,X ;get types from array
 	STA TMP_0C ;store
 	AND #$F0 ;get high group of 4 bits.
 	LSR A ;index mul by 8, basically.
@@ -2183,7 +2183,7 @@ OBJ_STATE_B/D/11_(POPUP):
 	LDX OBJ_ZP_TIMER_MISC?POPUP? ;load idk.
 	BEQ OBJ_POPUP_ZERO ;skip if 0.
 	DEC OBJ_ZP_TIMER_MISC?POPUP? ;count down otherwise.
-	LDA OBJ_ZP_POPUP_OFFSET ;load popup amount.
+	LDA OBJ_ZP_POPUP_OFFSET?MUL-USE? ;load popup amount.
 	CLC 
 	ADC OBJ_ZP_Y_COORD ;Add to Y.
 	STA OBJ_ZP_Y_COORD ;store changed.
@@ -2196,7 +2196,7 @@ OBJ_POPUP_ZERO:
 	AND #$7F ;get lower bits.
 	JSR TWO_COMPLIMENT_A_REG ;get inverse.
 IS_POSITIVE:
-	STA OBJ_ZP_POPUP_OFFSET ;store
+	STA OBJ_ZP_POPUP_OFFSET?MUL-USE? ;store
 	JMP MOVE_MORE_PTR_DATA
 OBJ_STATE_9:
 	TAX 
@@ -2289,7 +2289,7 @@ L_0F36:
 CLEAR_46-47,SET OBJ_Y:
 	LDA #$00
 	STA OBJ_ZP_TIMER_MISC?POPUP?
-	STA OBJ_ZP_POPUP_OFFSET
+	STA OBJ_ZP_POPUP_OFFSET?MUL-USE?
 	LDA #$AC
 	STA OBJ_ZP_Y_COORD
 	RTS 
@@ -2326,7 +2326,7 @@ L_0F68:
 	LDA #$06
 L_0F78:
 	CLC 
-	ADC DUCK_COLOR_SHOT
+	ADC OBJ_ZP_DUCK_COLOR
 	TAX 
 	LDY TBL_DUCK_INDEXES,X
 L_0F7F:
@@ -3218,13 +3218,13 @@ GAME_STATE_A_SUBROUND_INIT:
 LEVEL_MAXED:
 	STA LEVEL_TIED_VAR? ;not sure
 	LDA #$80
-	STA COUNTDOWN_TO_ENABLE_TARGETS? ;set top bit of A6. Counter?
+	STA COUNTDOWN_TO_ENABLE_TARGETS ;set top bit of A6. Counter?
 	LDA #$01
 	STA SHOT_FIRED ;disable shooting.
 	LDA #$03
 	STA SHOTS_REMAINING ;store shots remaining.
 	LDA #$02
-	STA #_TRGTS_IN_MODE ;set # trgts
+	STA #_TARGETS_REMAINING ;set # trgts
 	LDA #$00
 	STA ZAPPER_TRIG_RELEASED ;disable trigger.
 	STA ZAP_SHOT_ENABLED ;disable shots.
@@ -3264,7 +3264,7 @@ PROCESS_TARGET_2:
 	JSR HANDLE_TARGET_STATE
 	JSR MOVE_$50B_BACK ;move to $500.
 PROCESS_OTHER:
-	LDA #_TRGTS_IN_MODE
+	LDA #_TARGETS_REMAINING
 	BNE BC_NOT_CLEAR
 	LDX TRGT1_STATE
 	LDY TRGT2_STATE
@@ -3294,9 +3294,9 @@ GAME_STATE_SWITCH.:
 	STA IN_GAME_STATE ;goto state.
 	JMP CLEAR_SPRITES ;clear sprites then RTS.
 BC_NOT_CLEAR:
-	LDA COUNTDOWN_TO_ENABLE_TARGETS? ;is a timer?
+	LDA COUNTDOWN_TO_ENABLE_TARGETS ;is a timer?
 	BEQ RTS
-	DEC COUNTDOWN_TO_ENABLE_TARGETS?
+	DEC COUNTDOWN_TO_ENABLE_TARGETS
 RTS:
 	RTS 
 HANDLE_TARGET_STATE:
@@ -3331,7 +3331,7 @@ L_166B:
 	STA $A7
 	RTS 
 TARGET_HANDLE_02:
-	LDA COUNTDOWN_TO_ENABLE_TARGETS?
+	LDA COUNTDOWN_TO_ENABLE_TARGETS
 	BNE L_16D4
 	LDA #$01
 	STA ZAP_SHOT_ENABLED
@@ -3339,7 +3339,7 @@ TARGET_HANDLE_02:
 	AND #$3F
 	TAY 
 	INY 
-	STY COUNTDOWN_TO_ENABLE_TARGETS?
+	STY COUNTDOWN_TO_ENABLE_TARGETS
 	JSR RNG_ADVANCE
 	AND #$0F
 	CMP UNK_$9C_INDEX
@@ -3364,13 +3364,13 @@ L_1697:
 	LDA L_296B,X
 	STA OBJ_ZP_ANIM_TIMER
 	LDA L_296C,X
-	STA OBJ_ZP_POPUP_OFFSET
+	STA OBJ_ZP_POPUP_OFFSET?MUL-USE?
 	LDA L_296D,X
-	STA OBJ_ZP_COPY+28
+	STA OBJ_ZP_COPY_DISABLE_FLYAWAY_CNTDOWN
 	INC GAME_TARGETS_SHOWN?
 	LDA GAME_TARGETS_SHOWN?
-	STA OBJ_ZP_$3B
-	DEC #_TRGTS_IN_MODE
+	STA OBJ_ZP_WHICH
+	DEC #_TARGETS_REMAINING
 	LDA #$FF
 	STA OBJ_ZP_COPY+47
 	JSR SND_SET_F2_#$20
@@ -3386,7 +3386,7 @@ TARGET_HANDLE_03:
 	BNE L_16E0
 	JSR SND_SET_F0_#$20
 L_16E0:
-	LDA OBJ_ZP_COPY+28
+	LDA OBJ_ZP_COPY_DISABLE_FLYAWAY_CNTDOWN
 	BMI L_16EC
 	LDA OBJ_ZP_$49
 	LSR A
@@ -3402,7 +3402,7 @@ L_16EC:
 	ADC LEVEL_TIED_VAR?
 	TAX 
 	LDA L_29C8,X
-	STA OBJ_ZP_$5E
+	STA OBJ_ZP_DUCK_DIFF
 L_16FD:
 	JSR L_181B
 L_1700:
@@ -3452,7 +3452,7 @@ L_174D:
 	STA OBJ_ZP_STATE
 	RTS 
 TARGET_HANDLE_04:
-	LDX OBJ_ZP_$3B
+	LDX OBJ_ZP_WHICH
 	LDA #$01
 	STA DUCKS_HIT_ARRAY-1,X
 	STA UPDATE_TARGETS_HIT
@@ -3567,7 +3567,7 @@ L_1805:
 L_181A:
 	RTS 
 L_181B:
-	LDX OBJ_ZP_$5E
+	LDX OBJ_ZP_DUCK_DIFF
 	LDA UNK_DATA_00_REAL,X ;not sure...
 	PHA 
 	INX 
@@ -3579,7 +3579,7 @@ L_181B:
 	DEX 
 	DEX 
 L_182B:
-	STX OBJ_ZP_$5E
+	STX OBJ_ZP_DUCK_DIFF
 	PLA 
 	RTS 
 L_182F:
@@ -7311,8 +7311,8 @@ TARGET_3_STATE_INIT?:
 	.db #$30
 	.db #$26
 	.db #$05
-L_273C:
-	.db #$04
+DIFFICULTY_2ND_TARGET:
+	.db #$04 ;format [BLACK,BLUE,RED][10]
 	.db #$08
 	.db #$0C
 	.db #$08
@@ -7342,8 +7342,8 @@ L_273C:
 	.db #$1C
 	.db #$1C
 	.db #$20
-UNK_DATA_275A:
-	.db #$10
+LEVEL_DATA_UNK:
+	.db #$10 ;difficulty?
 	.db #$14
 	.db #$14
 	.db #$18
@@ -7355,7 +7355,7 @@ UNK_DATA_275A:
 	.db #$24
 	.db #$24
 	.db #$28
-TARGET_DATA_COMBO:
+DUCK_DATA_COMBO:
 	.db #$00 ;format [trgt 2, trgt 1]
 	.db #$01 ;first level range is up to 3, meaning can't get 2 (red) target.
 	.db #$10

@@ -1,3 +1,256 @@
+;Source code translation done by Aaron Bottegal
+;This disassembly is a work in progress.
+
+	.rsset 0x0000
+TMP_00:                                  .rs 0x01 ;0x0000
+TMP_01:                                  .rs 0x01 ;0x0001
+TMP_02:                                  .rs 0x01 ;0x0002
+TMP_03:                                  .rs 0x01 ;0x0003
+TMP_04:                                  .rs 0x01 ;0x0004
+TMP_05:                                  .rs 0x01 ;0x0005
+TMP_06:                                  .rs 0x01 ;0x0006
+TMP_07:                                  .rs 0x01 ;0x0007
+PPU_CTRL_RAM:                            .rs 0x01 ;0x0008
+PPU_MASK_RAM:                            .rs 0x01 ;0x0009
+PPU_SCROLL_X_RAM:                        .rs 0x01 ;0x000A
+PPU_SCROLL_Y_RAM:                        .rs 0x01 ;0x000B
+TMP_0C:                                  .rs 0x01 ;0x000C
+TMP_0D:                                  .rs 0x01 ;0x000D
+TMP_$0E:                                 .rs 0x01 ;0x000E
+TMP_0F:                                  .rs 0x01 ;0x000F
+TMP_$10:                                 .rs 0x01 ;0x0010
+TMP_$11:                                 .rs 0x01 ;0x0011
+TMP_12:                                  .rs 0x01 ;0x0012
+TMP_13:                                  .rs 0x01 ;0x0013
+TMP_INDIR_JMP_L:                         .rs 0x01 ;0x0014
+TMP_INDIR_JMP_H:                         .rs 0x01 ;0x0015
+CTRL_HELD:                               .rs 0x01 ;0x0016
+
+	.rsset 0x001A
+FRAME_PTR_INDEX:                         .rs 0x01 ;0x001A
+SPRITE_UPDATE_BASE:                      .rs 0x01 ;0x001B
+GAME_SUBSTATE?:                          .rs 0x01 ;0x001C
+PREV_GAME_STATE:                         .rs 0x01 ;0x001D
+IN_GAME_FUTURE_STATE:                    .rs 0x01 ;0x001E
+GAME_MODE_IN:                            .rs 0x01 ;0x001F
+NMI_RAN:                                 .rs 0x01 ;0x0020
+PPU_UPDATE_FLAG:                         .rs 0x01 ;0x0021
+PPU_BLOCK_UPDATE_IN_NMI:                 .rs 0x01 ;0x0022
+PALETTE_UPLOAD:                          .rs 0x01 ;0x0023
+IN_MENU_FLAG:                            .rs 0x01 ;0x0024
+IN_GAME_STATE:                           .rs 0x01 ;0x0025
+SWITCH_BACK_TO_MENU_FALSE:               .rs 0x01 ;0x0026
+WHITE_BOX_DISPLAYED:                     .rs 0x01 ;0x0027
+SAVE_STATE_X:                            .rs 0x01 ;0x0028
+SAVE_STATE_Y:                            .rs 0x01 ;0x0029
+TIMER_LARGE_COUNT:                       .rs 0x01 ;0x002A
+FAST_TIMERS:                             .rs 0x02 ;0x002B to 0x002C
+TIMER_SLOW:                              .rs 0x02 ;0x002D to 0x002E
+FRAME_COUNTER:                           .rs 0x01 ;0x002F
+OBJ_ZP_COPY:                             .rs 0x4F ;0x0030 to 0x007E
+
+	.rsset 0x0031
+OBJ_ZP_STATE:                            .rs 0x01 ;0x0031
+OBJ_ZP_Y_COORD:                          .rs 0x01 ;0x0032
+OBJ_ZP_X_COORD:                          .rs 0x01 ;0x0033
+OBJ_ZP_DIRECTION:                        .rs 0x01 ;0x0034
+OBJ_ZP_FRAME:                            .rs 0x01 ;0x0035
+OBJ_SPR_INDEX_START:                     .rs 0x01 ;0x0036
+OBJ_SPR_INDEX_FINAL:                     .rs 0x01 ;0x0037
+OBJ_ZP_COPY_BEHIND_BG?:                  .rs 0x01 ;0x0038
+OBJ_ZP_DUCK_INDEX?:                      .rs 0x01 ;0x0039
+OBJ_ZP_COPY_PIGEON_UNK:                  .rs 0x01 ;0x003A
+OBJ_ZP_TARGET_NUMBER+1:                  .rs 0x01 ;0x003B
+OBJ_ZP_DISP_ATTR?:                       .rs 0x01 ;0x003C
+
+	.rsset 0x003F
+OBJ_ZP_DUCK_COLOR:                       .rs 0x01 ;0x003F
+OBJ_ZP_PTR_L_UNK:                        .rs 0x01 ;0x0040
+OBJ_ZP_PTR_H_UNK:                        .rs 0x01 ;0x0041
+OBJ_ZP_ANIM_TIMER:                       .rs 0x01 ;0x0042
+OBJ_ZP_PTR_INDEX:                        .rs 0x01 ;0x0043
+OBJ_ZP_EXTRA_PTR/DATA:                   .rs 0x02 ;0x0044 to 0x0045
+OBJ_ZP_TIMER_MISC?:                      .rs 0x01 ;0x0046
+OBJ_ZP_MISC_INDEX?:                      .rs 0x01 ;0x0047
+OBJ_ZP_DATA_DIR/ANIMINFO?:               .rs 0x01 ;0x0048
+OBJ_ZP_INDEX_UNK:                        .rs 0x01 ;0x0049
+OBJ_ZP_INDEX_4A_UNK:                     .rs 0x01 ;0x004A
+OBJ_ZP_UNK_$4B:                          .rs 0x01 ;0x004B
+OBJ_ZP_COPY_FLYAWAY_COUNTDOWN:           .rs 0x01 ;0x004C
+OBJ_ZP_TIMER_FALLING?:                   .rs 0x01 ;0x004D
+
+	.rsset 0x0050
+OBJ_ZP_PARTICLE_TIMER_1:                 .rs 0x01 ;0x0050
+OBJ_ZP_COPY+33_VAL_EN_PARTICLE_2:        .rs 0x01 ;0x0051
+OBJ_ZP_COPY_SETS_UP_PARTICLE_TIMER_2:    .rs 0x01 ;0x0052
+OBJ_ZP_PARTICLE_TIMER_2:                 .rs 0x01 ;0x0053
+OBJ_ZP_DISABLE_PARTICLES_GROUP_1:        .rs 0x01 ;0x0054
+OBJ_ZP_DISABLE_PARTICLES_GROUP_2:        .rs 0x01 ;0x0055
+OBJ_ZP_COPY_PIGEON_FRAME_INDEX?:         .rs 0x01 ;0x0056
+OBJ_ZP_ADD'L_STATE:                      .rs 0x01 ;0x0057
+OBJ_COPY_PIGEON_SOUND_COUNTDOWN:         .rs 0x01 ;0x0058
+
+	.rsset 0x005E
+OBJ_ZP_DUCK_DIFF:                        .rs 0x01 ;0x005E
+OBJ_ZP_$47_PIGEON_UNK:                   .rs 0x01 ;0x005F
+OBJ_ZP_PARTICLES_Y_BASE:                 .rs 0x0E ;0x0060 to 0x006D
+
+	.rsset 0x0061
+OBJ_ZP_COPY_PARTICLES_X_BASE:            .rs 0x0E ;0x0061 to 0x006E
+
+	.rsset 0x0080
+SCORE_ANIM_COUNTER:                      .rs 0x02 ;0x0080 to 0x0081
+
+	.rsset 0x0081
+SCORE_OBJ_Y:                             .rs 0x02 ;0x0081 to 0x0082
+
+	.rsset 0x0082
+SCORE_OBJ_X:                             .rs 0x02 ;0x0082 to 0x0083
+
+	.rsset 0x0083
+SCORE_UPPER_SPRITE:                      .rs 0x02 ;0x0083 to 0x0084
+
+	.rsset 0x0098
+DUCK_COMBO_INDEX:                        .rs 0x01 ;0x0098
+TARGETS_ACTIVATED_COUNT?:                .rs 0x01 ;0x0099
+SHOT_BLINK_COUNTER:                      .rs 0x01 ;0x009A
+DISPLAY_BLINK_TIMER:                     .rs 0x01 ;0x009B
+UNK_$9C_INDEX:                           .rs 0x01 ;0x009C
+MULTIPLE_BG_UPDATE_INDEX:                .rs 0x01 ;0x009D
+OBJ3_SOUND_COUNT_DOWN:                   .rs 0x01 ;0x009E
+ACTIVATE_SHOOTING_COUNTDOWN?:            .rs 0x01 ;0x009F
+
+	.rsset 0x00A1
+OBJ_ZP_ORIGIN_SLOT#:                     .rs 0x01 ;0x00A1
+FROM_TARGET_STORAGE_INDEX:               .rs 0x01 ;0x00A2
+
+	.rsset 0x00A6
+COUNTDOWN_TO_ENABLE_TARGETS:             .rs 0x01 ;0x00A6
+PIGEON_FLAG_NEEDS_CLEARED?:              .rs 0x01 ;0x00A7
+LEVEL_TIED_VAR?:                         .rs 0x01 ;0x00A8
+END_OF_ROUND_STATE:                      .rs 0x01 ;0x00A9
+TARGETS_IN_LEVEL:                        .rs 0x01 ;0x00AA
+HITS_REQUIRED_RAM:                       .rs 0x01 ;0x00AB
+
+	.rsset 0x00AD
+UPDATE_TARGETS_HIT:                      .rs 0x01 ;0x00AD
+UNK_$AE:                                 .rs 0x01 ;0x00AE
+UNK_$AE:                                 .rs 0x01 ;0x00AF
+LIGHT_STEP:                              .rs 0x01 ;0x00B0
+TARGET_Y_COORD_CPY:                      .rs 0x01 ;0x00B1
+TARGET_X_COORD_CPY:                      .rs 0x01 ;0x00B2
+SPRITE_ATTR_COPY?:                       .rs 0x01 ;0x00B3
+SPRITE_INDEX_VAL:                        .rs 0x01 ;0x00B4
+ZAPPER_TRIG_RELEASED:                    .rs 0x01 ;0x00B5
+ZAPPER_PRESSED:                          .rs 0x01 ;0x00B6
+ZAP_PREVIOUS_STATE:                      .rs 0x01 ;0x00B7
+ZAP_STATE_COUNT:                         .rs 0x01 ;0x00B8
+ZAP_SHOT_ENABLED:                        .rs 0x01 ;0x00B9
+SHOTS_REMAINING:                         .rs 0x01 ;0x00BA
+GAME_TARGETS_SHOWN?:                     .rs 0x01 ;0x00BB
+#_TARGETS_REMAINING:                     .rs 0x01 ;0x00BC
+TRGT_SHOT_DURING_ATTEMPT:                .rs 0x01 ;0x00BD
+SHOT_FIRED:                              .rs 0x01 ;0x00BE
+
+	.rsset 0x00C1
+LEVEL:                                   .rs 0x01 ;0x00C1
+HITS_REQUIRED_RAM_INDEX:                 .rs 0x01 ;0x00C2
+SCORE_LOWER:                             .rs 0x01 ;0x00C3
+SCORE_XX0000:                            .rs 0x01 ;0x00C4
+SCORE_00XX00:                            .rs 0x01 ;0x00C5
+SCORE_0000XX:                            .rs 0x01 ;0x00C6
+SCORE_ACCESS_CPY:                        .rs 0x01 ;0x00C7
+SCORE_CPY_XX0000:                        .rs 0x01 ;0x00C8
+SCORE_CPY_00XX00:                        .rs 0x01 ;0x00C9
+SCORE_CPY_0000XX:                        .rs 0x01 ;0x00CA
+
+	.rsset 0x00E4
+SND_E4:                                  .rs 0x01 ;0x00E4
+
+	.rsset 0x00E6
+SND_E6:                                  .rs 0x01 ;0x00E6
+
+	.rsset 0x00EB
+SND_COUNTER_EB:                          .rs 0x01 ;0x00EB
+SND_EC:                                  .rs 0x01 ;0x00EC
+SND_INDEX_ED:                            .rs 0x01 ;0x00ED
+SND_COUNTER_EE:                          .rs 0x01 ;0x00EE
+SND_COUNTER_EF:                          .rs 0x01 ;0x00EF
+SND_PLAY_F0:                             .rs 0x01 ;0x00F0
+SND_PLAY_F1:                             .rs 0x01 ;0x00F1
+SND_PLAY_F2:                             .rs 0x01 ;0x00F2
+SND_PLAY_F3:                             .rs 0x01 ;0x00F3
+SND_F4:                                  .rs 0x01 ;0x00F4
+SND_F5:                                  .rs 0x01 ;0x00F5
+SND_F6:                                  .rs 0x01 ;0x00F6
+SND_F7:                                  .rs 0x01 ;0x00F7
+
+	.rsset 0x0300
+TRGT1_TYPE:                              .rs 0x01 ;0x0300
+TRGT1_STATE:                             .rs 0x01 ;0x0301
+TRGT1_Y_COORD:                           .rs 0x01 ;0x0302
+TRGT1_X_COORD:                           .rs 0x01 ;0x0303
+
+	.rsset 0x030A
+TRGT1_UNKATTR:                           .rs 0x01 ;0x030A
+
+	.rsset 0x0350
+TRGT2_TYPE:                              .rs 0x01 ;0x0350
+TRGT2_STATE:                             .rs 0x01 ;0x0351
+
+	.rsset 0x03A0
+TRGT3_TYPE:                              .rs 0x01 ;0x03A0
+TRGT3_STATE:                             .rs 0x01 ;0x03A1
+
+	.rsset 0x03EF
+DUCKS_HIT_ARRAY-1:                       .rs 0x01 ;0x03EF
+DUCKS_HIT_ARRAY:                         .rs 0x0A ;0x03F0 to 0x03F9
+
+	.rsset 0x0400
+UNK_0400:                                .rs 0x01 ;0x0400
+UNK_0401:                                .rs 0x01 ;0x0401
+UNK_0402:                                .rs 0x01 ;0x0402
+UNK_403:                                 .rs 0x01 ;0x0403
+
+	.rsset 0x0413
+UNK_0413:                                .rs 0x01 ;0x0413
+
+	.rsset 0x0430
+TIMER_STATE_SAVE:                        .rs 0x01 ;0x0430
+
+	.rsset 0x0440
+CTRL_PREV:                               .rs 0x01 ;0x0440
+
+	.rsset 0x0442
+CTRL_SAME:                               .rs 0x01 ;0x0442
+
+	.rsset 0x0500
+PPU_BLOCK_BUF_SETTING:                   .rs 0x01 ;0x0500
+PPU_UPDATE_BUF:                          .rs 0x4F ;0x0501 to 0x054F
+
+	.rsset 0x0560
+PPU_UPD8_BUF_INDEX:                      .rs 0x01 ;0x0560
+PPU_UPDATE_BUF:                          .rs 0x4F ;0x0561 to 0x05AF
+
+	.rsset 0x05EC
+RNG_ARRAY:                               .rs 0x04 ;0x05EC to 0x05EF
+HIGH_SCORES_ARRAY:                       .rs 0x01 ;0x05F0
+
+	.rsset 0x05FC
+BLOCK_UNPAUSE:                           .rs 0x01 ;0x05FC
+CURSOR_UPDATE_DISALLOWED:                .rs 0x01 ;0x05FD
+MENU_OPTION_SELECTING:                   .rs 0x01 ;0x05FE
+ZAPPER_RESULT:                           .rs 0x01 ;0x05FF
+
+	.rsset 0x0611
+UNK_0611:                                .rs 0x01 ;0x0611
+
+	.rsset 0x0613
+UNK_0613:                                .rs 0x01 ;0x0613
+
+
+;SOURCE CODE STARTS HERE
+
 VECTOR_ENTRY_RESET:
 	CLD  ;starts here.
 	SEI 
@@ -3463,14 +3716,14 @@ TARGET_STATE_4_HIT_EXPLOSION_SETUP:
 	TAX  ;make index.
 	LDY #$00 ;reset store index.
 LOOP_MOVE_DATA:
-	LDA PIGEON_HIT_DATA_UNK,X
+	LDA PIGEON_HIT_TIMER,X
 	STA OBJ_ZP_PARTICLE_TIMER_1,Y ;wrong addr mode smh. store data.
 	INX  ;next index for both.
 	INY 
 	CPY #$04
 	BNE LOOP_MOVE_DATA
 	LDA #$00
-	STA OBJ_ZP_ADD'L_STATE ;clear flag...
+	STA OBJ_ZP_ADD'L_STATE ;clear state.
 	LDX #$00 ;reset index of JSR's below.
 LOOP_COORD_STUFF:
 	LDA OBJ_ZP_Y_COORD ;get y coord.
@@ -3502,18 +3755,18 @@ ANIM_FINISHED:
 	LDY OBJ_ZP_PARTICLE_TIMER_2 ;get timer.
 	INY  ;next value.
 	BEQ ANIM_FINISHED_2? ;if not finished.
-	LDX #$10 ;index into obj+48
+	LDX #$10 ;index into obj+48. why not 0C?
 	LDY #$20 ;8 loops. this - above = 0x10/2 loops.
 	LDA OBJ_ZP_DISABLE_PARTICLES_GROUP_2
 	JSR PIGEON_UPDATE_PARTICLES ;sprites again
 ANIM_FINISHED_2?:
 	LDA OBJ_ZP_ADD'L_STATE ;additional state value?
 	CMP #$02 ;play sound on state.
-	BNE CLEAR_PARTICLES ;go around shot sound.
+	BNE CLEAR_PARTICLE_DISABLE ;go around shot sound.
 	JSR SND_SET_F0_#$04 ;set poof sound when shot?
-CLEAR_PARTICLES:
+CLEAR_PARTICLE_DISABLE:
 	LDA #$00 ;clear
-	STA OBJ_ZP_DISABLE_PARTICLES_GROUP_1 ;disable hiding of particles for flicker effect.
+	STA OBJ_ZP_DISABLE_PARTICLES_GROUP_1 ;don't hide.
 	STA OBJ_ZP_DISABLE_PARTICLES_GROUP_2
 	RTS  ;leave
 TARGET_STATE_8_REMOVE_OBJ:
@@ -8291,7 +8544,7 @@ PIGEON_DATA_UNK:
 	.db #$00
 	.db #$00
 	.db #$00
-PIGEON_HIT_DATA_UNK:
+PIGEON_HIT_TIMER:
 	.db #$00
 	.db #$06
 	.db #$00

@@ -24,7 +24,7 @@ TMP_12:                                  .rs 0x01 ;0x0012
 TMP_13:                                  .rs 0x01 ;0x0013
 TMP_INDIR_JMP_L:                         .rs 0x01 ;0x0014
 TMP_INDIR_JMP_H:                         .rs 0x01 ;0x0015
-CTRL_HELD:                               .rs 0x01 ;0x0016
+CTRL_HELD:                               .rs 0x02 ;0x0016 to 0x0017
 
 	.rsset 0x001A
 FRAME_PTR_INDEX:                         .rs 0x01 ;0x001A
@@ -39,7 +39,7 @@ PPU_BLOCK_UPDATE_IN_NMI:                 .rs 0x01 ;0x0022
 PALETTE_UPLOAD:                          .rs 0x01 ;0x0023
 IN_MENU_FLAG:                            .rs 0x01 ;0x0024
 IN_GAME_STATE:                           .rs 0x01 ;0x0025
-SWITCH_BACK_TO_MENU_FALSE:               .rs 0x01 ;0x0026
+MENU_STATE:                              .rs 0x01 ;0x0026
 WHITE_BOX_DISPLAYED:                     .rs 0x01 ;0x0027
 SAVE_STATE_X:                            .rs 0x01 ;0x0028
 SAVE_STATE_Y:                            .rs 0x01 ;0x0029
@@ -72,7 +72,7 @@ OBJ_ZP_PTR_INDEX:                        .rs 0x01 ;0x0043
 OBJ_ZP_EXTRA_PTR/DATA:                   .rs 0x02 ;0x0044 to 0x0045
 OBJ_ZP_TIMER_MISC?:                      .rs 0x01 ;0x0046
 OBJ_ZP_MISC_INDEX?:                      .rs 0x01 ;0x0047
-OBJ_ZP_DATA_DIR/ANIMINFO?:               .rs 0x01 ;0x0048
+OBJ_ZP_DATA_DIRECTION:                   .rs 0x01 ;0x0048
 OBJ_ZP_INDEX_UNK:                        .rs 0x01 ;0x0049
 OBJ_ZP_INDEX_4A_UNK:                     .rs 0x01 ;0x004A
 OBJ_ZP_UNK_$4B:                          .rs 0x01 ;0x004B
@@ -134,8 +134,8 @@ HITS_REQUIRED_RAM:                       .rs 0x01 ;0x00AB
 
 	.rsset 0x00AD
 UPDATE_TARGETS_HIT:                      .rs 0x01 ;0x00AD
-UNK_$AE:                                 .rs 0x01 ;0x00AE
-UNK_$AE:                                 .rs 0x01 ;0x00AF
+UNK_FLYAWAY?:                            .rs 0x01 ;0x00AE
+DUCK_MOVEMENT_LAST_HELD_CONTROLLER:      .rs 0x01 ;0x00AF
 LIGHT_STEP:                              .rs 0x01 ;0x00B0
 TARGET_Y_COORD_CPY:                      .rs 0x01 ;0x00B1
 TARGET_X_COORD_CPY:                      .rs 0x01 ;0x00B2
@@ -212,6 +212,15 @@ UNK_0401:                                .rs 0x01 ;0x0401
 UNK_0402:                                .rs 0x01 ;0x0402
 UNK_403:                                 .rs 0x01 ;0x0403
 
+	.rsset 0x0407
+UNK_407:                                 .rs 0x01 ;0x0407
+
+	.rsset 0x040B
+UNK_40B:                                 .rs 0x01 ;0x040B
+
+	.rsset 0x040F
+UNK_40F:                                 .rs 0x01 ;0x040F
+
 	.rsset 0x0413
 UNK_0413:                                .rs 0x01 ;0x0413
 
@@ -219,10 +228,8 @@ UNK_0413:                                .rs 0x01 ;0x0413
 TIMER_STATE_SAVE:                        .rs 0x01 ;0x0430
 
 	.rsset 0x0440
-CTRL_PREV:                               .rs 0x01 ;0x0440
-
-	.rsset 0x0442
-CTRL_SAME:                               .rs 0x01 ;0x0442
+CTRL_PREV:                               .rs 0x02 ;0x0440 to 0x0441
+CTRL_SAME:                               .rs 0x02 ;0x0442 to 0x0443
 
 	.rsset 0x0500
 PPU_BLOCK_BUF_SETTING:                   .rs 0x01 ;0x0500
@@ -304,7 +311,7 @@ LOOP_MOVE_DAT:
 RUN_FRAME:
 	LDA IN_MENU_FLAG
 	BEQ SOUND_STUFF
-	LDA SWITCH_BACK_TO_MENU_FALSE
+	LDA MENU_STATE
 	CMP #$01 ;not 1 by def
 	BNE NO_SOUND_STUFF
 SOUND_STUFF:
@@ -453,7 +460,7 @@ IN_MENU:
 	LDA #$01
 	STA ZAP_SHOT_ENABLED ;menu always enables zapper.
 	STA SHOTS_REMAINING ;menu always has 1 shot.
-	LDA SWITCH_BACK_TO_MENU_FALSE
+	LDA MENU_STATE
 	BEQ SKIP_MENU ;switches screen.
 	JSR ZAP_PROC_TRIGGER ;process zapper trigger
 	JSR PROCESS_ZAPPER ;changes result
@@ -477,7 +484,7 @@ MENU_GOTO_GAME:
 	STA TIMER_SLOW ;set to low number.
 	RTS 
 START_NOT_PRESSED:
-	LDX SWITCH_BACK_TO_MENU_FALSE ;wait for selection
+	LDX MENU_STATE ;wait for selection
 	BNE START_NOT_PRESSED/ALONE ;always taken?
 SKIP_MENU:
 	JMP COUNT_DOWN_MENU ;X=0=selected?
@@ -563,10 +570,10 @@ COUNT_DOWN_MENU:
 	LDA #$FF ;why not just DEC $2D? Hmm...
 	STA TIMER_SLOW ;title screen countdown reset
 Switch_State:
-	LDA SWITCH_BACK_TO_MENU_FALSE ;which selected?
+	LDA MENU_STATE ;which selected?
 	JSR GOTO_TABLE_PAST_JSR ;1=RTS, 0=UPLOAD FILE
-	.LOW TABLE_UNK_STUFF_00
-	.HIGH TABLE_UNK_STUFF_00 ;selection made?
+	.LOW TABLE_SETUP_SCREEN_MENU_STUFF
+	.HIGH TABLE_SETUP_SCREEN_MENU_STUFF ;selection made?
 	.LOW RTS
 	.HIGH RTS ;RTS's.
 CLEAR_BOTH_SCREENS:
@@ -632,9 +639,9 @@ READ_CONTROLLERS:
 	LDX #$01
 	STX NES_CONTROLLER1
 	DEX 
-	STX NES_CONTROLLER1
-	JSR READ_CTRL_SETUP
-	INX 
+	STX NES_CONTROLLER1 ;reset controller latch to get buttons.
+	JSR READ_CTRL_SETUP ;do X index 0, aka player 1.
+	INX  ;get player 2 by indexing.
 READ_CTRL_SETUP:
 	LDY #$08 ;bits to pull
 READ_CTRL_LOOP:
@@ -724,21 +731,21 @@ COMPUTE_NAMETBL_ADDR_HIGH:
 WRITE_NAMETABLE_LOOP:
 	STA PPU_Data
 	DEY 
-	BNE WRITE_NAMETABLE_LOOP
+	BNE WRITE_NAMETABLE_LOOP ;loop 256
 	DEX 
-	BNE WRITE_NAMETABLE_LOOP
+	BNE WRITE_NAMETABLE_LOOP ;loop 1024
 	LDA TMP_02
-	ADC #$03 ;attribute table
+	ADC #$03 ;attribute table, $2[3/7]C0
 	STA PPU_Addr
 	LDA #$C0
 	STA PPU_Addr
-	LDY #$40
+	LDY #$40 ;bytes in attr table.
 	LDA #$00
 WRITE_ATTR_LOOP:
-	STA PPU_Data ;always #$00
+	STA PPU_Data ;clear
 	DEY 
-	BNE WRITE_ATTR_LOOP
-	RTS 
+	BNE WRITE_ATTR_LOOP ;loop
+	RTS  ;leave
 DEC_TIMERS_2B-2E:
 	LDX #$01 ;index
 	DEC TIMER_LARGE_COUNT
@@ -1083,7 +1090,7 @@ SCORE_LOWER:
 	BNE SET_SCORE_CPY
 SCORE_HIGHER:
 	CLC 
-	BCC SCORE_WRITE_CPY_LOWER
+	BCC SCORE_WRITE_CPY_LOWER ;always taken
 RNG_ADVANCE:
 	LDA RNG_ARRAY ;LFSR between 0-2,1-2
 	AND #$02
@@ -1101,7 +1108,7 @@ RNG_ROTATE:
 	ROR RNG_ARRAY+3
 	LDA RNG_ARRAY
 	RTS 
-TABLE_UNK_STUFF_00:
+TABLE_SETUP_SCREEN_MENU_STUFF:
 	JSR NMI_DISABLE_SPRITS/BG ;JUMPS TO FROM MENU SELECTION
 	JSR CLEAR_NAMETABLE_$2000 ;clears nametable
 	JSR WAIT_FOR_NMI ;wait for nmi.
@@ -1116,10 +1123,10 @@ TABLE_UNK_STUFF_00:
 	LDY #$E4 ;upload file from E404
 	JSR UPLOAD_PPU_FILE
 	LDA #$01
-	STA PALETTE_UPLOAD
+	STA PALETTE_UPLOAD ;palette
 	LDA #$01
-	STA CURSOR_UPDATE_DISALLOWED
-	INC SWITCH_BACK_TO_MENU_FALSE
+	STA CURSOR_UPDATE_DISALLOWED ;disallow cursor.
+	INC MENU_STATE
 	JMP PPU_ENABLE_SPRITES/BG
 WAIT_FOR_NMI:
 	JSR CLEAR_NMIRAN/PPUSTUFFFLAG ;waited always clears current.
@@ -1379,7 +1386,7 @@ WRITE_HIGH_SCORE:
 	BNE WRITE_HIGH_SCORE
 	LDY #$00
 	STY ZAPPER_TRIG_RELEASED
-	STY SWITCH_BACK_TO_MENU_FALSE
+	STY MENU_STATE ;menu state 0 inits menu.
 	INY 
 	STY IN_MENU_FLAG
 	JMP NMI_DISABLE_SPRITS/BG
@@ -1741,21 +1748,21 @@ OUTPUT_INDEX:
 	STA OBJ_ZP_COPY+31 ;unk
 	LDA #$01
 	STA OBJ_ZP_UNK_$4B ;unk
-	STA UNK_$AE ;enable target 1 something always?
+	STA UNK_FLYAWAY? ;enable target 1 something always?
 	LDA GAME_MODE_IN
 	BNE TWO_TARGET_GAME ;if 1 or 2, go here.
 	LDX LEVEL ;get level in X again.
 	LDA #$7D ;countdown value
 	CPX #$11 ;if level ?? 11
-	BCC L_0A08 ;<
+	BCC SET_COUNTDOWN ;<
 	LDA #$5D ;countdown value
 	CPX #$20 ;if level ?? 20
-	BCC L_0A08 ;<
+	BCC SET_COUNTDOWN ;<
 	LDA #$3E ;default, smallest.
-L_0A08:
+SET_COUNTDOWN:
 	STA OBJ_ZP_COPY_FLYAWAY_COUNTDOWN ;store countdown.
 	LDA #$00
-	STA UNK_$AE ;disable 2nd target? not sure 100% yet but related probs.
+	STA DUCK_MOVEMENT_LAST_HELD_CONTROLLER ;clear ???
 TWO_TARGET_GAME:
 	INC GAME_TARGETS_SHOWN? ;inc objects init'd.
 	LDA GAME_TARGETS_SHOWN? ;get value.
@@ -1790,122 +1797,122 @@ TWO_TARGET_GAME:
 	JMP GAME_MODE_2_TARGETS
 GAME_MODE_1_TRGT:
 	LDA OBJ_ZP_UNK_$4B ;get data.
-	BEQ $4B_NOT_SET
+	BEQ $4B_IS_0
 	LDA OBJ_ZP_Y_COORD ;get obj Y
 	CMP #$88
-	BCS TWO_TARGET_GAME ;if A>=#$88, go. unk function.
+	BCS TWO_TARGET_GAME ;if A>=#$88, goto. unk why.
 	LDA #$00
-	STA OBJ_ZP_UNK_$4B ;clear $4B
-$4B_NOT_SET:
-	LDX #$01
+	STA OBJ_ZP_UNK_$4B ;clear $4B now.
+$4B_IS_0:
+	LDX #$01 ;unk why
 	LDA OBJ_ZP_COPY_FLYAWAY_COUNTDOWN
-	BEQ IS_ZERO
+	BEQ FLYAWAY_COUNTDOWN_ALREADY_ENDED ;if countdown ended, go here.
 	LDA SHOTS_REMAINING
-	BNE HAS_SHOTS_REMAINING
-	STA OBJ_ZP_COPY_FLYAWAY_COUNTDOWN
-L_0A5F:
-	JSR DISP_CHANGE_SOMETHING
-	LDX #$01
-	BNE IS_ZERO ;always taken
+	BNE HAS_SHOTS_REMAINING ;shots remaining.
+	STA OBJ_ZP_COPY_FLYAWAY_COUNTDOWN ;if no shots, set flyaway to 0. duck flies up.
+COUNTDOWN_NOW_ZERO:
+	JSR DISP_FLY_AWAY ;change screen.
+	LDX #$01 ;set flag.
+	BNE FLYAWAY_COUNTDOWN_ALREADY_ENDED ;freshly ended.
 HAS_SHOTS_REMAINING:
-	DEX 
+	DEX  ;sets flyaway to false?
 	LDA FRAME_COUNTER
 	LSR A
-	BCC IS_ZERO
-	DEC OBJ_ZP_COPY_FLYAWAY_COUNTDOWN
-	BEQ L_0A5F
-IS_ZERO:
-	STX UNK_$AE
+	BCC FLYAWAY_COUNTDOWN_ALREADY_ENDED ;decrease on odd frames.
+	DEC OBJ_ZP_COPY_FLYAWAY_COUNTDOWN ;decrease.
+	BEQ COUNTDOWN_NOW_ZERO ;now counted down.
+FLYAWAY_COUNTDOWN_ALREADY_ENDED:
+	STX UNK_FLYAWAY? ;store if we are flying away.
 	CPX #$01
-	BEQ L_0A8A
-	LDA CTRL_HELD
+	BEQ FLYAWAY_ENABLED ;dont let controller move now?
+	LDA CTRL_HELD ;first controller. makes sense.
 	AND #$0F
-	BNE L_0AA8
-	LDA $17
+	BNE MOVEMENT_BUTTONS_PRESSED
+	LDA CTRL_HELD+1 ;2nd controller. doesn't. zapper is here, like, wtf.
 	AND #$0F
-	BNE L_0AA8
+	BNE MOVEMENT_BUTTONS_PRESSED
 	LDA #$00
-	STA UNK_$AE
-	LDA UNK_$AE
-	BEQ L_0A8D
-L_0A8A:
-	JMP L_0F16
-L_0A8D:
+	STA DUCK_MOVEMENT_LAST_HELD_CONTROLLER
+	LDA UNK_FLYAWAY? ;get if flying away?
+	BEQ NOT_FLYING_AWAY
+FLYAWAY_ENABLED:
+	JMP FLYING_AWAY_REMOVAL_CHECK
+NOT_FLYING_AWAY:
 	LDA OBJ_ZP_Y_COORD
 	CMP #$20
-	BCC L_0AD1
+	BCC Y_COORD_<20
 	CMP #$90
-	BCS L_0AD7
-	LDX #$00
+	BCS Y_COORD_>=90
+	LDX #$00 ;value used in direction X changing.
 	LDA OBJ_ZP_X_COORD
 	CMP #$10
-	BCC L_0AE3
-	LDX #$08
+	BCC X_COORD_<10
+	LDX #$08 ;now this one for these.
 	CMP #$F0
-	BCS L_0AE9
-L_0AA5:
+	BCS X_COORD_>=F0
+MOVE_DUCKS_AUTOMATICALLY:
 	JMP GET_DUCK_DIFFICULTY+MOVE
-L_0AA8:
-	CMP UNK_$AE
-	BEQ L_0A8A
-	STA UNK_$AE
-	LDX #$35
+MOVEMENT_BUTTONS_PRESSED:
+	CMP DUCK_MOVEMENT_LAST_HELD_CONTROLLER
+	BEQ FLYAWAY_ENABLED ;no new buttons pressed.
+	STA DUCK_MOVEMENT_LAST_HELD_CONTROLLER ;update buttons pressed.
+	LDX #$35 ;two possible
+	LSR A ;right
+	BCS FOUND_DIRECTION
+	LDX #$DB ;two possible.
+	LSR A ;left
+	BCS FOUND_DIRECTION
+	LDX #$79 ;two possible.
+	LSR A ;down
+	BCS FOUND_DIRECTION
+	LDX #$1F ;up, two possible.
+FOUND_DIRECTION:
+	LDA FRAME_COUNTER ;has 2 options each time?
+	LSR A ;randomly get which
+	TXA  ;get up values.
+	BCC RANDOMLY_SHIFT
+	AND #$0F ;use bottom.
+	JMP WRITE_DIRECTION_FROM_CONTROLLER
+RANDOMLY_SHIFT:
+	LSR A ;use top bit value.
 	LSR A
-	BCS L_0ABF
-	LDX #$DB
-	LSR A
-	BCS L_0ABF
-	LDX #$79
-	LSR A
-	BCS L_0ABF
-	LDX #$1F
-L_0ABF:
-	LDA FRAME_COUNTER
-	LSR A
-	TXA 
-	BCC L_0ACA
-	AND #$0F
-	JMP L_0B56
-L_0ACA:
 	LSR A
 	LSR A
-	LSR A
-	LSR A
-	JMP L_0B56
-L_0AD1:
-	INC OBJ_ZP_Y_COORD
-	LDY #$00
-	BEQ L_0ADB
-L_0AD7:
-	DEC OBJ_ZP_Y_COORD
-	LDY #$02
-L_0ADB:
-	LDA OBJ_ZP_DATA_DIR/ANIMINFO?
-	AND #$08
-	TAX 
-	JMP L_0AED
-L_0AE3:
-	INC OBJ_ZP_X_COORD
-	LDY #$04
-	BNE L_0AED
-L_0AE9:
-	DEC OBJ_ZP_X_COORD
-	LDY #$02
-L_0AED:
-	STX TMP_0C
-	STY TMP_0F
-	LDA OBJ_ZP_DATA_DIR/ANIMINFO?
-	AND #$07
-	EOR #$07
-	ORA TMP_0C
-	STA TMP_0C
-	JSR RNG_ADVANCE
-	AND #$03
+	JMP WRITE_DIRECTION_FROM_CONTROLLER
+Y_COORD_<20:
+	INC OBJ_ZP_Y_COORD ;move right one pixel.
+	LDY #$00 ;direction down?
+	BEQ CHANGE_DIRECTION_Y
+Y_COORD_>=90:
+	DEC OBJ_ZP_Y_COORD ;move left one pixel.
+	LDY #$02 ;direction up?
+CHANGE_DIRECTION_Y:
+	LDA OBJ_ZP_DATA_DIRECTION
+	AND #$08 ;keep animation set?
+	TAX  ;get value passed.
+	JMP CHANGE_DIRECTION_X ;make direction?
+X_COORD_<10:
+	INC OBJ_ZP_X_COORD ;move right one pixel.
+	LDY #$04 ;direction right?
+	BNE CHANGE_DIRECTION_X
+X_COORD_>=F0:
+	DEC OBJ_ZP_X_COORD ;move one pixel left.
+	LDY #$02 ;direction left?
+CHANGE_DIRECTION_X:
+	STX TMP_0C ;animation set?
+	STY TMP_0F ;direction?
+	LDA OBJ_ZP_DATA_DIRECTION ;get current direction info.
+	AND #$07 ;bits 0000 0***
+	EOR #$07 ;invert the bits.
+	ORA TMP_0C ;set the animation set bits?
+	STA TMP_0C ;store value.
+	JSR RNG_ADVANCE ;get random number...
+	AND #$03 ;get bits.
 	CMP #$03
-	BNE L_0B06
-	LDA #$02
-L_0B06:
-	CLC 
+	BNE ALL_NOT_SET
+	LDA #$02 ;use this if not 3.
+ALL_NOT_SET:
+	CLC  ;either 3 or 2.
 	ADC TMP_0C
 	STA TMP_$0E
 	LDY TMP_0F
@@ -1952,7 +1959,7 @@ L_0B50:
 L_0B52:
 	LDA TMP_$0E
 	AND #$0F
-L_0B56:
+WRITE_DIRECTION_FROM_CONTROLLER:
 	JMP OBJ_ANIM+MOVEMENT
 GAME_MODE_2_TARGETS:
 	LDA OBJ_ZP_TIMER_MISC?
@@ -1974,14 +1981,14 @@ NOT_EXTRA_PTR_EOF:
 	INY 
 	STY OBJ_ZP_MISC_INDEX? ;store index.
 OBJ_ANIM+MOVEMENT:
-	STA OBJ_ZP_DATA_DIR/ANIMINFO? ;store data.
+	STA OBJ_ZP_DATA_DIRECTION ;store data.
 	TAX  ;value to index.
 	LDA UNK_OBJ_DATA_264B,X
 	STA OBJ_ZP_INDEX_UNK ;store 2 places.
 	STA OBJ_ZP_INDEX_4A_UNK
 	LDA #$00
 	STA OBJ_ZP_DIRECTION ;clear direction. right.
-	LDA OBJ_ZP_DATA_DIR/ANIMINFO? ;get data.
+	LDA OBJ_ZP_DATA_DIRECTION ;get data.
 	CMP #$11 ;is ?? #$11
 	BCC <#$11 ;<, contains all data its self.
 	TAX  ;Save A in X.
@@ -2044,7 +2051,7 @@ NOT_MARKER:
 	ADC OBJ_ZP_Y_COORD ;add data to y coord...
 	LDX OBJ_ZP_UNK_$4B
 	BNE FLAG_WAS_SET_STORE_Y_COORD ;if !0, store.
-	LDX UNK_$AE
+	LDX UNK_FLYAWAY?
 	BNE FLAG_WAS_SET_STORE_Y_COORD ;if !0, store.
 	CMP #$1E
 	BCC SKIP_WRITE_Y_COORD ;<1E, don't store.
@@ -2060,7 +2067,7 @@ SKIP_WRITE_Y_COORD:
 	ADC OBJ_ZP_X_COORD ;add to X coord.
 	LDX OBJ_ZP_UNK_$4B
 	BNE FLAG_SET_WRITE_X_COORD ;if !0, store.
-	LDX UNK_$AE
+	LDX UNK_FLYAWAY?
 	BNE FLAG_SET_WRITE_X_COORD ;if !0, store.
 	CMP #$0E
 	BCC SKIP_WRITE_X_COORD ;if <0E, don't store.
@@ -2116,7 +2123,7 @@ RANGE_DATA:
 	LDA #$01
 	STA OBJ_ZP_UNK_$4B ;set, unk
 	LDX #$10
-	STX OBJ_ZP_DATA_DIR/ANIMINFO? ;not sure, but is direction/animinfo?
+	STX OBJ_ZP_DATA_DIRECTION ;not sure, but is direction/animinfo?
 	LDA UNK_OBJ_DATA_264B,X ;always+#$10?
 	STA OBJ_ZP_INDEX_UNK ;store 2x?
 	STA OBJ_ZP_INDEX_4A_UNK
@@ -2518,8 +2525,8 @@ SETUP_OBJ_ANIM_[PTR,INDEX,TIMER]:
 	STA OBJ_ZP_PTR_INDEX ;index to obj data of some type.
 	STA OBJ_ZP_ANIM_TIMER ;substate counter?
 	RTS 
-L_0F16:
-	LDA OBJ_ZP_Y_COORD
+FLYING_AWAY_REMOVAL_CHECK:
+	LDA OBJ_ZP_Y_COORD ;this is the final check for flying away ducks i believe
 	CMP #$08
 	BCC OBJ_STATE_8_ANIM_TIMER_0
 	CMP #$90
@@ -2530,15 +2537,15 @@ L_0F16:
 	CMP #$F4
 	BCC L_0F36
 OBJ_STATE_8_ANIM_TIMER_0:
-	LDA #$08
+	LDA #$08 ;disables here if not saved above. TODO: All this.
 	STA OBJ_ZP_STATE
 	LDA #$00
 	STA OBJ_ZP_ANIM_TIMER
 	RTS 
 L_0F33:
-	JMP L_0AD7
+	JMP Y_COORD_>=90
 L_0F36:
-	JMP L_0AA5
+	JMP MOVE_DUCKS_AUTOMATICALLY
 CLEAR_46-47,SET OBJ_Y:
 	LDA #$00
 	STA OBJ_ZP_TIMER_MISC?
@@ -2593,22 +2600,22 @@ ADD_SCORE_FROM_Y_INDEX:
 	LDA #$0F ;jsr setup
 	JSR SCORE_ADD/SUB ;do.
 	JMP DISP_NEW_SCORE ;put to screen.
-DISP_CHANGE_SOMETHING:
+DISP_FLY_AWAY:
 	LDA TRGT_SHOT_DURING_ATTEMPT
-	BNE RTS ;leave if no hits.
+	BNE RTS ;leave if any hits.
 	LDA #$06
 	JSR UPDATE_PPU_GROUP
 	LDA #$30
-	STA FAST_TIMERS
+	STA FAST_TIMERS ;not sure why.
 	LDA #$06
-	STA PALETTE_UPLOAD
+	STA PALETTE_UPLOAD ;orange color?
 	LDA #$01
-	STA WHITE_BOX_DISPLAYED
+	STA WHITE_BOX_DISPLAYED ;not sure why here.
 	LDA #$36
-	STA UNK_403
-	STA $0407
-	STA $040B
-	STA $040F
+	STA UNK_403 ;not sure why.
+	STA UNK_407
+	STA UNK_40B
+	STA UNK_40F
 RTS:
 	RTS 
 DISP_SCORE_SPRITES:
@@ -3081,7 +3088,7 @@ SKIP_STATUS_SWAP:
 	DEY  ;if changed, Y=0.
 	BNE FINALIZE_ROUND ;finalize if no changes.
 	LDA #$00
-	STA END_OF_ROUND_STATE ;timer again until next swap.
+	STA END_OF_ROUND_STATE ;do end round again, not finished.
 	JSR SND_SET_F1_#$20 ;play swapped music.
 	JMP PPU_DISP_TARGET_STATUS ;show new ducks, abuse RTS.
 FINALIZE_ROUND:
@@ -3152,7 +3159,7 @@ BONUS_FOUND:
 	JSR SCORE_ADD/SUB
 	JSR DISP_NEW_SCORE
 	LDA #$03
-	STA END_OF_ROUND_STATE ;bonus state?
+	STA END_OF_ROUND_STATE ;end of round state.
 	LDA #$A0
 	STA FAST_TIMERS ;set timer.
 	JSR CLEAR_SPRITES ;no sprites.
@@ -3462,7 +3469,7 @@ GAME_STATE_A_SUBROUND_INIT:
 	STA TRGT2_TYPE
 	STA TRGT1_STATE ;target state. pigeons always 1 targets.
 	STA TRGT2_STATE
-	LDA #$30
+	LDA #$30 ;max value from array.
 	LDX LEVEL
 	CPX #$10 ;max level value
 	BCS LEVEL_MAXED ;if X >= 10, skip load.
@@ -3471,7 +3478,7 @@ GAME_STATE_A_SUBROUND_INIT:
 LEVEL_MAXED:
 	STA LEVEL_TIED_VAR? ;not sure
 	LDA #$80
-	STA COUNTDOWN_TO_ENABLE_TARGETS ;set top bit of A6. Counter?
+	STA COUNTDOWN_TO_ENABLE_TARGETS ;Set target enable countdown.
 	LDA #$01
 	STA SHOT_FIRED ;disable shooting.
 	LDA #$03
@@ -3518,35 +3525,35 @@ PROCESS_TARGET_2:
 	JSR MOVE_OBJ_ZP_BACK_TO_ORIGIN ;move to $500.
 PROCESS_OTHER:
 	LDA #_TARGETS_REMAINING
-	BNE BC_NOT_CLEAR
+	BNE TARGETS_REMAINING
 	LDX TRGT1_STATE
 	LDY TRGT2_STATE
 	CPX #$03 ;target state active?
-	BEQ IS_ACTIVE
+	BEQ IS_MOVING ;state 3 is moving.
 	CPY #$03
-	BEQ IS_ACTIVE
-	JSR SND_SET_F0_#$80 ;set sound for something.
-IS_ACTIVE:
+	BEQ IS_MOVING
+	JSR SND_SET_F0_#$80 ;turn off pigeon sound?
+IS_MOVING:
 	CPX #$00
 	BNE RTS ;rts if any state
 	CPY #$00
 	BNE RTS ;rts if any state.
-	JSR DISP_SHOT_TEXT ;display text
+	JSR DISP_SHOT_TEXT ;display text always.
 	LDA #$00
 	STA ZAP_SHOT_ENABLED ;disable shot.
-	LDA GAME_TARGETS_SHOWN?
-	CMP #$0A ;state?
-	BEQ CLEAR_A9_IN_GAME_0C
-	LDA #$0A
-	BNE GAME_STATE_SWITCH.
-CLEAR_A9_IN_GAME_0C:
+	LDA GAME_TARGETS_SHOWN? ;end of round?
+	CMP #$0A ;end of targets.
+	BEQ ALL_TARGETS_SHOWN?
+	LDA #$0A ;game state. pigeons main.
+	BNE GAME_STATE_SWITCH
+ALL_TARGETS_SHOWN?:
 	LDA #$00
-	STA END_OF_ROUND_STATE ;clear A9.
+	STA END_OF_ROUND_STATE ;reset end round state.
 	LDA #$0C
-GAME_STATE_SWITCH.:
+GAME_STATE_SWITCH:
 	STA IN_GAME_STATE ;goto state.
 	JMP CLEAR_SPRITES ;clear sprites then RTS.
-BC_NOT_CLEAR:
+TARGETS_REMAINING:
 	LDA COUNTDOWN_TO_ENABLE_TARGETS ;is a timer?
 	BEQ RTS
 	DEC COUNTDOWN_TO_ENABLE_TARGETS
@@ -3859,7 +3866,7 @@ L_182F:
 	JSR L_18DB
 	STY TMP_12
 	STX TMP_13
-	LDA OBJ_ZP_DATA_DIR/ANIMINFO?
+	LDA OBJ_ZP_DATA_DIRECTION
 	SEC 
 	SBC #$00
 	TAY 

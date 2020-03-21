@@ -110,7 +110,12 @@ SCORE_OBJ_X:                             .rs 0x02 ;0x0082 to 0x0083
 	.rsset 0x0083
 SCORE_UPPER_SPRITE:                      .rs 0x02 ;0x0083 to 0x0084
 
-	.rsset 0x0098
+	.rsset 0x0093
+UNK_$93:                                 .rs 0x01 ;0x0093
+UNK_$94:                                 .rs 0x01 ;0x0094
+UNK_$95:                                 .rs 0x01 ;0x0095
+UNK_$96:                                 .rs 0x01 ;0x0096
+UNK_$97:                                 .rs 0x01 ;0x0097
 DUCK_COMBO_INDEX:                        .rs 0x01 ;0x0098
 TARGETS_ACTIVATED_COUNT?:                .rs 0x01 ;0x0099
 SHOT_BLINK_COUNTER:                      .rs 0x01 ;0x009A
@@ -313,11 +318,11 @@ RUN_FRAME:
 	LDA IN_MENU_FLAG
 	BEQ SOUND_STUFF
 	LDA MENU_STATE
-	CMP #$01 ;not 1 by def
-	BNE NO_SOUND_STUFF
+	CMP #$01 ;if state isn't this
+	BNE SKIP_SOUND
 SOUND_STUFF:
 	JSR PLAY_SOUNDS ;play sounds.
-NO_SOUND_STUFF:
+SKIP_SOUND:
 	JSR DEC_TIMERS_2B-2E ;handle timers.
 	JSR READ_CONTROLLERS
 	JSR MAIN_ZAPPER_LOGIC
@@ -2929,7 +2934,7 @@ WAIT_NO_LIGHT:
 	AND #$08 ;does it see light
 	BNE WAIT_NO_LIGHT ;no,wait
 	LDA LIGHT_HIT_INDEX ;0, failure.
-	JMP TARGET_NOT_HIT ;does menu stuff too.
+	JMP ACTUAL_TARGET_NOT_HIT ;does menu stuff too.
 UPLOAD_PELLETTE_FOR_GAME:
 	LDA GAME_MODE_IN ;get mode in.
 	CMP #$02 ;is pigeons.
@@ -3009,17 +3014,17 @@ DISP_WHITE_BOX:
 	JMP PPU_ENABLE_SPRITES/BG ;show screen again.
 TARGET_NOT_HIT:
 	LDA LIGHT_HIT_INDEX
-	BNE TARGET_NOT_HIT
+	BNE ACTUAL_TARGET_NOT_HIT
 	LDA TRGT2_TYPE
-	BEQ IN_GAME
+	BEQ IN_GAME ;skip if not active.
 	LDA TRGT2_STATE
 	CMP #$03
-	BNE IN_GAME
+	BNE IN_GAME ;skip if not active.
 	LDA #$01
-	STA LIGHT_HIT_INDEX
+	STA LIGHT_HIT_INDEX ;testing target 2
 	JSR CLEAR_NMIRAN/PPUSTUFFFLAG
 	JMP TEST_LIGHT_LOOP
-TARGET_NOT_HIT:
+ACTUAL_TARGET_NOT_HIT:
 	CMP #$02 ;menu signifier.
 	BNE IN_GAME ;not on menu
 	LDA #$02 ;why load?
@@ -3256,7 +3261,7 @@ DISP_BLINK_WORD_SHOT:
 	BNE RTS ;if any remaining, leave.
 	LDA SHOT_BLINK_COUNTER
 	AND #$07
-	BNE INC_9A ;if bottom bits set.
+	BNE INC_BLINK_COUNTER ;if bottom bits set.
 	LDA WHITE_BOX_DISPLAYED
 	BNE RTS ;if white box, rts
 	LDA SHOT_BLINK_COUNTER
@@ -3279,7 +3284,7 @@ AXY_TO_UPDATEBUF_3BYTES:
 	LDX #$63
 	LDY #$23 ;store to 2363
 	JSR MAKE_SETUP_PPU_BLOCK
-INC_9A:
+INC_BLINK_COUNTER:
 	INC SHOT_BLINK_COUNTER
 	RTS 
 UPDATE_PPU_GROUP:
@@ -3292,9 +3297,9 @@ SPR_BG_UNK:
 	BEQ DISP_CLEAR_FIELD ;if A=0, clear message.
 	ASL A
 	TAX  ;X is now index.
-	LDA UNK_TABLE_LOW,X
+	LDA MESSAGES_LOW,X
 	STA TMP_INDIR_JMP_L
-	LDA UNK_TABLE_HIGH,X
+	LDA MESSAGES_HIGH,X
 	STA TMP_INDIR_JMP_H
 	LDY #$01
 	LDA (TMP_INDIR_JMP_L),Y
@@ -3326,7 +3331,7 @@ ONLY_ONE_DIGIT:
 NO_LEVEL_IN_UPDATE:
 	CMP #$05 ;perfect level bonus?
 	BNE NO_BONUS?
-	LDA TMP_0C ;bonus score for level?
+	LDA TMP_0C ;bonus score for level digits?
 	STA PPU_UPDATE_BUF+32
 	LDA TMP_0D
 	STA PPU_UPDATE_BUF+33
@@ -3679,7 +3684,7 @@ DIFFICULTY_LOOP:
 	LDA OBJ_ZP_INDEX_UNK
 	CMP #$30
 	BCS STATE_8 ;state 8 if >=30
-	JSR L_182F
+	JSR PIGEON_X/Y_SOMEHOW
 	LDA OBJ_ZP_Y_COORD ;get Y coord.
 	SEC 
 	SBC #$40 ;minus 40...
@@ -3844,80 +3849,80 @@ GROUP_NO_SPILL:
 	STX OBJ_ZP_DUCK_DIFF ;store next arr value.
 	PLA  ;pull value saved from array.
 	RTS  ;return it.
-L_182F:
-	LDA OBJ_ZP_TIMER_FALLING?
+PIGEON_X/Y_SOMEHOW:
+	LDA OBJ_ZP_TIMER_FALLING? ;terribly complicated way to handle this shit.
 	SEC 
-	SBC #$00
-	TAY 
-	LDA OBJ_ZP_COPY+30
-	SBC #$10
-	TAX 
-	LDA #$3B
-	JSR L_18DB
-	STY TMP_INDIR_JMP_L
-	STX TMP_INDIR_JMP_H
-	LDA OBJ_ZP_TIMER_FALLING?
+	SBC #$00 ;set carry, sub 0...no purpose?
+	TAY  ;A>Y
+	LDA OBJ_ZP_COPY+30 ;get data
+	SBC #$10 ;subtract #$10
+	TAX  ;OBJ+30-10->X
+	LDA #$3B ;unk why value
+	JSR UNK_ROUTINE
+	STY TMP_INDIR_JMP_L ;Y to
+	STX TMP_INDIR_JMP_H ;X to
+	LDA OBJ_ZP_TIMER_FALLING? ;get value again
 	SEC 
-	SBC #$00
-	TAY 
-	LDA OBJ_ZP_COPY+30
-	SBC #$10
-	TAX 
-	LDA #$E7
-	JSR L_18DB
-	STY TMP_12
+	SBC #$00 ;yet again, no purpose?
+	TAY  ;put to Y again.
+	LDA OBJ_ZP_COPY+30 ;get value again.
+	SBC #$10 ;subtract #$10 again
+	TAX  ;put to X
+	LDA #$E7 ;different seed/value.
+	JSR UNK_ROUTINE ;do routing again.
+	STY TMP_12 ;store to temps.
 	STX TMP_13
-	LDA OBJ_ZP_DATA_DIRECTION
+	LDA OBJ_ZP_DATA_DIRECTION ;get direction.
 	SEC 
-	SBC #$00
-	TAY 
-	LDA OBJ_ZP_INDEX_UNK
-	SBC #$18
-	TAX 
-	LDA #$7F
-	JSR L_18DB
-	CLC 
-	TYA 
-	ADC #$4F
-	TAY 
-	TXA 
-	ADC #$23
-	TAX 
-	TYA 
+	SBC #$00 ;idfk why they keep doing this shit.
+	TAY  ;direction to Y
+	LDA OBJ_ZP_INDEX_UNK ;get whatever index.
+	SBC #$18 ;subtract with #$18. zero iirc?
+	TAX  ;put to X.
+	LDA #$7F ;see different again,
+	JSR UNK_ROUTINE ;do routing.
+	CLC  ;clear for add.
+	TYA  ;Y to A
+	ADC #$4F ;add with this.
+	TAY  ;back to Y.
+	TXA  ;X to A.
+	ADC #$23 ;add this.
+	TAX  ;back to X.
+	TYA  ;Y to A
 	SEC 
-	SBC TMP_INDIR_JMP_L
-	STA $93
-	TXA 
-	SBC TMP_INDIR_JMP_H
-	CMP #$50
-	ROR A
-	STA $94
-	ROR $93
-	LDY $91
+	SBC TMP_INDIR_JMP_L ;subtract with initial values.
+	STA UNK_$93 ;store result.
+	TXA  ;X to A.
+	SBC TMP_INDIR_JMP_H ;subtract with initial values.
+	CMP #$50 ;compare to set carry?
+	ROR A ;bring carry in?
+	STA UNK_$94 ;store here.
+	ROR UNK_$93 ;store here.
+	LDY $91 ;load these two.
 	LDX $92
-	LDA #$6C
-	JSR L_18DB
+	LDA #$6C ;seed
+	JSR UNK_ROUTINE ;do routine.
 	CLC 
-	TYA 
-	ADC TMP_12
-	TAY 
-	TXA 
-	ADC TMP_13
-	TAX 
-	JSR L_1907
-	SBC #$00
-	EOR #$7F
-	STA OBJ_ZP_Y_COORD
-	LDA OBJ_ZP_PTR_INDEX
+	TYA  ;Y to A.
+	ADC TMP_12 ;add with this.
+	TAY  ;to Y
+	TXA  ;X to A
+	ADC TMP_13 ;add with this.
+	TAX  ;back to X.
+	JSR UNK_ROUTINE_2 ;do this routine now.
+	SBC #$00 ;this makes sense, can be clear or not.
+	EOR #$7F ;invert bottom bits.
+	STA OBJ_ZP_Y_COORD ;store to obj Y coord.
+	LDA OBJ_ZP_PTR_INDEX ;get index.
 	SEC 
-	SBC #$00
-	TAY 
-	LDA OBJ_ZP_EXTRA_PTR/DATA
-	SBC #$09
-	TAX 
-	JSR L_1907
-	EOR #$80
-	STA OBJ_ZP_X_COORD
+	SBC #$00 ;subtract nothing, yet again.
+	TAY  ;save to Y
+	LDA OBJ_ZP_EXTRA_PTR/DATA ;get this data.
+	SBC #$09 ;subtract #$09
+	TAX  ;put to X.
+	JSR UNK_ROUTINE_2 ;do this again.
+	EOR #$80 ;invert bit.
+	STA OBJ_ZP_X_COORD ;store at X coord.
 	RTS 
 PIGEON_OBJ_MOVE:
 	LDA #$0F
@@ -3950,66 +3955,66 @@ IS_POSITIVE:
 	TXA  ;get loop.
 	BNE LOOP_DO_MORE
 	RTS  ;leave.
-L_18DB:
-	STY TMP_$10
-	STX TMP_$11
-	STA $95
+UNK_ROUTINE:
+	STY TMP_$10 ;add value 95
+	STX TMP_$11 ;add value 96
+	STA UNK_$95 ;bits to add?
 	LDA #$00
-	STA $96
-	STA $97
-	LDX #$08
-L_18E9:
-	ROR $95
-	BCC L_18FA
-	CLC 
-	LDA $96
-	ADC TMP_$10
-	STA $96
-	LDA $97
-	ADC TMP_$11
-	STA $97
-L_18FA:
-	ASL A
-	ROR $97
-	ROR $96
-	DEX 
-	BNE L_18E9
-	LDY $96
-	LDX $97
+	STA UNK_$96 ;clear these.
+	STA UNK_$97
+	LDX #$08 ;loop count?
+LOOP_UNK:
+	ROR UNK_$95
+	BCC 95_BIT_CLEAR ;bit was clear.
+	CLC  ;clear for add.
+	LDA UNK_$96
+	ADC TMP_$10 ;add with this.
+	STA UNK_$96 ;store back.
+	LDA UNK_$97 ;load this.
+	ADC TMP_$11 ;add
+	STA UNK_$97 ;store.
+95_BIT_CLEAR:
+	ASL A ;shift bit out?
+	ROR UNK_$97 ;rotate right, bringing in bit.
+	ROR UNK_$96 ;ror, bringing bit again.
+	DEX  ;next loop.
+	BNE LOOP_UNK ;see if loop done.
+	LDY UNK_$96 ;return X and Y final values.
+	LDX UNK_$97
 	RTS 
-L_1907:
-	STY $96
-	STX $97
+UNK_ROUTINE_2:
+	STY UNK_$96 ;store x
+	STX UNK_$97 ;store y
 	LDA #$00
-	STA $95
-	LDX #$07
+	STA UNK_$95 ;clear
+	LDX #$07 ;8 loops.
 	CLC 
-	LDA $96
-	ADC $93
-	TAY 
-	LDA $97
-	ADC $94
-L_191B:
-	BCC L_1921
-	STY $96
-	STA $97
-L_1921:
-	ROL $95
-	ROL $96
-	ROL $97
-	SEC 
-	LDA $96
-	SBC $93
-	TAY 
-	LDA $97
-	SBC $94
-	DEX 
-	BPL L_191B
-	BCS L_1937
-	DEX 
-L_1937:
-	LDA $95
-	RTS 
+	LDA UNK_$96 ;why not TYA?
+	ADC UNK_$93 ;add with whatever this is.
+	TAY  ;put to Y
+	LDA UNK_$97 ;get val
+	ADC UNK_$94 ;add with this.
+LOOP_UNK2:
+	BCC NO_OVERFLOW
+	STY UNK_$96 ;if overflow, store this.
+	STA UNK_$97 ;store this.
+NO_OVERFLOW:
+	ROL UNK_$95 ;double, bit.
+	ROL UNK_$96 ;double, bit.
+	ROL UNK_$97 ;double, bit.
+	SEC  ;set carry for sub
+	LDA UNK_$96 ;get val
+	SBC UNK_$93 ;subtract with this.
+	TAY  ;put to Y
+	LDA UNK_$97 ;get value
+	SBC UNK_$94 ;subtract with this.
+	DEX  ;loop count.
+	BPL LOOP_UNK2 ;if not underflow, 8 loops, repeat.
+	BCS LOAD_RTS ;if no underflow, load?
+	DEX  ;FE now instead of just loading?
+LOAD_RTS:
+	LDA UNK_$95 ;load this...
+	RTS  ;return.
 PROCESS_PARTICLES_:
 	INC OBJ_ZP_ADD'L_STATE ;next state always...
 	LDY OBJ_ZP_PARTICLE_TIMER_1 ;get timer.
@@ -8894,27 +8899,27 @@ TIMER_9D_STUFF?:
 	.db #$03
 	.db #$08
 	.db #$00
-UNK_TABLE_LOW:
+MESSAGES_LOW:
 	.db #$00 ;PART OF ABOVE 
-UNK_TABLE_HIGH:
+MESSAGES_HIGH:
 	.db #$AA ;PART OF 9D STUFF.
-	.LOW UNK_DATA_00 ;actual first index. 0 does different in this code.
-	.HIGH UNK_DATA_00
-	.LOW UNK_DATA_01
-	.HIGH UNK_DATA_01
-	.LOW UNK_DATA_02
-	.HIGH UNK_DATA_02
-	.LOW UNK_DATA_03
-	.HIGH UNK_DATA_03
-	.LOW UNK_DATA_04
-	.HIGH UNK_DATA_04
-	.LOW UNK_DATA_05
-	.HIGH UNK_DATA_05
-	.LOW UNK_DATA_06
-	.HIGH UNK_DATA_06
-	.LOW UNK_DATA_07
-	.HIGH UNK_DATA_07
-UNK_DATA_00:
+	.LOW MESSAGE_ROUND ;actual first index. 0 does different in this code.
+	.HIGH MESSAGE_ROUND
+	.LOW MESSAGE_UNK
+	.HIGH MESSAGE_UNK
+	.LOW MESSAGE_UNK
+	.HIGH MESSAGE_UNK
+	.LOW MESSAGE_GOOD
+	.HIGH MESSAGE_GOOD
+	.LOW MESSAGE_PERFECT
+	.HIGH MESSAGE_PERFECT
+	.LOW MESSAGE_FLYAWAY
+	.HIGH MESSAGE_FLYAWAY
+	.LOW MESSAGE_PAUSE
+	.HIGH MESSAGE_PAUSE
+	.LOW MESSAGE_GAME_OVER
+	.HIGH MESSAGE_GAME_OVER
+MESSAGE_ROUND:
 	.db #$CD
 	.db #$24
 	.db #$57
@@ -8926,7 +8931,7 @@ UNK_DATA_00:
 	.db #$13
 	.db #$1A
 	.db #$D8
-	.db #$1B
+	.db #$1B ;text here.
 	.db #$18
 	.db #$1E
 	.db #$17
@@ -8953,7 +8958,7 @@ UNK_DATA_00:
 	.db #$FC
 	.db #$FC
 	.db #$FD
-UNK_DATA_01:
+MESSAGE_UNK:
 	.db #$EE
 	.db #$10
 	.db #$35
@@ -8972,7 +8977,7 @@ UNK_DATA_01:
 	.db #$B7
 	.db #$B7
 	.db #$B7
-UNK_DATA_02:
+MESSAGE_UNK:
 	.db #$EF
 	.db #$04
 	.db #$23
@@ -8982,7 +8987,7 @@ UNK_DATA_02:
 	.db #$B7
 	.db #$B7
 	.db #$B7
-UNK_DATA_03:
+MESSAGE_GOOD:
 	.db #$CD
 	.db #$24
 	.db #$57
@@ -9001,7 +9006,7 @@ UNK_DATA_03:
 	.db #$B7
 	.db #$21
 	.db #$D8
-	.db #$10
+	.db #$10 ;text here.
 	.db #$18
 	.db #$18
 	.db #$0D
@@ -9021,7 +9026,7 @@ UNK_DATA_03:
 	.db #$FC
 	.db #$FC
 	.db #$FD
-UNK_DATA_04:
+MESSAGE_PERFECT:
 	.db #$CC
 	.db #$33
 	.db #$5A
@@ -9036,7 +9041,7 @@ UNK_DATA_04:
 	.db #$13
 	.db #$1A
 	.db #$D8
-	.db #$19
+	.db #$19 ;text here.
 	.db #$0E
 	.db #$1B
 	.db #$0F
@@ -9057,8 +9062,8 @@ UNK_DATA_04:
 	.db #$21
 	.db #$D8
 	.db #$B7
-	.db #$B7
-	.db #$B7
+	.db #$B7 ;text here, technically.
+	.db #$B7 ;overwritten for bonus.
 	.db #$00
 	.db #$00
 	.db #$00
@@ -9075,7 +9080,7 @@ UNK_DATA_04:
 	.db #$FC
 	.db #$FC
 	.db #$FD
-UNK_DATA_05:
+MESSAGE_FLYAWAY:
 	.db #$EC
 	.db #$1F
 	.db #$3A
@@ -9090,7 +9095,7 @@ UNK_DATA_05:
 	.db #$13
 	.db #$1A
 	.db #$D8
-	.db #$0F
+	.db #$0F ;text here.
 	.db #$15
 	.db #$22
 	.db #$B7
@@ -9109,7 +9114,7 @@ UNK_DATA_05:
 	.db #$FC
 	.db #$FC
 	.db #$FD
-UNK_DATA_06:
+MESSAGE_PAUSE:
 	.db #$CC
 	.db #$33
 	.db #$5A
@@ -9135,7 +9140,7 @@ UNK_DATA_06:
 	.db #$24
 	.db #$24
 	.db #$D8
-	.db #$19
+	.db #$19 ;text here.
 	.db #$0A
 	.db #$1E
 	.db #$1C
@@ -9163,7 +9168,7 @@ UNK_DATA_06:
 	.db #$FD
 	.db #$24
 	.db #$24
-UNK_DATA_07:
+MESSAGE_GAME_OVER:
 	.db #$AB
 	.db #$38
 	.db #$5B
@@ -9190,7 +9195,7 @@ UNK_DATA_07:
 	.db #$B7
 	.db #$21
 	.db #$D8
-	.db #$10
+	.db #$10 ;text here.
 	.db #$0A
 	.db #$16
 	.db #$0E

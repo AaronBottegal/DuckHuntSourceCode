@@ -170,34 +170,30 @@ SCORE_CPY_00XX00:                        .rs 0x01 ;0x00C9
 SCORE_CPY_0000XX:                        .rs 0x01 ;0x00CA
 
 	.rsset 0x00D0
-SND_D0:                                  .rs 0x01 ;0x00D0
-SND_D1:                                  .rs 0x01 ;0x00D1
-SND_D2:                                  .rs 0x01 ;0x00D2
-SND_D3:                                  .rs 0x01 ;0x00D3
-SND_D4:                                  .rs 0x01 ;0x00D4
-
-	.rsset 0x00D8
-SND_D8:                                  .rs 0x01 ;0x00D8
-SND_D9:                                  .rs 0x01 ;0x00D9
-SND_DA:                                  .rs 0x01 ;0x00DA
-SND_DB:                                  .rs 0x01 ;0x00DB
+SND_D0_STREAM_INDEX:                     .rs 0x01 ;0x00D0
+SND_D1_STREAM_INDEX:                     .rs 0x01 ;0x00D1
+SND_D2_STREAM_INDEX:                     .rs 0x01 ;0x00D2
+SND_D3_STREAM_INDEX:                     .rs 0x01 ;0x00D3
+SND_D4_STREAM_INDEX_COPY_BASE:           .rs 0x04 ;0x00D4 to 0x00D7
+SND_D8_CHANNEL_TIMER:                    .rs 0x01 ;0x00D8
+SND_D9_CHANNEL_TIMER:                    .rs 0x01 ;0x00D9
+SND_DA_CHANNEL_TIMER:                    .rs 0x01 ;0x00DA
+SND_DB_CHANNEL_TIMER:                    .rs 0x01 ;0x00DB
 SND_DC:                                  .rs 0x01 ;0x00DC
 UNK_DD:                                  .rs 0x01 ;0x00DD
 SND_DE:                                  .rs 0x01 ;0x00DE
 SND_DF:                                  .rs 0x01 ;0x00DF
-SND_E0:                                  .rs 0x01 ;0x00E0
-
-	.rsset 0x00E4
+SND_E0_TIMERS_UNK_BASE:                  .rs 0x04 ;0x00E0 to 0x00E3
 SND_E4:                                  .rs 0x01 ;0x00E4
-SND_E5:                                  .rs 0x01 ;0x00E5
-SND_E6_LOADED?:                          .rs 0x01 ;0x00E6
+SND_E5_ADDITION:                         .rs 0x01 ;0x00E5
+SND_E6_SONG_PLAYING?:                    .rs 0x01 ;0x00E6
 SND_TRI.CNTR_RELOAD:                     .rs 0x01 ;0x00E7
 
 	.rsset 0x00E9
 SND_SQ1.DUTY:                            .rs 0x01 ;0x00E9
 SND_SQ2.DUTY:                            .rs 0x01 ;0x00EA
-SND_COUNTER_EB:                          .rs 0x01 ;0x00EB
-SND_EC:                                  .rs 0x01 ;0x00EC
+SND_INDEX_EB:                            .rs 0x01 ;0x00EB
+SND_GENERIC_TIMER_EC:                    .rs 0x01 ;0x00EC
 SND_INDEX_ED:                            .rs 0x01 ;0x00ED
 SND_COUNTER_EE:                          .rs 0x01 ;0x00EE
 SND_COUNTER_EF:                          .rs 0x01 ;0x00EF
@@ -207,14 +203,14 @@ SND_PLAY_F2:                             .rs 0x01 ;0x00F2
 SND_PLAY_F3:                             .rs 0x01 ;0x00F3
 SND_PTR_REG_WRITE:                       .rs 0x02 ;0x00F4 to 0x00F5
 SND_PTR_REG_WRITE_DATA:                  .rs 0x02 ;0x00F6 to 0x00F7
-SND_F8:                                  .rs 0x01 ;0x00F8
-SND_F9:                                  .rs 0x01 ;0x00F9
-SND_PTR_FA_UNK:                          .rs 0x01 ;0x00FA
-SND_FB:                                  .rs 0x01 ;0x00FB
-SND_FC_IND?:                             .rs 0x01 ;0x00FC
-SNF_FD:                                  .rs 0x01 ;0x00FD
-SND_FE:                                  .rs 0x01 ;0x00FE
-SND_FF:                                  .rs 0x01 ;0x00FF
+SND_F8_STREAM_INDIRECT:                  .rs 0x01 ;0x00F8
+SND_F9_FLAG_UNK:                         .rs 0x01 ;0x00F9
+SND_FA_STREAM_PTR:                       .rs 0x01 ;0x00FA
+SND_FB_FLAG_UNK:                         .rs 0x01 ;0x00FB
+SND_FC_IND_PTR:                          .rs 0x01 ;0x00FC
+SND_FD_FLAG_UNK:                         .rs 0x01 ;0x00FD
+SND_FE_INDIR_PTR:                        .rs 0x01 ;0x00FE
+SND_FF_FLAG_UNK:                         .rs 0x01 ;0x00FF
 
 	.rsset 0x02F0
 POINTS_SPRITE_AREA:                      .rs 0x10 ;0x02F0 to 0x02FF
@@ -282,10 +278,8 @@ MENU_OPTION_SELECTING:                   .rs 0x01 ;0x05FE
 ZAPPER_RESULT:                           .rs 0x01 ;0x05FF
 
 	.rsset 0x0610
-SND_PTR_RUN_CODE_0610:                   .rs 0x01 ;0x0610
-UNK_0611:                                .rs 0x01 ;0x0611
-SND_PTR_RUN_CODE_0612:                   .rs 0x01 ;0x0612
-UNK_0613:                                .rs 0x01 ;0x0613
+SND_PTR_RUN_CODE_0610:                   .rs 0x02 ;0x0610 to 0x0611
+SND_PTR_RUN_CODE_0612:                   .rs 0x02 ;0x0612 to 0x0613
 
 
 ;SOURCE CODE STARTS HERE
@@ -923,14 +917,14 @@ INCREASE_PPU_UPD8_INDEX:
 NO_TERM:
 	RTS 
 SCORE_ADD/SUB:
-	CLC 
-	ADC #$01 ;10
-	AND #$0F ;0
+	CLC  ;Set up for add.
+	ADC #$01 ;+= 1
+	AND #$0F ;Get bottom bits.
+	ASL A ;<< 2, *4
 	ASL A
-	ASL A
-	TAX 
+	TAX  ;To X, score index adding to.
 	LDA TMP_04 ;subtract score flag?
-	BEQ L_046A ;dead code maybe?
+	BEQ TMP_04_WAS_ZERO ;Sub force.
 	LDA SCORE_LOWER,X
 	BEQ SCORE_GROUP_SUBTRACT
 SCORE_ADD:
@@ -951,9 +945,9 @@ SCORE_ADD:
 	JSR SCORE_ADD_GROUP
 	STA SCORE_XX0000,X
 	RTS 
-L_046A:
+TMP_04_WAS_ZERO:
 	LDA SCORE_LOWER,X
-	BEQ SCORE_ADD ;always taken? code below possibly dead.
+	BEQ SCORE_ADD
 SCORE_GROUP_SUBTRACT:
 	SEC 
 	LDA SCORE_0000XX,X
@@ -1066,13 +1060,13 @@ MOVE_HIGHER_TO_SCORE:
 	ASL A ;<< 2
 	TAX  ;X=0
 LOOP_ALL_X_INDEXES:
-	LDA SCORE_LOWER,Y ;wrong addr mode lol.
+	LDA SCORE_LOWER,Y
 	BEQ ACCESS_NO_VAL
 	LDA SCORE_ACCESS_CPY,X
-	BEQ SET_SCORE_CPY
+	BEQ SET_SCORE_CPY_CODE
 SUBTRACT_CPY_FROM_SCORE:
 	SEC 
-	LDA SCORE_0000XX,Y ;wrong addr modes here
+	LDA SCORE_0000XX,Y
 	STA TMP_03
 	LDA SCORE_CPY_0000XX,X
 	JSR SCORE_SUBTRACT_FROM_03
@@ -1084,10 +1078,10 @@ SUBTRACT_CPY_FROM_SCORE:
 	STA TMP_03
 	LDA SCORE_CPY_XX0000,X
 	JSR SCORE_SUBTRACT_FROM_03
-	BCS SCORE_LOWER ;>= ?
+	BCS SCORE_LOWER_CODE ;>= ?
 	LDA SCORE_LOWER,Y ;again
-	BNE SCORE_HIGHER ;always taken?
-SET_SCORE_CPY:
+	BNE SCORE_HIGHER_CODE ;always taken?
+SET_SCORE_CPY_CODE:
 	LDA #$FF
 	STA TMP_04 ;which higher flag?
 	SEC 
@@ -1117,10 +1111,10 @@ RTS_2:
 ACCESS_NO_VAL:
 	LDA SCORE_ACCESS_CPY,X ;see if cpy has value
 	BEQ SUBTRACT_CPY_FROM_SCORE ;both are empty, sub.
-SCORE_LOWER:
+SCORE_LOWER_CODE:
 	LDA SCORE_LOWER,Y
-	BNE SET_SCORE_CPY
-SCORE_HIGHER:
+	BNE SET_SCORE_CPY_CODE
+SCORE_HIGHER_CODE:
 	CLC 
 	BCC SCORE_WRITE_CPY_LOWER ;always taken
 RNG_ADVANCE:
@@ -1798,8 +1792,8 @@ SET_COUNTDOWN:
 TWO_TARGET_GAME_0:
 	INC GAME_TARGETS_SHOWN? ;inc objects init'd.
 	LDA GAME_TARGETS_SHOWN? ;get value.
-	STA OBJ_ZP_TARGET_NUMBER+1 ;1 or 2, which target this is.
-	DEC #_TARGETS_REMAINING ;one less target.
+	STA OBJ_ZP_TARGET_NUMBER+1 ;1 or 2, which slot this is in.
+	DEC #_TARGETS_REMAINING ;one less target remaining overall.
 	INC OBJ_ZP_STATE ;init'd, play by going to next state.
 	RTS 
 TARGET_STATE_3_FLY+BOX+STATE4:
@@ -2644,7 +2638,7 @@ DISP_FLY_AWAY:
 	LDA #$01
 	STA WHITE_BOX_DISPLAYED ;not sure why here.
 	LDA #$36
-	STA UNK_403 ;not sure why.
+	STA UNK_403 ;Unused it seems.
 	STA UNK_407
 	STA UNK_40B
 	STA UNK_40F
@@ -2653,16 +2647,16 @@ RTS_12:
 DISP_SCORE_SPRITES:
 	LDX #$00 ;obj 0
 	LDY #$00 ;spr slot 60
-	JSR SPRITE_SOMETHING_1
+	JSR SPRITE_POINTS_ONSCREEN
 	LDX #$04 ;obj 1
 	LDY #$08 ;spr slot 62
-SPRITE_SOMETHING_1:
+SPRITE_POINTS_ONSCREEN:
 	LDA SCORE_ANIM_COUNTER,X
-	BEQ RTS_13 ;already ended.
+	BEQ RTS_13 ;Not active.
 	DEC SCORE_ANIM_COUNTER,X ;Dec counter
 	BNE KEEP_ON_SCREEN
 	LDA #$F4 ;Sprite Y value, removed from screen
-	STA SCORE_OBJ_Y,X
+	STA SCORE_OBJ_Y,X ;Set offscreen position.
 	STA SCORE_OBJ_X,X
 KEEP_ON_SCREEN:
 	LDA SCORE_OBJ_Y,X
@@ -2723,7 +2717,7 @@ OBJ_TO_SCREEN_ROUTINE:
 END_FRAME_DATA_CHECK:
 	LDY FRAME_PTR_INDEX ;get frame index to display now.
 	LDA (TMP_$10),Y ;load data from ANIM_FILE
-	CMP #$00 ;EOF. Bad code, no need to compare smh.
+	CMP #$00 ;EOF. MISTAKE: No need to compare to 0.
 	BNE NOT_END_OF_FRAME_FILE ;if not 0, maniuplate data.
 	LDX SPRITE_INDEX_VAL ;index for sprite obj something.
 OBJ_SPRITE_OFF_SCREEN:
@@ -10807,7 +10801,7 @@ SND_TIMERS_LOW_DATA:
 	.db #$53
 	.db #$00
 	.db #$4A
-SND_DATA_DC[]:
+SND_DATA_DC:
 	.db #$03
 	.db #$06
 	.db #$0C
@@ -10822,16 +10816,16 @@ SND_DATA_DC[]:
 	.db #$40
 	.db #$18
 	.db #$30
-SND_WRITE_@XY_TO_SQ1:
+SND_WRITE_@YX_TO_SQ1:
 	LDA #$00 ;Setup $4000, SQ1
 	BEQ SND_SETUP_RTN
-SND_WRITE_@XY_TO_TRI:
+SND_WRITE_@YX_TO_TRI:
 	LDA #$08 ;Setup $4008, TRI
 	BNE SND_SETUP_RTN
-SND_WRITE_@XY_TO_NOISE:
+SND_WRITE_@YX_TO_NOISE:
 	LDA #$0C ;Setup $400C, NOISE
 	BNE SND_SETUP_RTN
-SND_WRITE_@XY_TO_SQ2:
+SND_WRITE_@YX_TO_SQ2:
 	LDA #$04 ;Setup $4004, SQ2
 SND_SETUP_RTN:
 	STA SND_PTR_REG_WRITE ;low byte
@@ -10848,55 +10842,55 @@ LOOP_4_BYTES:
 	CMP #$04 ;Compare to #$04
 	BNE LOOP_4_BYTES ;Not done, need to write 4 bytes.
 	RTS  ;Leave
-SOUND_SETUP_E5,F8-FF,D0-D3,D8-DB:
-	STA SND_E6_LOADED? ;Store..
-	LDA L_3846,Y ;Get value...
-	TAY  ;Replace index with it.
+SOUND_SETUP_MUSIC_STREAMS:
+	STA SND_E6_SONG_PLAYING? ;Store passed.
+	LDA L_3846,Y ;Get A from ADDR+Y
+	TAY  ;Replace Y index.
 	LDA L_3846,Y ;Get value.
-	STA SND_E5 ;Store
+	STA SND_E5_ADDITION ;Store
 	LDA L_3847,Y ;Val..
-	STA SND_F8 ;Store.
+	STA SND_F8_STREAM_INDIRECT ;Store.
 	LDA L_3848,Y ;Val
-	STA SND_F9 ;Store
+	STA SND_F9_FLAG_UNK ;Store
 	LDA L_3849,Y ;Val
-	STA SND_PTR_FA_UNK ;Store
+	STA SND_FA_STREAM_PTR ;Store
 	LDA L_384A,Y ;Val
-	STA SND_FB ;Store
+	STA SND_FB_FLAG_UNK ;Store
 	LDA L_384B,Y ;Val
-	STA SND_FC_IND? ;Store
+	STA SND_FC_IND_PTR ;Store
 	LDA L_384C,Y ;Val
-	STA SNF_FD ;Store
+	STA SND_FD_FLAG_UNK ;Store
 	LDA L_384D,Y ;Val
-	STA SND_FE ;Store
+	STA SND_FE_INDIR_PTR ;Store
 	LDA L_384E,Y ;Val
-	STA SND_FF ;Store
+	STA SND_FF_FLAG_UNK ;Store
 	LDA #$01 ;Enable?
-	STA SND_D8
-	STA SND_D9
-	STA SND_DA
-	STA SND_DB
+	STA SND_D8_CHANNEL_TIMER
+	STA SND_D9_CHANNEL_TIMER
+	STA SND_DA_CHANNEL_TIMER
+	STA SND_DB_CHANNEL_TIMER
 	LDA #$00 ;Not finished?
 	STA SND_PLAY_F3
-	STA SND_D0
-	STA SND_D1
-	STA SND_D2
-	STA SND_D3
+	STA SND_D0_STREAM_INDEX
+	STA SND_D1_STREAM_INDEX
+	STA SND_D2_STREAM_INDEX
+	STA SND_D3_STREAM_INDEX
 	STA APU_DMC_LOAD ;Sets output level to 0.
 	RTS 
-DISABLE_SQ1+2.SWEEP_X>$E9,Y>$EA:
-	LDA #$7F
+DISABLE_SQ_SWEEPS_AND_X/Y_TO_SQ1/SQ1_DUTY:
+	LDA #$7F ;Sweep unit disabled.
 	STA APU_PULSE1_SWEEP
 	STA APU_PULSE2_SWEEP
 	STX SND_SQ1.DUTY ;Set.
 	STY SND_SQ2.DUTY
 	RTS  ;RTS
-SND_DATA_TRI:
-	.db #$13
-	.db #$7F
-	.db #$3E
-	.db #$F0
+SND_DATA_DOG_LAUGH_TRI_INIT_DATA:
+	.db #$13 ;Linear control %0, reload of %001011
+	.db #$7F ;No tri use.
+	.db #$3E ;TimerL of %00111110
+	.db #$F0 ;TimerH of %000, length counter of %11110
 SND_TRI_DOG_LAUGH_DATA:
-	.db #$4F ;DOGS LAUGH?
+	.db #$4F ;Dog laugh timer data.
 	.db #$53
 	.db #$58
 	.db #$5E
@@ -10910,12 +10904,12 @@ SND_TRI_DOG_LAUGH_DATA:
 	.db #$90
 	.db #$92
 	.db #$93
-L_33EF:
+SND_INIT_DATA?:
 	.db #$92
 	.db #$D5
 	.db #$40
 	.db #$C0
-SND_SQR_DATA:
+SND_SQR_INIT_DATA:
 	.db #$B2
 	.db #$DF
 	.db #$FF
@@ -10950,26 +10944,26 @@ FRAME_A_DATA_03:
 	.db #$02
 	.db #$C0
 SOUND_PTR_CODE+OTHER:
-	LDA SND_F9
+	LDA SND_F9_FLAG_UNK
 	BEQ UPDATE_FB
-	DEC SND_D8 ;F9 tied with D8. Counter, looks like.
+	DEC SND_D8_CHANNEL_TIMER ;F9 tied with D8. Counter, looks like.
 	BNE UPDATE_FB
 	LDX #$00 ;For sub.
 	LDA #$23
 	STA SND_PTR_RUN_CODE_0612 ;Setup.
 	LDA #$2E
 	STA SND_PTR_RUN_CODE_0610 ;Setup.
-	LDY SND_D0 ;Get index
-	INC SND_D0 ;Update to next.
-	LDA (SND_F8),Y ;Get data at ptr.
+	LDY SND_D0_STREAM_INDEX ;Get index
+	INC SND_D0_STREAM_INDEX ;Update to next.
+	LDA (SND_F8_STREAM_INDIRECT),Y ;Get data at ptr.
 	BEQ DATA_WAS_NULL
 	JMP SOUND_UPDATE_E0/D4/D0,X_AND_JMP_0610/0612 ;Not null, do this.
 	TYA  ;Pointed to by SND_PTR_RUN_CODE
 	BPL Y_WAS_POSITIVE
 	JSR SOUND_A+E5_TO_DC,X ;Write DC,X from A+E5
-	LDY SND_D0 ;Get index
-	INC SND_D0 ;Next
-	LDA (SND_F8),Y ;Get data.
+	LDY SND_D0_STREAM_INDEX ;Get index
+	INC SND_D0_STREAM_INDEX ;Next
+	LDA (SND_F8_STREAM_INDIRECT),Y ;Get data.
 Y_WAS_POSITIVE:
 	JSR SQ1_TIMER_WRITE
 	BNE TIMER_WAS_WRITTEN_IN_JSR ;Tests if timer was written because BEQ RTS's from it.
@@ -10983,21 +10977,21 @@ TIMER_WAS_WRITTEN_IN_JSR:
 STORE_SQ1.DUTY:
 	STY APU_PULSE1_DUTY ;Store to duty.
 	LDA SND_DC ;Move this.
-	STA SND_D8
+	STA SND_D8_CHANNEL_TIMER
 UPDATE_FB:
-	LDA SND_FB
+	LDA SND_FB_FLAG_UNK
 	BEQ FB_NO_UPDATE ;No update
-	DEC SND_D9 ;Dec timer
+	DEC SND_D9_CHANNEL_TIMER ;Dec timer
 	BNE FB_NO_UPDATE
 	LDX #$01 ;Init X for sub
-	LDY SND_D1 ;Get index
-	INC SND_D1 ;Next
-	LDA (SND_PTR_FA_UNK),Y ;Get data
+	LDY SND_D1_STREAM_INDEX ;Get index
+	INC SND_D1_STREAM_INDEX ;Next
+	LDA (SND_FA_STREAM_PTR),Y ;Get data
 	BPL DATA_IS_POSITIVE
 	JSR SOUND_A+E5_TO_DC,X ;Do this if not.
-	LDY SND_D1 ;Get index
-	INC SND_D1 ;Next
-	LDA (SND_PTR_FA_UNK),Y ;Get data
+	LDY SND_D1_STREAM_INDEX ;Get index
+	INC SND_D1_STREAM_INDEX ;Next
+	LDA (SND_FA_STREAM_PTR),Y ;Get data
 DATA_IS_POSITIVE:
 	JSR SQ2_TIMER_WRITE ;Write SQ2
 	BNE SQ2_TIMER_WAS_WRITTEN
@@ -11008,20 +11002,20 @@ SQ2_TIMER_WAS_WRITTEN:
 WRITE_SQ2.DUTY:
 	STY APU_PULSE2_DUTY ;Store duty
 	LDA UNK_DD ;Move
-	STA SND_D9
+	STA SND_D9_CHANNEL_TIMER
 FB_NO_UPDATE:
-	LDA SNF_FD
+	LDA SND_FD_FLAG_UNK
 	BEQ SND_FD_NO_UPDATE ;Nope.
-	DEC SND_DA
+	DEC SND_DA_CHANNEL_TIMER
 	BNE SND_FD_NO_UPDATE ;Not yet
 	LDX #$02 ;For sub
 	LDA #$9B
 	STA SND_PTR_RUN_CODE_0610 ;Move ptr, still not sure purpose.
 	LDA #$92
 	STA SND_PTR_RUN_CODE_0612 ;Store.
-	LDY SND_D2 ;Get index
-	INC SND_D2 ;++
-	LDA (SND_FC_IND?),Y ;Get data
+	LDY SND_D2_STREAM_INDEX ;Get index
+	INC SND_D2_STREAM_INDEX ;++
+	LDA (SND_FC_IND_PTR),Y ;Get data
 	JMP SOUND_UPDATE_E0/D4/D0,X_AND_JMP_0610/0612 ;Do this.
 	TYA  ;SND_PTR_RUN_CODE, Y to A
 	BPL Y_WAS_POSITIVE_0
@@ -11041,9 +11035,9 @@ E4_IS_ZERO:
 WRITE_TRI.CNTR:
 	STA APU_TRI_COUNTER ;Store to TRI[0]
 	STA SND_TRI.CNTR_RELOAD ;Store stored.
-	LDY SND_D2 ;Get index
-	INC SND_D2 ;Next
-	LDA (SND_FC_IND?),Y ;Get data
+	LDY SND_D2_STREAM_INDEX ;Get index
+	INC SND_D2_STREAM_INDEX ;Next
+	LDA (SND_FC_IND_PTR),Y ;Get data
 Y_WAS_POSITIVE_0:
 	JSR TRI_TIMER_WRITE ;Write A to timer.
 	BNE TIMER_WAS_WRITTEN
@@ -11054,32 +11048,32 @@ TIMER_WAS_WRITTEN:
 SND_WRITE_TRI.CNTR_APU:
 	STY APU_TRI_COUNTER ;Write Y to TRI.CNTR
 	LDA SND_DE ;Move
-	STA SND_DA
+	STA SND_DA_CHANNEL_TIMER
 SND_FD_NO_UPDATE:
-	LDA SND_FF ;Get
+	LDA SND_FF_FLAG_UNK ;Get
 	BEQ NO_SND_UPDATE_FF
-	DEC SND_DB ;Timer
+	DEC SND_DB_CHANNEL_TIMER ;Timer
 	BNE NO_SND_UPDATE_FF ;Not yet
 	LDX #$03 ;Index for sub
 	LDA #$EE
 	STA SND_PTR_RUN_CODE_0610 ;Code to run
 	LDA #$E5
 	STA SND_PTR_RUN_CODE_0612 ;Code to run 2
-	LDY SND_D3 ;Get index
-	INC SND_D3 ;++
-	LDA (SND_FE),Y ;Get data
+	LDY SND_D3_STREAM_INDEX ;Get index
+	INC SND_D3_STREAM_INDEX ;++
+	LDA (SND_FE_INDIR_PTR),Y ;Get data
 	JMP SOUND_UPDATE_E0/D4/D0,X_AND_JMP_0610/0612 ;Do
 	TYA  ;Test Y
 	BPL Y_WAS_POSITIVE_1
 	JSR SOUND_A+E5_TO_DC,X ;Do
 FRAME_B_DATA_03:
-	LDY SND_D3 ;Index get
-	INC SND_D3 ;++
-	LDA (SND_FE),Y ;Get data
+	LDY SND_D3_STREAM_INDEX ;Index get
+	INC SND_D3_STREAM_INDEX ;++
+	LDA (SND_FE_INDIR_PTR),Y ;Get data
 Y_WAS_POSITIVE_1:
 	JSR NOISE_RTN? ;Could have put the code inline and branched around lol. Only ref here.
 	LDA SND_DF ;Move
-	STA SND_DB
+	STA SND_DB_CHANNEL_TIMER
 NO_SND_UPDATE_FF:
 	RTS  ;Leave all channel update?
 NOISE_RTN?:
@@ -11098,33 +11092,33 @@ RTS_27:
 SOUND_UPDATE_E0/D4/D0,X_AND_JMP_0610/0612:
 	TAY  ;A to Y
 	CMP #$FF ;Is FF?
-	BEQ WAS_FF
+	BEQ A_WAS_FF
 	AND #$C0 ;Not sure why
 	CMP #$C0
-	BEQ WAS_C0
+	BEQ A_WAS_C0
 	JMP (SND_PTR_RUN_CODE_0610) ;JMP to sound code.
-WAS_FF:
-	LDA SND_E0,X ;Get
+A_WAS_FF:
+	LDA SND_E0_TIMERS_UNK_BASE,X ;Get
 	BEQ JMP_PTR_0612 ;If 0
-	DEC SND_E0,X ;Dec
-	LDA SND_D4,X ;State move?
-	STA SND_D0,X
-	BNE JMP_PTR_0612 ;Always taken?
-WAS_C0:
-	TYA  ;Y to A
+	DEC SND_E0_TIMERS_UNK_BASE,X ;Dec
+	LDA SND_D4_STREAM_INDEX_COPY_BASE,X ;State move?
+	STA SND_D0_STREAM_INDEX,X
+	BNE JMP_PTR_0612 ;If A != 0, goto.
+A_WAS_C0:
+	TYA  ;Y to A. Not needed? Mistake?
 	AND #$3F ;And bits.
-	STA SND_E0,X ;Store to
-	DEC SND_E0,X ;Dec
-	LDA SND_D0,X ;Move
-	STA SND_D4,X
+	STA SND_E0_TIMERS_UNK_BASE,X ;Store to
+	DEC SND_E0_TIMERS_UNK_BASE,X ;Dec stored.
+	LDA SND_D0_STREAM_INDEX,X ;Move
+	STA SND_D4_STREAM_INDEX_COPY_BASE,X
 JMP_PTR_0612:
 	JMP (SND_PTR_RUN_CODE_0612)
 SOUND_A+E5_TO_DC,X:
 	AND #$07 ;Get bottom bits.
 	CLC 
-	ADC SND_E5 ;Add to E5
+	ADC SND_E5_ADDITION ;Add to E5
 	TAY  ;Put to Y
-	LDA SND_DATA_DC[],Y ;Move
+	LDA SND_DATA_DC,Y ;Move
 	STA SND_DC,X
 	RTS  ;RTS
 SQ1_TIMER_WRITE:
@@ -11155,9 +11149,9 @@ PLAY_SOUNDS:
 	LDA #$00 ;Clear
 	BEQ SET_F0/F1/F2_FROM_A
 #F4->$611+613:
-	LDA #$F4 ;as of 15 commits on git, still have no idea wtf this is.
-	STA UNK_0613
-	STA UNK_0611
+	LDA #$F4 ;This sets up the pointer high byte.
+	STA SND_PTR_RUN_CODE_0612+1
+	STA SND_PTR_RUN_CODE_0610+1
 	RTS 
 SET_F0/F1/F2_FROM_A:
 	STA SND_PLAY_F0 ;Set all.
@@ -11181,11 +11175,11 @@ SND_PLAY_DMC_FB00:
 	LDX #$EC ;FB00
 	LDY #$0E ;rate
 PLAY_DMC_SAMPLE(AXY):
-	STA APU_DMC_SAMLEN
-	STX APU_DMC_SAMADDR
-	STY APU_DMC_IRQ
+	STA APU_DMC_SAMLEN ;Length
+	STX APU_DMC_SAMADDR ;Address
+	STY APU_DMC_IRQ ;Rate
 	LDA #$1F
-	STA APU_STATUS ;turn on DMC
+	STA APU_STATUS ;turn on DMC along with channels.
 	RTS  ;Leave
 	.db #$9F
 	.db #$7F
@@ -11198,52 +11192,52 @@ PLAY_DMC_SAMPLE(AXY):
 INIT_DOG_LAUGH:
 	LDX #$DD ;Uses $F3DD
 	LDY #$F3
-	JSR SND_WRITE_@XY_TO_TRI
-	LDA #$00 ;clear all counters
-	STA SND_COUNTER_EB
+	JSR SND_WRITE_@YX_TO_TRI ;Write that to the triangle reg.
+	LDA #$00 ;clear all these.
+	STA SND_INDEX_EB
 	STA SND_INDEX_ED
 	STA SND_COUNTER_EE
 	LDA #$06
 	STA SND_COUNTER_EF ;change target init
 	LDA #$3E
-	STA SND_EC ;dog laugh lenc_l
+	STA SND_GENERIC_TIMER_EC ;Seed, TIMERL in dog laugh.
 	LDA #$40
 	STA SND_PLAY_F3 ;Enable laugh advance?
 L_RTS:
 	RTS 
 DOG_LAUGH_ADVANCE:
 	INC SND_COUNTER_EE ;inc counter
-	LDA SND_COUNTER_EE
-	CMP #$01
-	BNE L_RTS ;never taken, runs every frame. Can rip out.
+	LDA SND_COUNTER_EE ;Load
+	CMP #$01 ;If _ 1
+	BNE L_RTS ;!=, RTS. Never taken.
 	LDA #$00
-	STA SND_COUNTER_EE ;this is why it runs every time.
-	INC SND_COUNTER_EB ;update counter
-	LDA SND_COUNTER_EB
-	CMP SND_COUNTER_EF ;raise timer target
-	BEQ LOWER_LAUGH_FREQ ;if match target, raise freq
-	DEC SND_EC ;TRI_TIMERL copy
-	DEC SND_EC ;decrease with math
-	DEC SND_EC ;this makes it higher pitch
-	LDA SND_EC
-	STA APU_TRI_TIMERL ;store higher pitch to timer
+	STA SND_COUNTER_EE ;this is why it runs every time. clear when 1. inc'd, always 1 post inc.
+	INC SND_INDEX_EB ;update counter
+	LDA SND_INDEX_EB
+	CMP SND_COUNTER_EF ;Compare to target
+	BEQ LAUGH_NEXT_LUT_VAL ;if match target, raise freq
+	DEC SND_GENERIC_TIMER_EC ;TRI_TIMERL copy
+	DEC SND_GENERIC_TIMER_EC ;decrease with math
+	DEC SND_GENERIC_TIMER_EC ;this makes it higher pitch
+	LDA SND_GENERIC_TIMER_EC ;Get val
+	STA APU_TRI_TIMERL ;store to timer.
 	RTS 
-LOWER_LAUGH_FREQ:
-	LDA SND_COUNTER_EF ;update target
-	CLC 
-	ADC #$06 ;6 updates until we raise length counter again
-	STA SND_COUNTER_EF ;store new target
+LAUGH_NEXT_LUT_VAL:
+	LDA SND_COUNTER_EF ;Load target
+	CLC  ;Target += 6
+	ADC #$06
+	STA SND_COUNTER_EF ;store new target to trigger LUT lookup.
 	LDY SND_INDEX_ED ;get update count
 	LDA SND_TRI_DOG_LAUGH_DATA,Y ;load timer for this update
 	STA APU_TRI_TIMERL ;store data
-	STA SND_EC ;Save to raise later
+	STA SND_GENERIC_TIMER_EC ;Save copy.
 	LDA #$F0
 	STA APU_TRI_TIMEH ;load length counter
 	INC SND_INDEX_ED ;steps done++
 	LDA SND_INDEX_ED
 	CMP #$0E ;final step?
 	BNE L_RTS ;no, dont clear vars.
-	LDA #$00 ;clear state, we're done making laughing sounds
+	LDA #$00 ;clear state and hardware reg.
 	STA APU_TRI_COUNTER
 	STA SND_PLAY_F3
 	RTS 
@@ -11267,12 +11261,12 @@ SND_PLAY_F0/F3:
 INIT_SQ1_F3EF:
 	LDX #$EF ;Ptr
 	LDY #$F3
-	JSR SND_WRITE_@XY_TO_SQ1 ;Write
+	JSR SND_WRITE_@YX_TO_SQ1 ;Write
 	RTS 
 INIT_SQ1_F3F3:
 	LDX #$F3 ;Ptr
 	LDY #$F3
-	JSR SND_WRITE_@XY_TO_SQ2 ;Write
+	JSR SND_WRITE_@YX_TO_SQ2 ;Write
 	LDA SND_PLAY_F3
 	ORA #$20 ;Set bit to wait frames and set SQR2.DUTY
 	STA SND_PLAY_F3
@@ -11282,68 +11276,68 @@ INIT_SQ1_F3F3:
 L_RTS_0:
 	RTS 
 SND_WAIT_FRAMES_SET_DTY2:
-	INC SND_COUNTER_EE
+	INC SND_COUNTER_EE ;Inc
 	LDA SND_COUNTER_EE
-	CMP #$02
-	BNE L_RTS_0 ;run every 2 frames
+	CMP #$02 ;If _ 2
+	BNE L_RTS_0 ;Only run code below every 2nd time.
 	LDA #$00
-	STA SND_COUNTER_EE
-	INC SND_COUNTER_EF
+	STA SND_COUNTER_EE ;Clear counter
+	INC SND_COUNTER_EF ;++ counter.
 	LDA SND_COUNTER_EF
-	CMP #$A0 ;wait 160*2 runs
-	BNE L_RTS_0
+	CMP #$A0 ;Wait for 160*2 runs.
+	BNE L_RTS_0 ;RTS if not at.
 SET_PULSE2_DUTY:
 	LDA #$10
-	STA APU_PULSE2_DUTY ;Set duty.
-	LDA SND_PLAY_F3 ;Modifying
-	AND #$DF ;XX0X.XXXX
-	STA SND_PLAY_F3 ;Store
+	STA APU_PULSE2_DUTY ;Set 12.5 duty, constant volume.
+	LDA SND_PLAY_F3 ;Get req reg.
+	AND #$DF ;Clear XX0X.XXXX
+	STA SND_PLAY_F3 ;Store back.
 	RTS 
 SETUP_NOISE_PULSE1:
-	LDX #$F7
+	LDX #$F7 ;Ptr to setting.
 	LDY #$F3
-	JSR SND_WRITE_@XY_TO_NOISE
+	JSR SND_WRITE_@YX_TO_NOISE ;Write F7F3 to noise.
 	LDA #$10
-	STA APU_PULSE1_DUTY ;set constant volume
+	STA APU_PULSE1_DUTY ;Set Duty 12.5, Constant volume, 0 volume.
 	LDA SND_PLAY_F3
 	AND #$F0 ;Update XXXX.0000
 	STA SND_PLAY_F3
 	RTS 
 SOUNT_HALT_CLEAR+CLEAR_F3:
 	LDA #$00
-	STA SND_PLAY_F3
+	STA SND_PLAY_F3 ;Clear all of F3
 SOUND_HALT/WRITE:
-	STA APU_TRI_COUNTER
-	STA APU_DMC_LOAD
-	STA SND_E6_LOADED?
-	STA SND_E4
+	STA APU_TRI_COUNTER ;Silence
+	STA APU_DMC_LOAD ;Silence DMC
+	STA SND_E6_SONG_PLAYING? ;Clear
+	STA SND_E4 ;Clear
 	LDA #$10
-	STA APU_PULSE1_DUTY ;halt length counter
+	STA APU_PULSE1_DUTY ;12.5 duty, constant volume, 0 volume.
 	STA APU_PULSE2_DUTY ;same
-	STA APU_NOISE_COUNTER ;same
+	STA APU_NOISE_COUNTER ;same, sans duty.
 	RTS 
 SND_SETUP_NOISE:
 	LDX #$FB ;Ptr
 	LDY #$F3
-	JSR SND_WRITE_@XY_TO_NOISE ;Write
+	JSR SND_WRITE_@YX_TO_NOISE ;Write
 	LDA #$00
-	STA SND_COUNTER_EB
+	STA SND_INDEX_EB ;Clear
 	LDA SND_PLAY_F3
-	ORA #$08 ;XXXX.1XXX, Noise enable?
+	ORA #$08 ;XXXX.1XXX, set flag.
 	STA SND_PLAY_F3
 RTS_24:
 	RTS 
-SND_SHOT_PERIOD:
-	LDY SND_COUNTER_EB
-	LDA NOISE_PERIODS,Y
-	STA APU_NOISE_PERIOD
-	INC SND_COUNTER_EB
-	LDA SND_COUNTER_EB
-	CMP #$04
-	BNE RTS_24 ;rts
+SFX_GUNSHOT:
+	LDY SND_INDEX_EB ;Load index
+	LDA NOISE_PERIODS,Y ;Load period
+	STA APU_NOISE_PERIOD ;Store to period.
+	INC SND_INDEX_EB ;index ++
+	LDA SND_INDEX_EB ;Load
+	CMP #$04 ;Test if done.
+	BNE RTS_24 ;RTS, Not done.
 	LDA SND_PLAY_F3
-	AND #$FE ;clear bit 0
-	STA SND_PLAY_F3
+	AND #$FE ;Clear XXXX.XXX0
+	STA SND_PLAY_F3 ;Store updated.
 	RTS 
 NOISE_PERIODS:
 	.db #$00
@@ -11366,16 +11360,16 @@ SND_PLAY_F0/F3_0:
 	BCS FWD_NOISE_PERIOD+COUNTER ;0X00.0000
 	LSR A
 	LSR A
-	BCS SND_SHOT_PERIOD ;000X.0000
+	BCS SFX_GUNSHOT ;000X.0000
 	RTS 
 SETUP_NOISE_DMC:
-	LDX #$FF
+	LDX #$FF ;PTR
 	LDY #$F6
-	JSR SND_WRITE_@XY_TO_NOISE
+	JSR SND_WRITE_@YX_TO_NOISE ;To noise
 	LDA #$00
-	STA SND_EC ;clear whatever these are
+	STA SND_GENERIC_TIMER_EC ;Clear these.
 	STA SND_INDEX_ED
-	STA APU_DMC_LOAD ;clear dmc level
+	STA APU_DMC_LOAD ;Clear DMC level.
 	LDA SND_PLAY_F3
 	ORA #$02 ;DMC+NOISE = bit 1
 	STA SND_PLAY_F3
@@ -11387,12 +11381,12 @@ SND_INDIR_UNREF_DATA_NOISE:
 	.db #$0F
 	.db #$08
 FWD_NOISE_PERIOD+COUNTER:
-	INC SND_EC ;Inc
-	LDA SND_EC ;Load
+	INC SND_GENERIC_TIMER_EC ;Inc
+	LDA SND_GENERIC_TIMER_EC ;Load
 	CMP #$02 ;Run every 2nd frame
 	BNE RTS_25
 	LDA #$00
-	STA SND_EC ;Clear
+	STA SND_GENERIC_TIMER_EC ;Clear
 	LDY SND_INDEX_ED ;Get index
 	LDA NOISE_PERIOD_DATA,Y ;Move
 	STA APU_NOISE_PERIOD
@@ -11510,11 +11504,11 @@ NOISE_COUNTER_DATA:
 SOUND_F5B7@SQ1,F5BB@SQ2:
 	LDX #$B7 ;Ptr
 	LDY #$F5
-	JSR SND_WRITE_@XY_TO_SQ1
+	JSR SND_WRITE_@YX_TO_SQ1
 	LDX #$BB ;Ptr
 	LDY #$F5
 SOUND_WRITE_XY_TO_SQ2+RTS:
-	JSR SND_WRITE_@XY_TO_SQ2
+	JSR SND_WRITE_@YX_TO_SQ2
 	RTS 
 	.db #$84
 	.db #$93
@@ -11526,18 +11520,18 @@ SOUND_WRITE_XY_TO_SQ2+RTS:
 	.db #$E3
 SOUND_CLEAR_SQ1.DUTY,WRITE_PTRS:
 	LDA #$00
-	STA APU_PULSE1_DUTY ;Clear duty.
+	STA APU_PULSE1_DUTY ;Duty 12.5, non-constant volume.
 	LDX #$A0
 	LDY #$F7
-	JSR SND_WRITE_@XY_TO_SQ1 ;Write ptr
+	JSR SND_WRITE_@YX_TO_SQ1 ;Write to SQ1
 	LDX #$A4
 	LDY #$F7
-	BNE SOUND_WRITE_XY_TO_SQ2+RTS ;Write and leave.
+	BNE SOUND_WRITE_XY_TO_SQ2+RTS ;Write to SQ2 and leave.
 SETUP_SOUND_A=80,Y=6_86:
 	LDY #$06 ;Data set?
 	LDA #$80 ;Stored to E6
 	BNE SOUND_SETUP_86
-Setup_SOUND_A=04,Y=04_C0:
+SETUP_SOUND_A=04,Y=04_C0:
 	LDY #$04 ;Data set
 	LDA #$04
 	BNE SOUND_SETUP_C0 ;Setup.
@@ -11547,12 +11541,12 @@ SETUP_SOUND_A=08,Y=05_C0:
 	BNE SOUND_SETUP_C0
 SND_PLAY_F1/F2:
 	LDA SND_PLAY_F1
-	LSR A
+	LSR A ;Lowest to highest bits
 	BCS SOUND_SETUP_A=1,Y=0_C0
 	LSR A
 	BCS SOUND_SETUP_A=2,Y=3_86
 	LSR A
-	BCS Setup_SOUND_A=04,Y=04_C0
+	BCS SETUP_SOUND_A=04,Y=04_C0
 	LSR A
 	BCS SETUP_SOUND_A=08,Y=05_C0
 	LSR A
@@ -11564,7 +11558,7 @@ SND_PLAY_F1/F2:
 	LSR A
 	BCS SETUP_SOUND_A=80,Y=6_86
 	LDA SND_PLAY_F2
-	ASL A
+	ASL A ;Highest to lowest bits.
 	BCS SOUND_SET_NOISE_CONSTANT_VOLUME+DO_86
 	ASL A
 	ASL A
@@ -11573,9 +11567,9 @@ SND_PLAY_F1/F2:
 	BCS SOUND_SETUP_A=EF,Y=9_C0
 	ASL A
 	BCS SOUND_CLEAR_SQ1.DUTY,WRITE_PTRS
-	LDA SND_E6_LOADED?
-	BNE JMP_SND_PTR_CODE/OTHER
-	RTS 
+	LDA SND_E6_SONG_PLAYING?
+	BNE JMP_SND_PTR_CODE/OTHER ;If yes, do.
+	RTS  ;RTS
 JMP_SND_PTR_CODE/OTHER:
 	JMP SOUND_PTR_CODE+OTHER
 SOUND_SETUP_A=1,Y=0_C0:
@@ -11605,16 +11599,16 @@ SOUND_SET_NOISE_CONSTANT_VOLUME+DO_86:
 	LDA #$EF
 	BNE SOUND_SETUP_86
 SOUND_SETUP_C0:
-	JSR SOUND_SETUP_E5,F8-FF,D0-D3,D8-DB
+	JSR SOUND_SETUP_MUSIC_STREAMS
 	LDX #$C0 ;E9
 	LDY #$C0 ;EA
 	BNE SOUND_SETUP+CLEAR_E4 ;Extra steps.
 SOUND_SETUP_86:
-	JSR SOUND_SETUP_E5,F8-FF,D0-D3,D8-DB
+	JSR SOUND_SETUP_MUSIC_STREAMS
 	LDX #$86 ;E9
 	LDY #$86 ;EA
 SOUND_SETUP+CLEAR_E4:
-	JSR DISABLE_SQ1+2.SWEEP_X>$E9,Y>$EA
+	JSR DISABLE_SQ_SWEEPS_AND_X/Y_TO_SQ1/SQ1_DUTY
 	LDA #$00
 	STA SND_E4 ;Clear
 	JMP SOUND_PTR_CODE+OTHER

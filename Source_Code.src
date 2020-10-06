@@ -160,11 +160,11 @@ SHOT_FIRED:                              .rs 0x01 ;0x00BE
 	.rsset 0x00C1
 LEVEL:                                   .rs 0x01 ;0x00C1
 HITS_REQUIRED_RAM_INDEX:                 .rs 0x01 ;0x00C2
-SCORE_LOWER:                             .rs 0x01 ;0x00C3
+SCORE_INVERT_REQUEST_FLAG_SCORE:         .rs 0x01 ;0x00C3
 SCORE_XX0000:                            .rs 0x01 ;0x00C4
 SCORE_00XX00:                            .rs 0x01 ;0x00C5
 SCORE_0000XX:                            .rs 0x01 ;0x00C6
-SCORE_ACCESS_CPY:                        .rs 0x01 ;0x00C7
+SCORE_INVERT_REQUEST_FLAG_CPYS:          .rs 0x01 ;0x00C7
 SCORE_CPY_XX0000:                        .rs 0x01 ;0x00C8
 SCORE_CPY_00XX00:                        .rs 0x01 ;0x00C9
 SCORE_CPY_0000XX:                        .rs 0x01 ;0x00CA
@@ -447,8 +447,8 @@ IN_GAME_STATE_SWITCH: ; 0x000123
 	.HIGH GAME_STATE_0_INIT_RAM+SCREENS
 	.LOW GAME_STATE_1_SETUP_DUCKS ;ducks main setup.
 	.HIGH GAME_STATE_1_SETUP_DUCKS
-	.LOW GAME_STATE_2_SETUP_SUBROUND ;ducks info setup.
-	.HIGH GAME_STATE_2_SETUP_SUBROUND
+	.LOW GAME_STATE_2_SETUP_ROUND ;ducks info setup.
+	.HIGH GAME_STATE_2_SETUP_ROUND
 	.LOW GAME_STATE_3_ZAP+TRGTS(+STATUS)+SHOT ;main game loop?
 	.HIGH GAME_STATE_3_ZAP+TRGTS(+STATUS)+SHOT
 	.LOW GAME_STATE_C_END_ROUND_SWITCH ;end round routines.
@@ -463,8 +463,8 @@ IN_GAME_STATE_SWITCH: ; 0x000123
 	.HIGH GAME_STATE_8_SETUP_PIGEONS
 	.LOW GAME_STATE_9_PIGEON_RND_SETUP ;pigeon setup.
 	.HIGH GAME_STATE_9_PIGEON_RND_SETUP
-	.LOW GAME_STATE_A_SUBROUND_INIT ;sets up duck targets and inits stuff.
-	.HIGH GAME_STATE_A_SUBROUND_INIT
+	.LOW GAME_STATE_A_ROUND_INIT ;sets up duck targets and inits stuff.
+	.HIGH GAME_STATE_A_ROUND_INIT
 	.LOW GAME_STATE_B_PIGEON_MAIN ;target/anim processing
 	.HIGH GAME_STATE_B_PIGEON_MAIN
 	.LOW GAME_STATE_C_END_ROUND_SWITCH ;end round routines.
@@ -552,9 +552,9 @@ WRITE_DATA_LOOP: ; 0x0001C8
 	DEX 
 	BPL WRITE_DATA_LOOP
 	LDA MENU_OPTION_SELECTING ;0-2
-	ASL A ;mul by 2
+	ASL A ;*=2, make index.
 	TAX 
-	LDA #$26 ;cursor char
+	LDA #$26 ;Cursor tile ID.
 	STA PPU_BLOCK_BUF,X ;save to row
 	LDX #$26 ;nametable addr starting 2622
 	LDY #$22
@@ -923,13 +923,13 @@ SCORE_ADD/SUB: ; 0x000437
 	AND #$0F ;Get bottom bits.
 	ASL A ;<< 2, *4
 	ASL A
-	TAX  ;To X, score index adding to.
-	LDA TMP_04 ;subtract score flag?
-	BEQ TMP_04_WAS_ZERO ;Sub force.
-	LDA SCORE_LOWER,X
-	BEQ SCORE_GROUP_SUBTRACT
+	TAX  ;To X, Score index selecting.
+	LDA TMP_04 ;SCORE_ADD_FLAG here.
+	BEQ SUBTRACT_DEFAULT ;Sub force.
+	LDA SCORE_INVERT_REQUEST_FLAG_SCORE,X
+	BEQ SCORE_GROUP_SUBTRACT ;If zero, do opposite?
 SCORE_GROUP_ADD: ; 0x000447
-	CLC 
+	CLC  ;Prep for add, setting expected initial carry.
 	LDA SCORE_0000XX,X
 	STA TMP_03 ;digits group scratch
 	LDA TMP_07 ;adding digits 0000XX
@@ -946,178 +946,178 @@ SCORE_GROUP_ADD: ; 0x000447
 	JSR SCORE_ADD_GROUP
 	STA SCORE_XX0000,X
 	RTS 
-TMP_04_WAS_ZERO: ; 0x00046A
-	LDA SCORE_LOWER,X
-	BEQ SCORE_GROUP_ADD
+SUBTRACT_DEFAULT: ; 0x00046A
+	LDA SCORE_INVERT_REQUEST_FLAG_SCORE,X
+	BEQ SCORE_GROUP_ADD ;If zero, do opposite?
 SCORE_GROUP_SUBTRACT: ; 0x00046E
-	SEC 
+	SEC  ;Prep for sub, setting expected initial carry.
 	LDA SCORE_0000XX,X
 	STA TMP_03 ;digit groups scratch
 	LDA TMP_07 ;digits subtracting 0000XX
-	JSR SCORE_SUBTRACT_FROM_03
+	JSR SCORE_SUB_GROUP
 	STA SCORE_0000XX,X
 	LDA SCORE_00XX00,X
 	STA TMP_03 ;digit groups scratch
 	LDA TMP_06 ;digits subtracting 00XX00
-	JSR SCORE_SUBTRACT_FROM_03
+	JSR SCORE_SUB_GROUP
 	STA SCORE_00XX00,X
 	LDA SCORE_XX0000,X
 	STA TMP_03 ;digit groups scratch
 	LDA TMP_05 ;digits subtracting XX0000
-	JSR SCORE_SUBTRACT_FROM_03
+	JSR SCORE_SUB_GROUP
 	STA SCORE_XX0000,X
-	LDA SCORE_XX0000,X ;why load what we just stored?
-	BNE L_049C
+	LDA SCORE_XX0000,X ;Useless load, it seems.
+	BNE SCORE_INDEXED_NOT_ZERO
 	LDA SCORE_00XX00,X
-	BNE L_049C
+	BNE SCORE_INDEXED_NOT_ZERO
 	LDA SCORE_0000XX,X
-	BEQ L_04A2 ;if zero skip
-L_049C: ; 0x00049C
-	BCS L_04BE
-	LDA SCORE_LOWER,X ;invert C3
-	EOR #$FF
-L_04A2: ; 0x0004A2
-	STA SCORE_LOWER,X ;store c3
-	SEC 
+	BEQ SCORE_INDEXED_IS_ZERO ;if zero skip
+SCORE_INDEXED_NOT_ZERO: ; 0x00049C
+	BCS RTS_28 ;If carry set, RTS. No underflow?
+	LDA SCORE_INVERT_REQUEST_FLAG_SCORE,X ;Load
+	EOR #$FF ;Invert flag.
+SCORE_INDEXED_IS_ZERO: ; 0x0004A2
+	STA SCORE_INVERT_REQUEST_FLAG_SCORE,X ;Store. Always 0 if direct.
+	SEC  ;Prep subtract.
 	LDA #$00
-	STA TMP_03
-	LDA SCORE_0000XX,X
-	JSR SCORE_SUBTRACT_FROM_03
+	STA TMP_03 ;Clear score digits.
+	LDA SCORE_0000XX,X ;Adjust these. TODO: Exactly why. Underflow?
+	JSR SCORE_SUB_GROUP
 	STA SCORE_0000XX,X
 	LDA SCORE_00XX00,X
-	JSR SCORE_SUBTRACT_FROM_03
+	JSR SCORE_SUB_GROUP
 	STA SCORE_00XX00,X
 	LDA SCORE_XX0000,X
-	JSR SCORE_SUBTRACT_FROM_03
+	JSR SCORE_SUB_GROUP
 	STA SCORE_XX0000,X
-L_04BE: ; 0x0004BE
-	RTS 
+RTS_28: ; 0x0004BE
+	RTS  ;Done.
 SCORE_ADD_GROUP: ; 0x0004BF
-	JSR SETUP_RAM,RET_LOW_DIGIT ;A=value to add to base.
-	ADC TMP_01
-	CMP #$0A ;see if above 9
-	BCC NO_ROLLOVER
-	ADC #$05 ;roll first digit, carry important.
-NO_ROLLOVER: ; 0x0004CA
-	CLC 
-	ADC TMP_02 ;add high digit
-	STA TMP_02 ;stores whole value.
-	LDA TMP_03
-	AND #$F0
-	ADC TMP_02
-	BCC L_04DB
-L_04D7: ; 0x0004D7
-	ADC #$5F ;adds #$60 because c always set.
-	SEC  ;unneeded because it should always roll.
-	RTS 
-L_04DB: ; 0x0004DB
+	JSR PREP_TEMP_WITH_DIGITS_FOR_ADD/SUB ;A=value to add to base.
+	ADC TMP_01 ;Add low digit.
+	CMP #$0A ;BCD check.
+	BCC NO_BCD_ADD_REQD
+	ADC #$05 ;Roll digit to higher.
+NO_BCD_ADD_REQD: ; 0x0004CA
+	CLC  ;Adding again
+	ADC TMP_02 ;Add higher digit.
+	STA TMP_02 ;Store final value.
+	LDA TMP_03 ;Load adding.
+	AND #$F0 ;Get high only.
+	ADC TMP_02 ;Add with calc'd value.
+	BCC NO_OVERFLOW_GROUP ;No overflow, goto. Always taken?
+BCD_FINAL_MANIP: ; 0x0004D7
+	ADC #$5F ;Adjust for overflow BCD on final add.
+	SEC  ;Adjustment for next group.
+	RTS  ;Leave.
+NO_OVERFLOW_GROUP: ; 0x0004DB
 	CMP #$A0
-	BCS L_04D7 ;roll
-	RTS  ;no roll, leave alone
-SCORE_SUBTRACT_FROM_03: ; 0x0004E0
-	JSR SETUP_RAM,RET_LOW_DIGIT
-	SBC TMP_01 ;subtract low digit
-	STA TMP_01
-	BCS SCORE_SUB_NOUNDER
-	ADC #$0A ;put digit 0-9 range, carry set after
-	STA TMP_01
-	LDA TMP_02 ;load high digit
-	ADC #$0F ;adds 10
-	STA TMP_02 ;store back
-SCORE_SUB_NOUNDER: ; 0x0004F3
-	LDA TMP_03 ;score digit high
-	AND #$F0 ;get high digit
-	SEC 
-	SBC TMP_02
-	BCS NO_UNDERFLOW
-	ADC #$A0 ;put top in 0-9 range
-	CLC  ;underflow next jsr
+	BCS BCD_FINAL_MANIP ;If out of range, goto.
+	RTS  ;No group roll, is good, leave.
+SCORE_SUB_GROUP: ; 0x0004E0
+	JSR PREP_TEMP_WITH_DIGITS_FOR_ADD/SUB
+	SBC TMP_01 ;Subtract low digit.
+	STA TMP_01 ;Store
+	BCS SCORE_SUB_NO_UNDERFLOW ;No underflow.
+	ADC #$0A ;Roll digit.
+	STA TMP_01 ;Store corrected digit.
+	LDA TMP_02 ;Load high digit.
+	ADC #$0F ;Set lower bits for extra value taken on sub.
+	STA TMP_02 ;Store back.
+SCORE_SUB_NO_UNDERFLOW: ; 0x0004F3
+	LDA TMP_03 ;Load high digit.
+	AND #$F0 ;Get only the high digit.
+	SEC  ;Prep for sub.
+	SBC TMP_02 ;Subtract high digit. 0x0F on bottom for extra digit taking.
+	BCS NO_UNDERFLOW ;If no underflow...
+	ADC #$A0 ;BCD roll.
+	CLC  ;Carry next SBC in next call.
 NO_UNDERFLOW: ; 0x0004FF
-	ORA TMP_01 ;combine digits
-	RTS  ;done subbing
-SETUP_RAM,RET_LOW_DIGIT: ; 0x000502
-	PHA  ;A=add/sub value
+	ORA TMP_01 ;Combine digits.
+	RTS  ;Done, leave.
+PREP_TEMP_WITH_DIGITS_FOR_ADD/SUB: ; 0x000502
+	PHA  ;A=add/sub value.
 	AND #$0F
-	STA TMP_01 ;store lower digit
+	STA TMP_01 ;Store lower digit adding/subbing.
 	PLA 
 	AND #$F0
-	STA TMP_02 ;store higher digit
-	LDA TMP_03 ;add/sub from these digits
-	AND #$0F ;get lower digplayed digits
+	STA TMP_02 ;store higher digit adding/subbing.
+	LDA TMP_03 ;Score original value in position.
+	AND #$0F ;Get lower score digit.
 	RTS  ;ret lower digit.
 MOVE_HIGHER_TO_SCORE: ; 0x000511
 	LDA #$00
-	STA TMP_04 ;clear
-	CLC 
-	LDA TMP_00 ;F0
-	ADC #$10 ;put into range
-	AND #$F0 ;mask bits
+	STA TMP_04 ;Clear
+	CLC  ;Add prep.
+	LDA TMP_00 ;Load value. Used as TODO
+	ADC #$10 ;Add, put into range?
+	AND #$F0 ;Mask top bits.
 	LSR A
-	LSR A ;>> 2
-	TAY  ;Y=0
-	LDA TMP_00
-	AND #$07
+	LSR A ;>> 2, /2.
+	TAY  ;As Y index.
+	LDA TMP_00 ;Load 
+	AND #$07 ;Get bottom bits.
 	ASL A
-	ASL A ;<< 2
-	TAX  ;X=0
+	ASL A ;<< 2, *2. Score focus index.
+	TAX  ;As X index.
 LOOP_ALL_X_INDEXES: ; 0x000526
-	LDA SCORE_LOWER,Y
-	BEQ ACCESS_NO_VAL
-	LDA SCORE_ACCESS_CPY,X
-	BEQ SET_SCORE_CPY_CODE
+	LDA SCORE_INVERT_REQUEST_FLAG_SCORE,Y
+	BEQ Y_FLAG_NOT_SET ;Not set, goto.
+	LDA SCORE_INVERT_REQUEST_FLAG_CPYS,X
+	BEQ X_FLAG_NOT_SET ;Not set, goto.
 SUBTRACT_CPY_FROM_SCORE: ; 0x00052F
-	SEC 
-	LDA SCORE_0000XX,Y
+	SEC  ;Sub prep.
+	LDA SCORE_0000XX,Y ;Score from Y to TMP
 	STA TMP_03
-	LDA SCORE_CPY_0000XX,X
-	JSR SCORE_SUBTRACT_FROM_03
-	LDA SCORE_00XX00,Y ;again
+	LDA SCORE_CPY_0000XX,X ;Sub from X
+	JSR SCORE_SUB_GROUP
+	LDA SCORE_00XX00,Y ;Y
 	STA TMP_03
-	LDA SCORE_CPY_00XX00,X
-	JSR SCORE_SUBTRACT_FROM_03
-	LDA SCORE_XX0000,Y ;again
+	LDA SCORE_CPY_00XX00,X ;Sub X
+	JSR SCORE_SUB_GROUP
+	LDA SCORE_XX0000,Y ;Y
 	STA TMP_03
-	LDA SCORE_CPY_XX0000,X
-	JSR SCORE_SUBTRACT_FROM_03
-	BCS SCORE_LOWER_CODE ;>= ?
-	LDA SCORE_LOWER,Y ;again
+	LDA SCORE_CPY_XX0000,X ;Sub X
+	JSR SCORE_SUB_GROUP
+	BCS SCORE_SUBBED_LOWER ;Subbed was lower?
+	LDA SCORE_INVERT_REQUEST_FLAG_SCORE,Y ;again
 	BNE SCORE_HIGHER_CODE ;always taken?
-SET_SCORE_CPY_CODE: ; 0x000555
+X_FLAG_NOT_SET: ; 0x000555
 	LDA #$FF
-	STA TMP_04 ;which higher flag?
-	SEC 
+	STA TMP_04 ;Set flag to add back
+	SEC  ;Set
 SCORE_WRITE_CPY_LOWER: ; 0x00055A
 	TYA 
-	BNE RTS_2 ;don't write if Y not 0
+	BNE RTS_2 ;If Y not 0, don't write.
 	BCC SKIP_COPY ;skip on no carry
-	LDA SCORE_ACCESS_CPY,X
-	STA SCORE_LOWER
-	LDA SCORE_CPY_XX0000,X
-	STA SCORE_XX0000
-	LDA SCORE_CPY_00XX00,X
+	LDA SCORE_INVERT_REQUEST_FLAG_CPYS,X ;Load flag
+	STA SCORE_INVERT_REQUEST_FLAG_SCORE ;Store to score.
+	LDA SCORE_CPY_XX0000,X ;X
+	STA SCORE_XX0000 ;To score.
+	LDA SCORE_CPY_00XX00,X ;2x
 	STA SCORE_00XX00
-	LDA SCORE_CPY_0000XX,X
+	LDA SCORE_CPY_0000XX,X ;3x
 	STA SCORE_0000XX
 SKIP_COPY: ; 0x00056F
-	LDA TMP_00
+	LDA TMP_00 ;Load
 	AND #$08
-	BEQ RTS_2
+	BEQ RTS_2 ;If bit not set, RTS.
+	DEX  ;Next X group.
 	DEX 
 	DEX 
 	DEX 
-	DEX 
-	BPL LOOP_ALL_X_INDEXES
+	BPL LOOP_ALL_X_INDEXES ;Loop if positive.
 RTS_2: ; 0x00057B
 	RTS 
-ACCESS_NO_VAL: ; 0x00057C
-	LDA SCORE_ACCESS_CPY,X ;see if cpy has value
+Y_FLAG_NOT_SET: ; 0x00057C
+	LDA SCORE_INVERT_REQUEST_FLAG_CPYS,X ;See if flag set.
 	BEQ SUBTRACT_CPY_FROM_SCORE ;both are empty, sub.
-SCORE_LOWER_CODE: ; 0x000580
-	LDA SCORE_LOWER,Y
-	BNE SET_SCORE_CPY_CODE
+SCORE_SUBBED_LOWER: ; 0x000580
+	LDA SCORE_INVERT_REQUEST_FLAG_SCORE,Y
+	BNE X_FLAG_NOT_SET
 SCORE_HIGHER_CODE: ; 0x000585
 	CLC 
-	BCC SCORE_WRITE_CPY_LOWER ;always taken
+	BCC SCORE_WRITE_CPY_LOWER ;Always taken.
 RNG_ADVANCE: ; 0x000588
 	LDA RNG_ARRAY ;LFSR between 0-2,1-2
 	AND #$02
@@ -1247,11 +1247,11 @@ DISP_NEW_SCORE: ; 0x000655
 	LDX #$03 ;3 groups of digits.
 	LDY #$05 ;index?
 DIGITS_TO_UPDATE_BUF: ; 0x000659
-	LDA SCORE_LOWER,X ;get digits.
+	LDA SCORE_INVERT_REQUEST_FLAG_SCORE,X ;get digits.
 	AND #$0F
 	STA PPU_BLOCK_BUF,Y ;store digits.
 	DEY  ;next spot.
-	LDA SCORE_LOWER,X ;get digit.
+	LDA SCORE_INVERT_REQUEST_FLAG_SCORE,X ;get digit.
 	LSR A ;shift data.
 	LSR A
 	LSR A
@@ -1382,8 +1382,8 @@ RTS_6: ; 0x000739
 SCORE_SOMETHING: ; 0x00073A
 	LDX #$03 ;score digits loop counter
 SCORE_TO_C7: ; 0x00073C
-	LDA SCORE_LOWER,X
-	STA SCORE_ACCESS_CPY,X
+	LDA SCORE_INVERT_REQUEST_FLAG_SCORE,X
+	STA SCORE_INVERT_REQUEST_FLAG_CPYS,X
 	DEX 
 	BPL SCORE_TO_C7
 	LDA GAME_MODE_IN
@@ -1394,7 +1394,7 @@ SCORE_TO_C7: ; 0x00073C
 	LDX #$00 ;ugh counting up
 LOOP_MOVE_HIGHSCORE_TO_CURR: ; 0x00074C
 	LDA HIGH_SCORES_ARRAY,Y
-	STA SCORE_LOWER,X
+	STA SCORE_INVERT_REQUEST_FLAG_SCORE,X
 	INY 
 	INX 
 	CPX #$04 ;moved 4 bytes?
@@ -1405,7 +1405,7 @@ LOOP_MOVE_HIGHSCORE_TO_CURR: ; 0x00074C
 	LDY TMP_0F
 	LDX #$00
 WRITE_HIGH_SCORE: ; 0x000762
-	LDA SCORE_LOWER,X
+	LDA SCORE_INVERT_REQUEST_FLAG_SCORE,X
 	STA HIGH_SCORES_ARRAY,Y
 	INY 
 	INX 
@@ -1536,7 +1536,7 @@ GAME_STATE_1_SETUP_DUCKS: ; 0x000839
 	JSR SET_PPU_SCROLL ;set scroll
 	JSR PPU_ENABLE_SPRITES/BACKGROUND ;turn on screeen
 	JMP SND_SET_F1_#$10 ;set a sound. intro music?
-GAME_STATE_2_SETUP_SUBROUND: ; 0x000854
+GAME_STATE_2_SETUP_ROUND: ; 0x000854
 	JSR CLEAR_MEMORIES
 	JSR SETUP_HITSREQD_TARGETS_OTHER ;sets up level hits number, targets, etc.
 	JSR MAKE_DISP_BUF_REQUIRED
@@ -3491,7 +3491,7 @@ GAME_STATE_9_PIGEON_RND_SETUP: ; 0x00156A
 	LDA #$0D
 	STA IN_GAME_STATE ;move to state.
 	RTS 
-GAME_STATE_A_SUBROUND_INIT: ; 0x001593
+GAME_STATE_A_ROUND_INIT: ; 0x001593
 	LDA #$01
 	STA TRGT1_TYPE ;target type.
 	STA TRGT2_TYPE

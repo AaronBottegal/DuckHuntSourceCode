@@ -47,7 +47,7 @@ TIMER_LARGE_COUNT:                       .rs 0x01 ;0x002A
 FAST_TIMERS:                             .rs 0x02 ;0x002B to 0x002C
 TIMER_SLOW:                              .rs 0x02 ;0x002D to 0x002E
 FRAME_COUNTER:                           .rs 0x01 ;0x002F
-OBJ_ZP_COPY:                             .rs 0x4F ;0x0030 to 0x007E
+OBJ_ZP_COPY:                             .rs 0x50 ;0x0030 to 0x007F
 
 	.rsset 0x0031
 OBJ_ZP_STATE:                            .rs 0x01 ;0x0031
@@ -77,7 +77,7 @@ OBJ_ZP_COPY_MOVESETS_INDEX:              .rs 0x01 ;0x0049
 OBJ_ZP_COPY_MOVESETS_INDEX_RELOAD:       .rs 0x01 ;0x004A
 OBJ_ZP_COPY_FLAG_ALLOW_OFFSCREEN?:       .rs 0x01 ;0x004B
 OBJ_ZP_COPY_FLYAWAY_COUNTDOWN:           .rs 0x01 ;0x004C
-OBJ_ZP_TIMER_FALLING?:                   .rs 0x01 ;0x004D
+OBJ_ZP_TIMER_FALLING/EXTRA:              .rs 0x01 ;0x004D
 OBJ_ZP_COPY_TIMER_MULTIUSE:              .rs 0x01 ;0x004E
 OBJ_ZP_COPY_UNUSED_4F:                   .rs 0x01 ;0x004F
 OBJ_ZP_PARTICLE_TIMER_1:                 .rs 0x01 ;0x0050
@@ -93,7 +93,7 @@ OBJ_COPY_PIGEON_SOUND_COUNTDOWN:         .rs 0x01 ;0x0058
 	.rsset 0x005E
 OBJ_ZP_DUCK_DIFF:                        .rs 0x01 ;0x005E
 OBJ_ZP_$47_PIGEON_UNK:                   .rs 0x01 ;0x005F
-OBJ_ZP_PARTICLES_Y_BASE:                 .rs 0x0E ;0x0060 to 0x006D
+OBJ_ZP_COPY_PARTICLES_Y_BASE:            .rs 0x0E ;0x0060 to 0x006D
 
 	.rsset 0x0061
 OBJ_ZP_COPY_PARTICLES_X_BASE:            .rs 0x0E ;0x0061 to 0x006E
@@ -132,7 +132,7 @@ OBJ_ZP_ORIGIN_OFFSET:                    .rs 0x01 ;0x00A2
 	.rsset 0x00A6
 COUNTDOWN_TO_ENABLE_TARGETS:             .rs 0x01 ;0x00A6
 PIGEON_FLAG_NEEDS_CLEARED?:              .rs 0x01 ;0x00A7
-LEVEL_TIED_VAR?:                         .rs 0x01 ;0x00A8
+PIGEON_DIFFICULTY:                       .rs 0x01 ;0x00A8
 END_OF_ROUND_STATE:                      .rs 0x01 ;0x00A9
 TARGETS_IN_LEVEL:                        .rs 0x01 ;0x00AA
 HITS_REQUIRED_RAM:                       .rs 0x01 ;0x00AB
@@ -155,7 +155,7 @@ SHOTS_REMAINING:                         .rs 0x01 ;0x00BA
 GAME_TARGETS_SHOWN?:                     .rs 0x01 ;0x00BB
 NUM_TARGETS_REMAINING:                   .rs 0x01 ;0x00BC
 TRGT_SHOT_DURING_ATTEMPT:                .rs 0x01 ;0x00BD
-SHOT_FIRED:                              .rs 0x01 ;0x00BE
+SHOT_FIRED_FLAG:                         .rs 0x01 ;0x00BE
 
 	.rsset 0x00C1
 LEVEL:                                   .rs 0x01 ;0x00C1
@@ -230,6 +230,9 @@ TRGT2_STATE:                             .rs 0x01 ;0x0351
 	.rsset 0x03A0
 TRGT3_TYPE:                              .rs 0x01 ;0x03A0
 TRGT3_STATE:                             .rs 0x01 ;0x03A1
+
+	.rsset 0x03A3
+DOG_OBJ_POPUP_LOCATION:                  .rs 0x01 ;0x03A3
 
 	.rsset 0x03EF
 DUCKS_HIT_ARRAY-1:                       .rs 0x01 ;0x03EF
@@ -1339,10 +1342,10 @@ PPU_SHOW_TARGETS_BUFFER: ; 0x0006E9
 	LDY #$23
 	JMP MAKE_SETUP_PPU_BLOCK ;put to screen.
 PPU_DISP_SHOTS_LEFT: ; 0x0006F5
-	LDA SHOT_FIRED
+	LDA SHOT_FIRED_FLAG
 	BEQ RTS_5 ;no shot fired.
 	LDA #$00
-	STA SHOT_FIRED ;clear fired.
+	STA SHOT_FIRED_FLAG ;clear fired.
 	LDX SHOTS_REMAINING
 	LDY #$00 ;setup index.
 MOVE_MORE_TILES: ; 0x000701
@@ -1483,9 +1486,9 @@ WRITE_DIGIT: ; 0x0007E1
 	JMP MAKE_SETUP_PPU_BLOCK ;make buffer.
 GAME_STATE_D_WAIT_UPDATES: ; 0x0007EF
 	LDA MULTIPLE_BG_UPDATE_INDEX
-	BEQ 9D_IS_ZERO ;if not done updating the BG.
+	BEQ INDEX_ZERO ;if not done updating the BG.
 	JMP BG_UPDATES_AUTOMATIC ;handle timer if not 0, abuse RTS.
-9D_IS_ZERO: ; 0x0007F6
+INDEX_ZERO: ; 0x0007F6
 	LDA #$0A ;Move to state A when update done.
 	STA IN_GAME_STATE ;new state when timer = 0.
 	RTS 
@@ -1594,7 +1597,7 @@ WRITE_COUNTDOWN: ; 0x0008C4
 	DEY  ;dec countdown.
 	STY ACTIVATE_SHOOTING_COUNTDOWN? ;store back to now.
 	LDA NUM_TARGETS_REMAINING
-	BNE DEC_A6 ;If targets in mode, dec A6.
+	BNE DEC_TARGET_ENABLE_COUNTDOWN ;If targets in mode, dec A6.
 	LDA TRGT1_STATE
 	BNE RTS_8 ;in state, rts.
 	LDA TRGT2_STATE
@@ -1617,32 +1620,32 @@ TARGET_3_STATE_DECIDED: ; 0x0008E5
 	LDA #$00
 	STA ZAP_SHOT_ENABLED ;disable shots
 	JMP UPDATE_PPU_GROUP
-DEC_A6: ; 0x0008FB
-	LDA COUNTDOWN_TO_ENABLE_TARGETS
-	BEQ RTS_8
-	DEC COUNTDOWN_TO_ENABLE_TARGETS ;if not zero, dec.
+DEC_TARGET_ENABLE_COUNTDOWN: ; 0x0008FB
+	LDA COUNTDOWN_TO_ENABLE_TARGETS ;Get value
+	BEQ RTS_8 ;If 0, don't dec.
+	DEC COUNTDOWN_TO_ENABLE_TARGETS ;Dec otherwise.
 RTS_8: ; 0x000901
-	RTS 
+	RTS  ;Leave.
 PROCESS_OBJ_DUCK_TARGET: ; 0x000902
 	LDA OBJ_ZP_STATE
 	JSR SWITCH_TO_CODE_PTRS
-	.LOW RTS_3
-	.HIGH RTS_3 ;RTS, uninit'd.
-	.LOW TRGT_STATE_1_INIT_OBJ ;inits target data in $30 area, sets tile range.
+	.LOW RTS_3 ;NULL state, does nothing.
+	.HIGH RTS_3
+	.LOW TRGT_STATE_1_INIT_OBJ ;Init data in $30 area.
 	.HIGH TRGT_STATE_1_INIT_OBJ
-	.LOW TARGET_STATE_2_SPAWN ;spawn objects.
+	.LOW TARGET_STATE_2_SPAWN ;Spawn state.
 	.HIGH TARGET_STATE_2_SPAWN
-	.LOW TARGET_STATE_3_FLY+BOX+STATE4 ;something to do with shooting.
+	.LOW TARGET_STATE_3_FLY+BOX+STATE4 ;Main state.
 	.HIGH TARGET_STATE_3_FLY+BOX+STATE4
-	.LOW TARGET_STATE_4_HIT ;something with target hit.
-	.HIGH TARGET_STATE_4_HIT
-	.LOW TARGET_STATE5_FALLING ;shot? something sound.
-	.HIGH TARGET_STATE5_FALLING
-	.LOW TARGET_STATE_6_SET_POPUP ;sprite, range, idk.
-	.HIGH TARGET_STATE_6_SET_POPUP
-	.LOW TARGET_STATE_7_MOVE_OR_THUMP ;falling?
-	.HIGH TARGET_STATE_7_MOVE_OR_THUMP
-	.LOW TARGET_STATE_8_REMOVE_OBJ ;take spr off screen?
+	.LOW TARGET_STATE_4_HIT_SHOCKED ;Target hit, shocked.
+	.HIGH TARGET_STATE_4_HIT_SHOCKED
+	.LOW TARGET_STATE_5_ANIMATE/SOUND ;Continuation it seems. Animation forwards?
+	.HIGH TARGET_STATE_5_ANIMATE/SOUND
+	.LOW TARGET_STATE_6_FALLING ;Falling stuff.
+	.HIGH TARGET_STATE_6_FALLING
+	.LOW TARGET_STATE_7_WAIT_THUMP ;Thump.
+	.HIGH TARGET_STATE_7_WAIT_THUMP
+	.LOW TARGET_STATE_8_REMOVE_OBJ ;Remove object.
 	.HIGH TARGET_STATE_8_REMOVE_OBJ
 TRGT_STATE_1_INIT_OBJ: ; 0x000919
 	LDX #$1F ;move 0 to 1F bytes.
@@ -1691,7 +1694,7 @@ WRITE_A_TO_MOVEMENT_CHANGE?: ; 0x000958
 	LDA OBJ_DATA_UNK_HIGH,X ;Move pointer loaded to object.
 	STA OBJ_ZP_EXTRA_PTR/DATA
 	LDA OBJ_DATA_UNK_LOW,X
-	STA OBJ_ZP_EXTRA_PTR/DATA+1
+	STA OBJ_ZP_COPY+21
 	JSR RNG_ADVANCE ;get new rand number.
 	AND #$3F ;Time between targets, 100%.
 	TAY 
@@ -2108,7 +2111,7 @@ SKIP_WRITE_X_COORD: ; 0x000C16
 	SBC #$01
 	BNE MOVE_OBJ_LOOP ;ddifficulty is number of loops.
 	JMP TARGET_ANIM_TIMER_CHECK/DISP ;put obj/disp
-TARGET_STATE_4_HIT: ; 0x000C1F
+TARGET_STATE_4_HIT_SHOCKED: ; 0x000C1F
 	LDX OBJ_ZP_TARGET_NUMBER+1 ;get which hit.
 	LDA #$01
 	STA DUCKS_HIT_ARRAY-1,X ;set hit in status array -1 because of +1.
@@ -2116,48 +2119,48 @@ TARGET_STATE_4_HIT: ; 0x000C1F
 	STA UPDATE_TARGETS_HIT ;enable update for status bar.
 	STA OBJ_ZP_DUCK_DIFF ;reset difficulty....
 	LDA #$12
-	STA OBJ_ZP_TIMER_FALLING? ;unk. timer to hold anim?
+	STA OBJ_ZP_TIMER_FALLING/EXTRA ;Timer to move states.
 	JSR ADD_TO_SCORE_TARGET
 	LDX #$13
-	LDY #$E7 ;shot ptr $E713 guessing.
+	LDY #$E7 ;Animation
 SETUP_ANIMATION_SCRIPT+INC_OBJ_STATE: ; 0x000C37
 	JSR SETUP_OBJ_ANIM_[PTR,INDEX,TIMER] ;set it up.
 	INC OBJ_ZP_STATE ;next state.
 	RTS 
-TARGET_STATE5_FALLING: ; 0x000C3D
-	LDA OBJ_ZP_TIMER_FALLING? ;get timer.
-	BEQ SKIP_SOUND_0 ;if 0, done.
-	DEC OBJ_ZP_TIMER_FALLING? ;otherwise decrease.
-	AND #$0F ;get %0000 1111
-	CMP #$0A
-	BNE SKIP_SOUND_0 ;A!=#A, skip.
-	JSR SND_SET_F2_#$02 ;not sure.
-SKIP_SOUND_0: ; 0x000C4C
+TARGET_STATE_5_ANIMATE/SOUND: ; 0x000C3D
+	LDA OBJ_ZP_TIMER_FALLING/EXTRA ;Get timer. I changed this value and nothing seemed to change.
+	BEQ SKIP_SOUND_ANIMATE_ONLY ;If 0, skip.
+	DEC OBJ_ZP_TIMER_FALLING/EXTRA ;Decrease
+	AND #$0F ;Get bottom nibble.
+	CMP #$0A ;If _ 0x0A
+	BNE SKIP_SOUND_ANIMATE_ONLY ;!=, skip sound set.
+	JSR SND_SET_F2_#$02 ;Sound, idk.
+SKIP_SOUND_ANIMATE_ONLY: ; 0x000C4C
 	JMP TARGET_ANIM_TIMER_CHECK/DISP
-TARGET_STATE_6_SET_POPUP: ; 0x000C4F
-	JSR POINTS_DISPLAY_ADD ;display points for obj.
-	JSR SND_SET_F0_#$10 ;falling sound.
+TARGET_STATE_6_FALLING: ; 0x000C4F
+	JSR POINTS_DISPLAY_ADD ;Display points.
+	JSR SND_SET_F0_#$10 ;Falling sound
 	LDA OBJ_ZP_X_COORD ;get X for dog position.
 	LDX #$48 ;Ranged value.
 	CMP #$48
-	BCC RANGE_DATA ;<48 on screen.
+	BCC DOG_POPUP_POS_RANGED ;<48 on screen.
 	LDX #$A0 ;Ranged value.
 	CMP #$A0
-	BCS RANGE_DATA ;>A0
+	BCS DOG_POPUP_POS_RANGED ;>A0
 	TAX 
-RANGE_DATA: ; 0x000C64
-	STX $03A3 ;Range dog sprite on screen for pop up.
+DOG_POPUP_POS_RANGED: ; 0x000C64
+	STX DOG_OBJ_POPUP_LOCATION ;Range dog sprite on screen for pop up.
 	LDA #$01
 	STA OBJ_ZP_COPY_FLAG_ALLOW_OFFSCREEN? ;set, unk
 	LDX #$10
-	STX OBJ_ZP_DATA_DIRECTION ;not sure, but is direction/animinfo?
+	STX OBJ_ZP_DATA_DIRECTION ;Set falling down.
 	LDA MOVESETS_INITIAL_INDEX_LUT,X ;always+#$10?
-	STA OBJ_ZP_COPY_MOVESETS_INDEX ;store 2x?
+	STA OBJ_ZP_COPY_MOVESETS_INDEX ;Store to obj.
 	STA OBJ_ZP_COPY_MOVESETS_INDEX_RELOAD
 	LDX #$18
 	LDY #$E7 ;script $E718
 	BNE SETUP_ANIMATION_SCRIPT+INC_OBJ_STATE ;setup script+state, always taken.
-TARGET_STATE_7_MOVE_OR_THUMP: ; 0x000C7C
+TARGET_STATE_7_WAIT_THUMP: ; 0x000C7C
 	LDA OBJ_ZP_Y_COORD ;Y-coord?
 	CMP #$B0
 	BCS GREATER_THAN_#$B0 ;>=
@@ -2233,7 +2236,7 @@ MOVE_DATA: ; 0x000CD6
 	LDA #$03
 	STA SHOTS_REMAINING ;set shots remaining.
 	LDA #$01
-	STA SHOT_FIRED ;disable shooting the screen.
+	STA SHOT_FIRED_FLAG ;disable shooting the screen.
 	STA UPDATE_TARGETS_HIT ;unk, set to 1.
 	LDA #$02
 	STA PALETTE_UPLOAD_REQUEST ;upload pallette.
@@ -2278,7 +2281,7 @@ RTS_11: ; 0x000D2D
 FRAME_NOT_C: ; 0x000D2E
 	JSR TARGET_ANIM_TIMER_CHECK/DISP ;check animation/disp.
 	LDA OBJ_ZP_X_COORD
-	CMP OBJ_ZP_EXTRA_PTR/DATA+1 ;idk what for yet. is pointer data? why this?
+	CMP OBJ_ZP_COPY+21 ;idk what for yet. is pointer data? why this?
 	BNE RTS_11 ;if not eq, rts.
 	LDA #$06
 	STA OBJ_ZP_STATE ;set state to 6 when eq.
@@ -2342,7 +2345,7 @@ TRGT_STATE_E_SETUP_BETWEEN_ROUNDS?: ; 0x000D9A
 	LDA #$03
 	STA SHOTS_REMAINING
 	LDA #$01
-	STA SHOT_FIRED
+	STA SHOT_FIRED_FLAG
 	LDA #$00
 	STA TRGT_SHOT_DURING_ATTEMPT
 	LDA #$02 ;targets in mode
@@ -2907,7 +2910,7 @@ SHOOTING_ENABLED: ; 0x001169
 	BEQ TRIG_NO_RELEASE ;If 0, hold release false.
 	DEC SHOTS_REMAINING ;Shots--
 	LDA #$01
-	STA SHOT_FIRED ;Set flag true.
+	STA SHOT_FIRED_FLAG ;Set flag true.
 	LDA #$00
 	STA ZAPPER_TRIG_RELEASED ;Not released set.
 	JSR SND_SET_F0_#$02 ;Sound shot?
@@ -3125,7 +3128,7 @@ FINALIZE_ROUND: ; 0x001309
 	BCC NOT_ENOUGH_TARGETS ;if A is less than REQ'd.
 	JSR SND_SET_F1_#$40 ;set success sound.
 	LDA #$00
-	STA SHOT_FIRED ;reset
+	STA SHOT_FIRED_FLAG ;reset
 	LDA #$10 ;timer value
 	STA FAST_TIMERS
 	INC END_OF_ROUND_STATE ;next state.
@@ -3150,8 +3153,8 @@ END_ROUND_STATE_3_BONUS: ; 0x00133D
 	BNE RTS_17 ;if not 0, RTS.
 	LDA #$10
 	STA FAST_TIMERS ;reset timer.
-	INC SHOT_FIRED ;used different here?
-	LDA SHOT_FIRED
+	INC SHOT_FIRED_FLAG ;used different here?
+	LDA SHOT_FIRED_FLAG
 	CMP #$0F
 	BNE SHOW_TRGT_NO_HITS ;pallette changing stuff, i believe.
 	LDA TARGETS_IN_LEVEL
@@ -3481,7 +3484,7 @@ GAME_STATE_9_PIGEON_RND_SETUP: ; 0x00156A
 	JSR WAIT_FOR_NMI
 	JSR PLAY_SOUNDS
 	LDA #$01
-	STA SHOT_FIRED ;disable shots.
+	STA SHOT_FIRED_FLAG ;disable shots.
 	LDA #$03
 	STA SHOTS_REMAINING ;set remaining.
 	JSR PPU_DISP_SHOTS_LEFT
@@ -3501,14 +3504,14 @@ GAME_STATE_A_ROUND_INIT: ; 0x001593
 	LDX LEVEL
 	CPX #$10 ;max level value
 	BCS LEVEL_MAXED ;if X >= 10, skip load.
-	DEX  ;range 0-8???
-	LDA LEVEL_DATA_UNK_0,X
+	DEX  ;Range 0-8. Level 0 bug here, also. Mistake.
+	LDA PIGEON_LEVEL_DIFFICULTY_LUT,X
 LEVEL_MAXED: ; 0x0015AD
-	STA LEVEL_TIED_VAR? ;not sure
+	STA PIGEON_DIFFICULTY ;not sure
 	LDA #$80
 	STA COUNTDOWN_TO_ENABLE_TARGETS ;Set target enable countdown.
 	LDA #$01
-	STA SHOT_FIRED ;disable shooting.
+	STA SHOT_FIRED_FLAG ;disable shooting.
 	LDA #$03
 	STA SHOTS_REMAINING ;store shots remaining.
 	LDA #$02
@@ -3553,7 +3556,7 @@ PROCESS_TARGET_2: ; 0x001600
 	JSR COPY_OBJ_ZP_BACK_TO_ORIGIN ;move to $500.
 PROCESS_OTHER: ; 0x001612
 	LDA NUM_TARGETS_REMAINING
-	BNE TARGETS_REMAINING
+	BNE TARGET_ENABLE_COUNTDOWN_PIGEONS
 	LDX TRGT1_STATE
 	LDY TRGT2_STATE
 	CPX #$03 ;target state active?
@@ -3581,12 +3584,12 @@ ALL_TARGETS_SHOWN?: ; 0x001640
 GAME_STATE_SWITCH: ; 0x001646
 	STA IN_GAME_STATE ;goto state.
 	JMP CLEAR_SPRITES ;clear sprites then RTS.
-TARGETS_REMAINING: ; 0x00164B
-	LDA COUNTDOWN_TO_ENABLE_TARGETS ;is a timer?
-	BEQ RTS_20
-	DEC COUNTDOWN_TO_ENABLE_TARGETS
+TARGET_ENABLE_COUNTDOWN_PIGEONS: ; 0x00164B
+	LDA COUNTDOWN_TO_ENABLE_TARGETS ;Get timer
+	BEQ RTS_20 ;If 0, RTS.
+	DEC COUNTDOWN_TO_ENABLE_TARGETS ;Otherwise, decrease.
 RTS_20: ; 0x001651
-	RTS 
+	RTS  ;Leave.
 PIGEON_TARGET_STATE_SWITCH: ; 0x001652
 	LDA OBJ_ZP_STATE ;target states.
 	JSR SWITCH_TO_CODE_PTRS
@@ -3688,7 +3691,7 @@ LESS_THAN_7: ; 0x0016EE
 	BEQ IS_EQ ;A = $47
 	STA OBJ_ZP_$47_PIGEON_UNK ;not eq, save.
 	CLC 
-	ADC LEVEL_TIED_VAR? ;adc with wtf this is.
+	ADC PIGEON_DIFFICULTY ;adc with wtf this is.
 	TAX  ;is now index.
 	LDA PIGEON_DATA_DIFFICULTY,X
 	STA OBJ_ZP_DUCK_DIFF
@@ -3816,7 +3819,7 @@ PIGEON_UPDATE_PARTICLES: ; 0x0017CE
 LOOP_DISP: ; 0x0017D4
 	LDA TMP_0D ;passed flag.
 	BNE DON'T_CHANGE_SPRITES ;remove all if set.
-	LDA OBJ_ZP_PARTICLES_Y_BASE,X ;get obj data...
+	LDA OBJ_ZP_COPY_PARTICLES_Y_BASE,X ;get obj data...
 	BNE UPDATE_SPRITES ;not 0, goto.
 DON'T_CHANGE_SPRITES: ; 0x0017DC
 	INX  ;next x index. obj_36 removes?
@@ -3831,7 +3834,7 @@ UPDATE_SPRITES: ; 0x0017E0
 	LDA PIGEON_TILE+ATTR_INDEX,X ;get attr data
 	STA $0200,Y ;store attr
 	INY 
-	LDA OBJ_ZP_PARTICLES_Y_BASE,X ;get obj data
+	LDA OBJ_ZP_COPY_PARTICLES_Y_BASE,X ;get obj data
 	STA $0200,Y ;store to X
 	INY 
 NEXT_OBJ_DATA_CHECK_LOOP: ; 0x0017F9
@@ -3872,7 +3875,7 @@ GROUP_NO_SPILL: ; 0x00182B
 	PLA  ;pull value saved from array.
 	RTS  ;return it.
 PIGEON_X/Y_SOMEHOW: ; 0x00182F
-	LDA OBJ_ZP_TIMER_FALLING? ;terribly complicated way to handle this shit.
+	LDA OBJ_ZP_TIMER_FALLING/EXTRA ;terribly complicated way to handle this shit.
 	SEC 
 	SBC #$00 ;set carry, sub 0...no purpose?
 	TAY  ;A>Y
@@ -3883,7 +3886,7 @@ PIGEON_X/Y_SOMEHOW: ; 0x00182F
 	JSR UNK_ROUTINE
 	STY TMP_INDIR_JMP_L ;Y to
 	STX TMP_INDIR_JMP_H ;X to
-	LDA OBJ_ZP_TIMER_FALLING? ;get value again
+	LDA OBJ_ZP_TIMER_FALLING/EXTRA ;get value again
 	SEC 
 	SBC #$00 ;yet again, no purpose?
 	TAY  ;put to Y again.
@@ -4043,7 +4046,7 @@ PROCESS_PIGEON_PARTICLES: ; 0x00193A
 	CPY #$FF ;compare to end. BAD CODE. Could LDY/INC/BEQ/STY
 	BEQ PIGEON_1_TIMER_FINISHED_FF
 	INC OBJ_ZP_PARTICLE_TIMER_1 ;inc if not FF.
-	LDA PIGEON_DATA_UNK,Y ;get data.
+	LDA PIGEON_PARTICLE_DATA_GROUP_1,Y ;get data.
 	STA TMP_0C ;pigeon data from table.
 	STA TMP_0F ;again
 	CMP #$AA
@@ -4054,19 +4057,19 @@ PROCESS_PIGEON_PARTICLES: ; 0x00193A
 	CMP OBJ_ZP_COPY+33_VAL_EN_PARTICLE_2
 	BEQ SETUP_PARTICLE_2_TIMER_OR_SOMETHING ;if equal, enable particle 2 timer.
 RE-ENTER_FROM_SETUP_PARTICLE_2_TIMER: ; 0x001959
-	LDX #$00 ;reset counter/index?
+	LDX #$00 ;Initial index.
 LOOP_PARTICLES_1: ; 0x00195B
-	STX TMP_0D ;clear temp.
-	LDA PIGEON_DATA_UNK_2,X ;get data.
+	STX TMP_0D ;Store index as clobbered.
+	LDA PIGEON_PARTICLE_SWITCH_DATA_1,X ;get data.
 	STA TMP_0E ;store to tmp. used in table JSR'd to.
 	TXA  ;counter to A.
 	ASL A ;double.
 	TAX  ;put back.
-	LDA OBJ_ZP_PARTICLES_Y_BASE,X ;load data.
+	LDA OBJ_ZP_COPY_PARTICLES_Y_BASE,X ;load data.
 	BEQ DATA_IS_0 ;if 0, goto.
 	LDA OBJ_ZP_COPY_PARTICLES_X_BASE,X
 	BEQ DATA_IS_0 ;if 0, goto.
-	JSR PROCESS_PIGEON_SUBTABLE
+	JSR PROCESS_PIGEON_BLOWUP_SWITCH
 DATA_IS_0: ; 0x001970
 	LDX TMP_0D ;get data.
 	INX  ;next particle index.
@@ -4077,30 +4080,30 @@ PIGEON_1_TIMER_FINISHED_FF: ; 0x001977
 	CPY #$FF
 	BEQ END_PARTICLE_FINAL
 	INC OBJ_ZP_PARTICLE_TIMER_2 ;inc if not.
-	LDA PIGEON_DATA_UNK_0,Y ;get data
+	LDA PIGEON_PARTICLE_DATA_GROUP_2,Y ;get data
 	STA TMP_0C ;store.
 	CMP #$AA
 	BEQ END_PARTICLE_2_TIMER
 	CMP #$BB
 	BEQ DISABLE_GROUP_2
-	LDA PIGEON_DATA_UNK_1,Y
+	LDA PIGEON_PARTICLE_MOVE_DATA_F,Y
 	STA TMP_0F ;store
-RE-ENTER_???_2: ; 0x001991
+RE-ENTER_PARTICLE_2: ; 0x001991
 	LDX #$00 ;reset index.
 LOOP_PARTICLES_2: ; 0x001993
 	STX TMP_0D ;save index/counter
-	LDA PIGEON_DATA_UNK_3,X ;get data
+	LDA PIGEON_PARTICLE_SWITCH_DATA_2,X ;get data
 	STA TMP_0E ;store to tmp. used in jsr to table.
 	TXA 
 	ASL A ;counter to a, double/index value.
 	CLC 
 	ADC #$10 ;add 10, too. not sure why.
 	TAX  ;put back to index.
-	LDA OBJ_ZP_PARTICLES_Y_BASE,X
-	BEQ END_LOOP?
+	LDA OBJ_ZP_COPY_PARTICLES_Y_BASE,X
+	BEQ END_LOOP? ;If 0, skip.
 	LDA OBJ_ZP_COPY_PARTICLES_X_BASE,X
-	BEQ END_LOOP?
-	JSR PROCESS_PIGEON_SUBTABLE
+	BEQ END_LOOP? ;If 0, skip.
+	JSR PROCESS_PIGEON_BLOWUP_SWITCH
 END_LOOP?: ; 0x0019AB
 	LDX TMP_0D ;load X.
 	INX 
@@ -4132,7 +4135,7 @@ DISABLE_GROUP_2: ; 0x0019D5
 	LDA #$00
 	STA TMP_0C
 	STA TMP_0F ;clear temps.
-	JMP RE-ENTER_???_2
+	JMP RE-ENTER_PARTICLE_2
 END_PARTICLE_FINAL: ; 0x0019E2
 	LDA OBJ_ZP_PARTICLE_TIMER_1 ;get value.
 	CMP #$FF
@@ -4145,7 +4148,7 @@ END_PARTICLE_FINAL: ; 0x0019E2
 	STA OBJ_ZP_STATE ;set state to remove debris.
 RTS_23: ; 0x0019F5
 	RTS  ;leave.
-PROCESS_PIGEON_SUBTABLE: ; 0x0019F6
+PROCESS_PIGEON_BLOWUP_SWITCH: ; 0x0019F6
 	LDA OBJ_ZP_ADD'L_STATE ;last table. pigeons something.
 	AND #$03 ;bottom 3 bits.
 	STA SPRITE_UPDATE_BASE ;index of working on?
@@ -4255,7 +4258,7 @@ PARTICLE_MOVE_-X,-Y_F>X,C>Y: ; 0x001A9A
 	JMP PARTICLE_MOVE_-Y_C>Y
 PARTICLE_MOD_Y_COORD: ; 0x001AA5
 	CLC  ;not sure for existence of this subroutine.
-	ADC OBJ_ZP_PARTICLES_Y_BASE,X ;add with this+X
+	ADC OBJ_ZP_COPY_PARTICLES_Y_BASE,X ;add with this+X
 	CMP #$07
 	BCC CLEAR_A ;<7, store 0.
 	CMP #$C7
@@ -4263,7 +4266,7 @@ PARTICLE_MOD_Y_COORD: ; 0x001AA5
 CLEAR_A: ; 0x001AB0
 	LDA #$00 ;reset to 0.
 STORE_A: ; 0x001AB2
-	STA OBJ_ZP_PARTICLES_Y_BASE,X ;store.
+	STA OBJ_ZP_COPY_PARTICLES_Y_BASE,X ;store.
 	RTS 
 PARTICLE_MOD_X_COORD: ; 0x001AB5
 	CLC  ;not sure for existence of this subroutine.
@@ -8110,7 +8113,7 @@ ANIM_FRAME_FILE_PTR_02_0: ; 0x00290F
 	.db #$FB
 	.db #$FB
 	.db #$FA
-	.db #$FB
+	.db #$FB ;End pigeon init data.
 PIGEON_FRAME_DATA: ; 0x00292A
 	.db #$18
 	.db #$18
@@ -8416,7 +8419,7 @@ PIGEON_TILE+ATTR_INDEX: ; 0x002A30
 	.db #$00
 	.db #$EE
 	.db #$00
-PIGEON_DATA_UNK: ; 0x002A50
+PIGEON_PARTICLE_DATA_GROUP_1: ; 0x002A50
 	.db #$06
 	.db #$05
 	.db #$04
@@ -8480,7 +8483,7 @@ PIGEON_DATA_UNK: ; 0x002A50
 	.db #$BB
 	.db #$00
 	.db #$AA
-PIGEON_DATA_UNK_0: ; 0x002A8F
+PIGEON_PARTICLE_DATA_GROUP_2: ; 0x002A8F
 	.db #$02
 	.db #$02
 	.db #$01
@@ -8532,7 +8535,7 @@ PIGEON_DATA_UNK_0: ; 0x002A8F
 	.db #$BB
 	.db #$BB
 	.db #$AA
-PIGEON_DATA_UNK_1: ; 0x002AC2
+PIGEON_PARTICLE_MOVE_DATA_F: ; 0x002AC2
 	.db #$01
 	.db #$01
 	.db #$00
@@ -8630,14 +8633,14 @@ PIGEON_HIT_TIMER: ; 0x002AF2
 	.db #$00
 	.db #$00
 	.db #$14
-PIGEON_DATA_UNK_2: ; 0x002B22
+PIGEON_PARTICLE_SWITCH_DATA_1: ; 0x002B22
 	.db #$02
 	.db #$04
 	.db #$06
 	.db #$0A
 	.db #$0C
 	.db #$0E
-PIGEON_DATA_UNK_3: ; 0x002B28
+PIGEON_PARTICLE_SWITCH_DATA_2: ; 0x002B28
 	.db #$01
 	.db #$03
 	.db #$05
@@ -8895,7 +8898,7 @@ HITS_REQUIRED_FOR_LEVEL: ; 0x002C02
 	.db #$09
 	.db #$0A
 	.db #$FF ;EOF mark.
-LEVEL_DATA_UNK_0: ; 0x002C17
+PIGEON_LEVEL_DIFFICULTY_LUT: ; 0x002C17
 	.db #$00
 	.db #$08
 	.db #$10

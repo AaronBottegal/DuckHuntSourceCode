@@ -40,7 +40,7 @@ PALETTE_UPLOAD_REQUEST:                  .rs 0x01 ;0x0023
 IN_MENU_FLAG:                            .rs 0x01 ;0x0024
 IN_GAME_STATE:                           .rs 0x01 ;0x0025
 MENU_STATE:                              .rs 0x01 ;0x0026
-WHITE_BOX_DISPLAYED:                     .rs 0x01 ;0x0027
+DYNAMIC_PALETTE_UPLOAD_FLAG:             .rs 0x01 ;0x0027
 SAVE_STATE_X:                            .rs 0x01 ;0x0028
 SAVE_STATE_Y:                            .rs 0x01 ;0x0029
 TIMER_LARGE_COUNT:                       .rs 0x01 ;0x002A
@@ -146,11 +146,11 @@ TARGET_Y_COORD_CPY:                      .rs 0x01 ;0x00B1
 TARGET_X_COORD_CPY:                      .rs 0x01 ;0x00B2
 SPRITE_ATTR_COPY?:                       .rs 0x01 ;0x00B3
 SPRITE_INDEX_VAL:                        .rs 0x01 ;0x00B4
-ZAPPER_TRIG_RELEASED:                    .rs 0x01 ;0x00B5
+ZAPPER_TRIG_RELEASED_FLAG:               .rs 0x01 ;0x00B5
 ZAPPER_PRESSED:                          .rs 0x01 ;0x00B6
 ZAP_PREVIOUS_STATE:                      .rs 0x01 ;0x00B7
 ZAP_STATE_COUNT:                         .rs 0x01 ;0x00B8
-ZAP_SHOT_ENABLED:                        .rs 0x01 ;0x00B9
+ZAP_SHOOTING_ENABLED_FLAG:               .rs 0x01 ;0x00B9
 SHOTS_REMAINING:                         .rs 0x01 ;0x00BA
 GAME_TARGETS_SHOWN?:                     .rs 0x01 ;0x00BB
 NUM_TARGETS_REMAINING:                   .rs 0x01 ;0x00BC
@@ -239,22 +239,14 @@ DUCKS_HIT_ARRAY-1:                       .rs 0x01 ;0x03EF
 DUCKS_HIT_ARRAY:                         .rs 0x0A ;0x03F0 to 0x03F9
 
 	.rsset 0x0400
-UNUSED_UNK_400:                          .rs 0x01 ;0x0400
-UNUSED_UNK_401:                          .rs 0x01 ;0x0401
-UNUSED_UNK_402:                          .rs 0x01 ;0x0402
-UNUSED_ARRAY_403:                        .rs 0x01 ;0x0403
+RAM_PALETTE_DYNAMIC_FILE:                .rs 0x14 ;0x0400 to 0x0413
 
-	.rsset 0x0407
-UNK_407:                                 .rs 0x01 ;0x0407
-
-	.rsset 0x040B
-UNK_40B:                                 .rs 0x01 ;0x040B
-
-	.rsset 0x040F
-UNK_40F:                                 .rs 0x01 ;0x040F
+	.rsset 0x0401
+RAM_PALETTE_DYNAMIC_ADDR_L:              .rs 0x01 ;0x0401
+RAM_PALETTE_DYNAMIC_LENGTH:              .rs 0x01 ;0x0402
 
 	.rsset 0x0413
-UNUSED_UNK_413:                          .rs 0x01 ;0x0413
+RAM_PALETTE_DYNAMIC_EOF_BYTE:            .rs 0x01 ;0x0413
 
 	.rsset 0x0430
 TIMER_STATE_SAVE:                        .rs 0x05 ;0x0430 to 0x0434
@@ -349,7 +341,7 @@ SOUND_STUFF: ; 0x00006B
 SKIP_SOUND: ; 0x00006E
 	JSR DEC_MAIN_TIMERS ;handle timers.
 	JSR READ_CONTROLLERS
-	JSR MAIN_ZAPPER_LOGIC
+	JSR MAIN_GAME_LOGIC
 	INC FRAME_COUNTER
 	JSR CLEAR_NMIRAN/PPUSTUFFFLAG
 LOOP_FOREVER: ; 0x00007C
@@ -385,7 +377,7 @@ NO_PPU_STUFF: ; 0x0000A6
 	PLA 
 	PLP 
 	RTI 
-MAIN_ZAPPER_LOGIC: ; 0x0000B3
+MAIN_GAME_LOGIC: ; 0x0000B3
 	LDA IN_MENU_FLAG
 	BEQ NOT_IN_MENU ;not in menu go here?
 	JMP IN_MENU
@@ -488,7 +480,7 @@ IN_MENU: ; 0x00014E
 	LDA #$00
 	STA ZAPPER_RESULT ;init result
 	LDA #$01
-	STA ZAP_SHOT_ENABLED ;menu always enables zapper.
+	STA ZAP_SHOOTING_ENABLED_FLAG ;menu always enables zapper.
 	STA SHOTS_REMAINING ;menu always has 1 shot.
 	LDA MENU_STATE
 	BEQ SKIP_MENU ;switches screen.
@@ -645,10 +637,10 @@ PREP_PPU_FILE_PTR: ; 0x00025B
 RTS: ; 0x000262
 	RTS 
 UPDATE_PALATTE_FROM_400_DUR_WHITEBOX: ; 0x000263
-	LDY WHITE_BOX_DISPLAYED
+	LDY DYNAMIC_PALETTE_UPLOAD_FLAG
 	BEQ RTS ;no white box displayed
 	LDY #$00 ;could be optim by removing LDY using A
-	STY WHITE_BOX_DISPLAYED ;clear flag.
+	STY DYNAMIC_PALETTE_UPLOAD_FLAG ;clear flag.
 	LDA #$00
 	LDX #$04 ;get data from 0x400
 	BNE PREP_PPU_FILE_PTR ;file from RAM.
@@ -1177,7 +1169,7 @@ PPU_ENABLE_SPRITES/BACKGROUND: ; 0x0005EE
 	JSR WAIT_FOR_NMI
 	LDA PPU_MASK_RAM
 	ORA #$18 ;set sprits/bg
-	BNE STORE_PPUMASK
+	BNE STORE_PPUMASK ;Always taken.
 COPY_OBJ_$3YY_TO_OBJ_ZP: ; 0x0005F7
 	STY OBJ_ZP_ORIGIN_OFFSET ;save for move back later
 	LDX #$00 ;these bytes are the object data.
@@ -1415,7 +1407,7 @@ WRITE_HIGH_SCORE: ; 0x000762
 	CPX #$04
 	BNE WRITE_HIGH_SCORE
 	LDY #$00
-	STY ZAPPER_TRIG_RELEASED
+	STY ZAPPER_TRIG_RELEASED_FLAG
 	STY MENU_STATE ;menu state 0 inits menu.
 	INY 
 	STY IN_MENU_FLAG
@@ -1548,7 +1540,7 @@ GAME_STATE_2_SETUP_ROUND: ; 0x000854
 	NOP 
 	NOP 
 	LDA #$00
-	STA ZAPPER_TRIG_RELEASED ;not true.
+	STA ZAPPER_TRIG_RELEASED_FLAG ;not true.
 	STA MULTIPLE_BG_UPDATE_INDEX ;(cleared with above jsr's)
 	LDA #$03
 	STA IN_GAME_STATE ;switch state
@@ -1585,7 +1577,7 @@ FORWARD_TARGET_2: ; 0x0008A2
 	JSR PROCESS_OBJ_DUCK_TARGET
 	JSR COPY_OBJ_ZP_BACK_TO_ORIGIN
 DO_ZAPPER: ; 0x0008B4
-	LDA ZAP_SHOT_ENABLED
+	LDA ZAP_SHOOTING_ENABLED_FLAG
 	BEQ RTS_8 ;Zapper shot disabled, leave.
 	LDY ACTIVATE_SHOOTING_COUNTDOWN? ;if 
 	BNE WRITE_COUNTDOWN ;count down
@@ -1618,7 +1610,7 @@ TARGET_3_STATE_DECIDED: ; 0x0008E5
 	LDA #$40
 	STA FAST_TIMERS ;store timer
 	LDA #$00
-	STA ZAP_SHOT_ENABLED ;disable shots
+	STA ZAP_SHOOTING_ENABLED_FLAG ;disable shots
 	JMP UPDATE_PPU_GROUP
 DEC_TARGET_ENABLE_COUNTDOWN: ; 0x0008FB
 	LDA COUNTDOWN_TO_ENABLE_TARGETS ;Get value
@@ -1665,7 +1657,7 @@ TARGET_INIT'D: ; 0x00092F
 RTS_9: ; 0x000931
 	RTS 
 TARGET_STATE_2_SPAWN: ; 0x000932
-	LDA ZAP_SHOT_ENABLED ;is zapper enabled?
+	LDA ZAP_SHOOTING_ENABLED_FLAG ;is zapper enabled?
 	BEQ RTS_9 ;leave if not enabled
 	LDA COUNTDOWN_TO_ENABLE_TARGETS
 	BNE RTS_9 ;if not 0 leave.
@@ -2341,7 +2333,7 @@ TRGT_STATE_E_SETUP_BETWEEN_ROUNDS?: ; 0x000D9A
 	LDA #$30 ;mostly self explainatory.
 	STA COUNTDOWN_TO_ENABLE_TARGETS
 	LDA #$01
-	STA ZAP_SHOT_ENABLED
+	STA ZAP_SHOOTING_ENABLED_FLAG
 	LDA #$03
 	STA SHOTS_REMAINING
 	LDA #$01
@@ -2379,22 +2371,22 @@ FIRST_LEVEL: ; 0x000DD9
 	AND #$F0 ;get high group of 4 bits.
 	LSR A ;index mul by 8, basically.
 	LDY #$00 ;index
-	JSR MOVE_DATA_INDEX_TO_403_(UNUSED/LEFTOVER) ;init state data?
+	JSR DUCK_COLOR_DATA_TO_RAM_PALETTE ;init state data?
 	LDA TMP_0C ;get target info again
 	AND #$0F ;get low byte
 	ASL A
 	ASL A
 	ASL A ;shift mul by 8
-	JSR MOVE_DATA_INDEX_TO_403_(UNUSED/LEFTOVER) ;Y continued.
+	JSR DUCK_COLOR_DATA_TO_RAM_PALETTE ;Y continued.
 	LDA #$3F
-	STA UNUSED_UNK_400 ;idk
+	STA RAM_PALETTE_DYNAMIC_FILE ;idk
 	LDA #$10
-	STA UNUSED_UNK_401
-	STA UNUSED_UNK_402
+	STA RAM_PALETTE_DYNAMIC_ADDR_L ;Addr low, 3F10.
+	STA RAM_PALETTE_DYNAMIC_LENGTH ;0x10 bytes.
 	LDA #$00
-	STA UNUSED_UNK_413
+	STA RAM_PALETTE_DYNAMIC_EOF_BYTE ;EOF byte.
 	LDA #$01
-	STA WHITE_BOX_DISPLAYED ;init?
+	STA DYNAMIC_PALETTE_UPLOAD_FLAG ;Upload flag.
 	LDA #$12
 	STA OBJ_ZP_STATE ;move state
 	LDA #$00
@@ -2584,14 +2576,14 @@ RESET_OBJ_ZP_TIMER/PTR_INDEX/Y_COORD: ; 0x000F39
 	LDA #$AC ;Y pos.
 	STA OBJ_ZP_Y_COORD
 	RTS 
-MOVE_DATA_INDEX_TO_403_(UNUSED/LEFTOVER): ; 0x000F44
-	TAX  ;This routine is unused/leftover junk from port.
+DUCK_COLOR_DATA_TO_RAM_PALETTE: ; 0x000F44
+	TAX  ;Index, either 0 or 8, or 10.
 	LDA #$08 ;A to index, loop counter.
 	STA TMP_0D ;counter
 LOOP_DATA_8_BYTES: ; 0x000F49
-	LDA TARGET_3_STATE_INIT?,X ;Load from table.
-	STA UNUSED_ARRAY_403,Y ;Store to 403+Y
-	INX  ;X++
+	LDA DUCK_PALETTE_COLORS_LUT,X ;Load from table.
+	STA RAM_PALETTE_DYNAMIC_FILE+3,Y ;Store to 403+Y
+	INX  ;X++, Both indexes++
 	INY  ;Y++
 	DEC TMP_0D ;Dec loop count.
 	BNE LOOP_DATA_8_BYTES ;Loop until 0.
@@ -2641,12 +2633,12 @@ DISP_FLY_AWAY: ; 0x000F96
 	LDA #$06
 	STA PALETTE_UPLOAD_REQUEST ;orange color?
 	LDA #$01
-	STA WHITE_BOX_DISPLAYED ;not sure why here.
-	LDA #$36
-	STA UNUSED_ARRAY_403 ;Unused it seems.
-	STA UNK_407
-	STA UNK_40B
-	STA UNK_40F
+	STA DYNAMIC_PALETTE_UPLOAD_FLAG ;Upload.
+	LDA #$36 ;Color.
+	STA RAM_PALETTE_DYNAMIC_FILE+3 ;Store to palette RAM.
+	STA RAM_PALETTE_DYNAMIC_FILE+7
+	STA RAM_PALETTE_DYNAMIC_FILE+11
+	STA RAM_PALETTE_DYNAMIC_FILE+15
 RTS_12: ; 0x000FB9
 	RTS 
 DISP_SCORE_SPRITES: ; 0x000FBA
@@ -2893,18 +2885,18 @@ ZAP_TRIGGER_STATE_RELEASED: ; 0x001153
 	LDY #$00
 	STY ZAPPER_PRESSED ;Clear pressed.
 	INY  ;Y = 1
-	STY ZAPPER_TRIG_RELEASED ;Set this flag with Y.
+	STY ZAPPER_TRIG_RELEASED_FLAG ;Set this flag with Y.
 	BNE ZERO_STATE_COUNT ;Always taken.
 PROCESS_ZAPPER: ; 0x001160
-	LDA ZAP_SHOT_ENABLED
-	BNE SHOOTING_ENABLED ;has to be enabled.
+	LDA ZAP_SHOOTING_ENABLED_FLAG ;Test flag.
+	BNE SHOOTING_ENABLED ;If flag is set, goto.
 TRIG_NO_RELEASE: ; 0x001164
 	LDA #$00
-	STA ZAPPER_TRIG_RELEASED ;not released.
+	STA ZAPPER_TRIG_RELEASED_FLAG ;not released.
 RTS_16: ; 0x001168
 	RTS 
 SHOOTING_ENABLED: ; 0x001169
-	LDA ZAPPER_TRIG_RELEASED
+	LDA ZAPPER_TRIG_RELEASED_FLAG
 	BEQ RTS_16 ;Wait for release to do anything.
 	LDA SHOTS_REMAINING ;Load shots left.
 	BEQ TRIG_NO_RELEASE ;If 0, hold release false.
@@ -2912,14 +2904,14 @@ SHOOTING_ENABLED: ; 0x001169
 	LDA #$01
 	STA SHOT_FIRED_FLAG ;Set flag true.
 	LDA #$00
-	STA ZAPPER_TRIG_RELEASED ;Not released set.
+	STA ZAPPER_TRIG_RELEASED_FLAG ;Set not released.
 	JSR SND_SET_F0_#$02 ;Sound shot?
 	LDA #$04 ;Palette 3 for screen, all black BG, white sprite 0.
 	STA PALETTE_UPLOAD_REQUEST ;Set var.
 	JSR CLEAR_SPRITES ;Clear all sprites.
 	JSR PPU_DISABLE_SPRITES/BACKGROUND ;Wait for NMI.
 	LDA IN_MENU_FLAG ;Test in-menu.
-	BEQ IN_GAME_SHOT_TEST_TARGET_STEP_1 ;Do in game.
+	BEQ IN_GAME_SHOT_TESTING ;Do in game.
 	JSR SND_SET_F0_#$01 ;Disable all registers.
 	JSR PLAY_SOUNDS ;Forward audio.
 	JSR SND_SET_F0_#$02 ;Init noise+dmc?
@@ -2927,8 +2919,8 @@ SHOOTING_ENABLED: ; 0x001169
 	STA LIGHT_HIT_INDEX ;Set to obj for hit.
 	LDA #$FF ;Scroll with fine X, not PPU_CTRL?
 	STA PPU_SCROLL_X_RAM ;Okay then we'll set scroll this way lol.
-	BNE ZAPPER_TEST_HIT_SCREEN ;Always taken.
-IN_GAME_SHOT_TEST_TARGET_STEP_1: ; 0x00119F
+	BNE WAIT_NO_LIGHT_PREP ;Always taken, goto.
+IN_GAME_SHOT_TESTING: ; 0x00119F
 	LDA #$05 ;Palette 5, game palette black?
 	STA PALETTE_UPLOAD_REQUEST ;Upload.
 	LDA #$00
@@ -2950,16 +2942,16 @@ DETECT_TARGET_2: ; 0x0011B5
 	BNE UPLOAD_PELETTE_FOR_GAME ;Can't shoot if not state 3.
 TARGET_TEST_HIT: ; 0x0011C7
 	JSR OBJ_Y_SKELETON/POS_ZAPPER_HIT_BOX_CREATE ;Display box sprite.
-ZAPPER_TEST_HIT_SCREEN: ; 0x0011CA
+WAIT_NO_LIGHT_PREP: ; 0x0011CA
 	JSR CLEAR_NMIRAN/PPUSTUFFFLAG ;clear NMI_RAN
-WAIT_NO_LIGHT: ; 0x0011CD
+WAIT_NO_LIGHT_LOOP: ; 0x0011CD
 	LDA NMI_RAN
-	BNE NO_LIGHT_SUCCESS ;if get to 1 with no light, success.
+	BNE NO_LIGHT_SUCCESS ;If whole frame no light, success.
 	LDA APU_FRAMECOUNTER ;get zapper state
 	AND #$08 ;Test light.
-	BNE WAIT_NO_LIGHT ;Loop if none yet.
-	LDA LIGHT_HIT_INDEX ;Failure here. Load 0?
-	JMP ACTUAL_TARGET_NOT_HIT ;does menu stuff too.
+	BNE WAIT_NO_LIGHT_LOOP ;Loop if no light yet, success.
+	LDA LIGHT_HIT_INDEX ;Failure here. Load index.
+	JMP TESTING_TARGET_NOT_HIT ;does menu stuff too.
 UPLOAD_PELETTE_FOR_GAME: ; 0x0011DD
 	LDA GAME_MODE_IN ;get mode in.
 	CMP #$02 ;is pigeons.
@@ -2970,10 +2962,10 @@ UPLOAD_PALETTE_DUCKS: ; 0x0011E6
 	STY PALETTE_UPLOAD_REQUEST ;palette 2
 	JSR WAIT_FOR_NMI ;wait until palette updated.
 	LDY #$01
-	STY WHITE_BOX_DISPLAYED ;set flag
+	STY DYNAMIC_PALETTE_UPLOAD_FLAG ;set flag
 	JMP DISP_WHITE_BOX ;displays the white box.
 NO_LIGHT_SUCCESS: ; 0x0011F4
-	JSR CLEAR_NMIRAN/PPUSTUFFFLAG ;previous test passed.
+	JSR CLEAR_NMIRAN/PPUSTUFFFLAG ;Setup flag.
 	LDA PPU_MASK_RAM
 	AND #$E7 ;disable sprites/bg
 	STA PPU_MASK_RAM
@@ -3002,10 +2994,10 @@ TEST_LIGHT_LOOP: ; 0x001222
 	BNE TEST_LIGHT_LOOP ;not detected, loop.
 	LDA LIGHT_HIT_INDEX ;detected, hit target.
 	CMP #$02
-	BNE TARGET_WAS_HIT ;target hit.
-	LDA #$01 ;menu hit
-WRITE_ZAP_HIT_FROM_A: ; 0x001235
-	STA ZAPPER_RESULT ;hit=1,miss=2
+	BNE TARGET_WAS_HIT ;Not value, goto.
+	LDA #$01 ;Menu hit.
+WRITE_ZAPPER_RESULT_FROM_A: ; 0x001235
+	STA ZAPPER_RESULT ;1=Hit, 2=Miss
 	LDA #$01 ;upload palette 0
 	STA PALETTE_UPLOAD_REQUEST
 	LDA #$00 ;back to screen.
@@ -3019,41 +3011,41 @@ TARGET_WAS_HIT: ; 0x001246
 	LDA LIGHT_HIT_INDEX
 	BNE HIT_TARGET_2
 	STX TRGT1_STATE ;target 1 hit.
-	JMP IN_GAME_0
+	JMP TEST_TARGETS_CONTINUE
 HIT_TARGET_2: ; 0x001256
 	STX TRGT2_STATE ;target 2 hit.
-IN_GAME_0: ; 0x001259
+TEST_TARGETS_CONTINUE: ; 0x001259
 	LDA GAME_MODE_IN
 	CMP #$02
 	BEQ GAME_MODE_PIGEONS
 	LDY #$01 ;palette ducks.
-	STY WHITE_BOX_DISPLAYED ;Enable this too...?
+	STY DYNAMIC_PALETTE_UPLOAD_FLAG ;Set flag.
 	INY  ;Y = 2
-	BNE UPLOAD_PALETTE_ORIGINAL ;Put that palette in Y.
+	BNE UPLOAD_PALETTE_ORIGINAL_FOR_MODE ;Put that palette in Y.
 GAME_MODE_PIGEONS: ; 0x001266
 	LDY #$03 ;pallette pigeons.
-UPLOAD_PALETTE_ORIGINAL: ; 0x001268
+UPLOAD_PALETTE_ORIGINAL_FOR_MODE: ; 0x001268
 	STY PALETTE_UPLOAD_REQUEST ;store palette.
 DISP_WHITE_BOX: ; 0x00126A
 	JSR CLEAR_SPRITES ;clear.
-	JMP PPU_ENABLE_SPRITES/BACKGROUND ;show screen again.
+	JMP PPU_ENABLE_SPRITES/BACKGROUND ;Show screen again. Abuse RTS.
 TARGET_NOT_HIT: ; 0x001270
 	LDA LIGHT_HIT_INDEX
-	BNE ACTUAL_TARGET_NOT_HIT
+	BNE TESTING_TARGET_NOT_HIT
 	LDA TRGT2_TYPE
-	BEQ IN_GAME_0 ;skip if not active.
+	BEQ TEST_TARGETS_CONTINUE ;skip if not active.
 	LDA TRGT2_STATE
 	CMP #$03
-	BNE IN_GAME_0 ;skip if not active.
+	BNE TEST_TARGETS_CONTINUE ;skip if not active.
 	LDA #$01
 	STA LIGHT_HIT_INDEX ;testing target 2
 	JSR CLEAR_NMIRAN/PPUSTUFFFLAG
 	JMP TEST_LIGHT_LOOP
-ACTUAL_TARGET_NOT_HIT: ; 0x00128A
-	CMP #$02 ;Test if in menu.
-	BNE IN_GAME_0 ;not on menu
-	LDA #$02 ;why load?
-	BNE WRITE_ZAP_HIT_FROM_A ;saved a whopping -2 bytes, -2 cycles.
+TESTING_TARGET_NOT_HIT: ; 0x00128A
+	CMP #$02 ;Test hit index in A.
+	BNE TEST_TARGETS_CONTINUE ;!= 2, continue.
+	LDA #$02 ;Miss value.
+	BNE WRITE_ZAPPER_RESULT_FROM_A ;Always taken.
 OBJ_Y_SKELETON/POS_ZAPPER_HIT_BOX_CREATE: ; 0x001292
 	LDA TRGT1_Y_COORD,Y ;Move the target Y to ZP.
 	STA TARGET_Y_COORD_CPY
@@ -3232,7 +3224,7 @@ END_ROUND_STATE_3_NEXT_ROUND: ; 0x0013C9
 RTS_18: ; 0x0013D1
 	RTS 
 UPDATE_ACTIVE_TARGET_STATUS: ; 0x0013D2
-	LDA WHITE_BOX_DISPLAYED
+	LDA DYNAMIC_PALETTE_UPLOAD_FLAG
 	BNE RTS_19 ;white box displayed, ret.
 	INC DISPLAY_BLINK_TIMER
 	LDY #$00 ;index, target 1 first.
@@ -3280,14 +3272,14 @@ COMMIT_TILE: ; 0x001413
 RTS_19: ; 0x001427
 	RTS 
 DISP_WORD_SHOT_HANDLER: ; 0x001428
-	LDA ZAP_SHOT_ENABLED
+	LDA ZAP_SHOOTING_ENABLED_FLAG
 	BEQ RTS_19 ;shots disabled
 	LDA SHOTS_REMAINING
 	BNE RTS_19 ;if any remaining, leave.
 	LDA SHOT_BLINK_COUNTER
 	AND #$07
 	BNE INC_BLINK_COUNTER ;if bottom bits set.
-	LDA WHITE_BOX_DISPLAYED
+	LDA DYNAMIC_PALETTE_UPLOAD_FLAG
 	BNE RTS_19 ;if white box, rts
 	LDA SHOT_BLINK_COUNTER
 	AND #$08
@@ -3517,8 +3509,8 @@ LEVEL_MAXED: ; 0x0015AD
 	LDA #$02
 	STA NUM_TARGETS_REMAINING ;set # trgts
 	LDA #$00
-	STA ZAPPER_TRIG_RELEASED ;disable trigger.
-	STA ZAP_SHOT_ENABLED ;disable shots.
+	STA ZAPPER_TRIG_RELEASED_FLAG ;disable trigger.
+	STA ZAP_SHOOTING_ENABLED_FLAG ;disable shots.
 	STA TRGT_SHOT_DURING_ATTEMPT ;clear any hit. unused in pigeons?
 	JSR PPU_DISP_SHOTS_LEFT ;show shots.
 	JSR PPU_DISP_TARGET_STATUS ;show targets.
@@ -3571,7 +3563,7 @@ IS_MOVING: ; 0x001627
 	BNE RTS_20 ;rts if any state.
 	JSR DISP_SHOT_TEXT ;display text always.
 	LDA #$00
-	STA ZAP_SHOT_ENABLED ;disable shot.
+	STA ZAP_SHOOTING_ENABLED_FLAG ;disable shot.
 	LDA GAME_TARGETS_SHOWN? ;end of round?
 	CMP #$0A ;end of targets.
 	BEQ ALL_TARGETS_SHOWN?
@@ -3625,7 +3617,7 @@ TARGET_STATE_2_INIT_SPECIFIC_INFO: ; 0x001678
 	LDA COUNTDOWN_TO_ENABLE_TARGETS
 	BNE RTS_21 ;not ready to enable.
 	LDA #$01
-	STA ZAP_SHOT_ENABLED ;enable shots.
+	STA ZAP_SHOOTING_ENABLED_FLAG ;enable shots.
 	JSR RNG_ADVANCE ;get random number.
 	AND #$3F ;get %0011 1111
 	TAY 
@@ -7580,8 +7572,8 @@ TARGET_0_STATE_6_SCRIPT: ; 0x002718
 	.db #$04
 	.db #$08
 	.db #$FE
-TARGET_3_STATE_INIT?: ; 0x002724
-	.db #$21
+DUCK_PALETTE_COLORS_LUT: ; 0x002724
+	.db #$21 ;Black
 	.db #$30
 	.db #$0A
 	.db #$0F
@@ -7589,7 +7581,7 @@ TARGET_3_STATE_INIT?: ; 0x002724
 	.db #$30
 	.db #$26
 	.db #$0F
-	.db #$21
+	.db #$21 ;Blue
 	.db #$30
 	.db #$14
 	.db #$02
@@ -7597,7 +7589,7 @@ TARGET_3_STATE_INIT?: ; 0x002724
 	.db #$30
 	.db #$26
 	.db #$02
-	.db #$21
+	.db #$21 ;Red
 	.db #$30
 	.db #$0F
 	.db #$05

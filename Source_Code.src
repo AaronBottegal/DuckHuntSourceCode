@@ -364,7 +364,7 @@ VECTOR_ENTRY_NMI: ; 0x000086
 	BNE NO_PPU_STUFF ;needs to be 0 to run PPU stuff.
 	JSR PPU_UPLOAD_UPDATE_BUF
 	JSR UPLOAD_PALETTE_REQUESTED
-	JSR UPDATE_PALATTE_FROM_400_DUR_WHITEBOX
+	JSR UPDATE_RAM_PALETTE_FOR_SPRITES
 	JSR SET_PPU_SCROLL
 NO_PPU_STUFF: ; 0x0000A6
 	LDY #$01
@@ -633,10 +633,10 @@ UPLOAD_PALETTE_REQUESTED: ; 0x000249
 PREP_PPU_FILE_PTR: ; 0x00025B
 	STA TMP_00 ;set up pointers to data
 	STX TMP_01
-	JSR PPU_SCREEN_FILE_TEST_STREAM
+	JSR PPU_DATA_FILE_TEST_STREAM
 RTS: ; 0x000262
 	RTS 
-UPDATE_PALATTE_FROM_400_DUR_WHITEBOX: ; 0x000263
+UPDATE_RAM_PALETTE_FOR_SPRITES: ; 0x000263
 	LDY DYNAMIC_PALETTE_UPLOAD_FLAG
 	BEQ RTS ;no white box displayed
 	LDY #$00 ;could be optim by removing LDY using A
@@ -821,28 +821,28 @@ SET_PPUCTRL: ; 0x000392
 	PLA  ;Get flags
 	ASL A ;Single byte flag.
 	BCC DATA_CHUNK ;setting up a chunk
-	ORA #$02 ;single block flag
-	INY  ;move ptr to block data
+	ORA #$02 ;single block flag to final shifted bit.
+	INY  ;Stream pointer inc.
 DATA_CHUNK: ; 0x00039E
 	LSR A ;move other parts all back
-	LSR A ;this sets carry to 0:screen, or 1:block
+	LSR A ;Carry set is important. 0=Read tile chunk, 1=Use single tile.
 	TAX  ;X=original bottom bits 0-5, used as counter.
 PPU_DATA_LOOP: ; 0x0003A1
-	BCS SINGLE BLOCK ;if CS, only writing one block type.
-	INY  ;only moves on carry clear
-SINGLE BLOCK: ; 0x0003A4
+	BCS SINGLE_BLOCK_SKIP_STREAM_ADVANCE ;if CS, only writing one block type.
+	INY  ;Stream++.
+SINGLE_BLOCK_SKIP_STREAM_ADVANCE: ; 0x0003A4
 	LDA (TMP_00),Y ;get data
 	STA PPU_Data ;store data
 	DEX  ;move bytes
-	BNE PPU_DATA_LOOP ;loop if not done. MAX=64 bytes
-	SEC  ;not sure
-	TYA  ;get ready for maffs
-	ADC TMP_00 ;move pointer
-	STA TMP_00
-	LDA #$00
+	BNE PPU_DATA_LOOP ;loop if not done. 63b max.
+	SEC  ;To add additional.
+	TYA  ;Indexation value to A.
+	ADC TMP_00 ;Move ZP pointer+1, hence SEC.
+	STA TMP_00 ;Store back.
+	LDA #$00 ;Handle overflow to upper value.
 	ADC TMP_01
 	STA TMP_01
-PPU_SCREEN_FILE_TEST_STREAM: ; 0x0003B8
+PPU_DATA_FILE_TEST_STREAM: ; 0x0003B8
 	LDX PPU_Status ;reset latch.
 	LDY #$00 ;start at beginning
 	LDA (TMP_00),Y ;get data at ptr
@@ -1195,7 +1195,7 @@ LOOP_MOVE_BACK: ; 0x00060B
 UPLOAD_PPU_FILE: ; 0x000617
 	STX TMP_00
 	STY TMP_01
-	JMP PPU_SCREEN_FILE_TEST_STREAM
+	JMP PPU_DATA_FILE_TEST_STREAM
 CLEAR_NMIRAN/PPUSTUFFFLAG: ; 0x00061E
 	LDA #$00
 	STA NMI_RAN ;NMI not ran.
@@ -7057,22 +7057,22 @@ OTHER_SCREEN_DATA?: ; 0x002515
 	.db #$55
 	.db #$00
 PALLETE_PTR_L: ; 0x002532
-	.LOW PALLETTE_PTR_00
+	.LOW PALETTE_PPU_FILE_00
 PALLETE_PTR_H: ; 0x002533
-	.HIGH PALLETTE_PTR_00
-	.LOW PALLETTE_PTR_01
-	.HIGH PALLETTE_PTR_01
-	.LOW PALLETTE_PTR_02
-	.HIGH PALLETTE_PTR_02
-	.LOW PALLETTE_PTR_03
-	.HIGH PALLETTE_PTR_03
-	.LOW PALLETTE_PTR_04
-	.HIGH PALLETTE_PTR_04
-	.LOW PALLETTE_PTR_05
-	.HIGH PALLETTE_PTR_05
-	.LOW PALLETTE_PTR_06
-	.HIGH PALLETTE_PTR_06
-PALLETTE_PTR_00: ; 0x002540
+	.HIGH PALETTE_PPU_FILE_00
+	.LOW PALETTE_PPU_FILE_01
+	.HIGH PALETTE_PPU_FILE_01
+	.LOW PALETTE_PPU_FILE_02
+	.HIGH PALETTE_PPU_FILE_02
+	.LOW PALETTE_PPU_FILE_03
+	.HIGH PALETTE_PPU_FILE_03
+	.LOW PALETTE_PPU_FILE_04
+	.HIGH PALETTE_PPU_FILE_04
+	.LOW PALETTE_PPU_FILE_05
+	.HIGH PALETTE_PPU_FILE_05
+	.LOW PALETTE_PPU_FILE_06
+	.HIGH PALETTE_PPU_FILE_06
+PALETTE_PPU_FILE_00: ; 0x002540
 	.db #$3F ;3F00 addr
 	.db #$00
 	.db #$10 ;16 bytes, half pallet.
@@ -7097,7 +7097,7 @@ PALLETTE_PTR_00: ; 0x002540
 	.db #$50 ;3F10, 10 bytes, single block.
 	.db #$0F
 	.db #$00
-PALLETTE_PTR_01: ; 0x002558
+PALETTE_PPU_FILE_01: ; 0x002558
 	.db #$3F ;3F00 addr
 	.db #$00
 	.db #$20 ;whole pallet, 32 bytes.
@@ -7134,7 +7134,7 @@ PALLETTE_PTR_01: ; 0x002558
 	.db #$17
 	.db #$0F
 	.db #$00
-PALLETTE_PTR_02: ; 0x00257C
+PALETTE_PPU_FILE_02: ; 0x00257C
 	.db #$3F ;addr 3f00
 	.db #$00
 	.db #$20 ;32 bytes, whole pallet.
@@ -7171,7 +7171,7 @@ PALLETTE_PTR_02: ; 0x00257C
 	.db #$17
 	.db #$0F
 	.db #$00
-PALLETTE_PTR_03: ; 0x0025A0
+PALETTE_PPU_FILE_03: ; 0x0025A0
 	.db #$3F ;ADDR 3F00, fired screen?
 	.db #$00
 	.db #$60 ;clear whole pallet, 32 bytes of 0F
@@ -7181,7 +7181,7 @@ PALLETTE_PTR_03: ; 0x0025A0
 	.db #$01
 	.db #$30
 	.db #$00
-PALLETTE_PTR_04: ; 0x0025A9
+PALETTE_PPU_FILE_04: ; 0x0025A9
 	.db #$3F ;3F00 addr, all black bg, sprites white.
 	.db #$00
 	.db #$60 ;clear whole pallet, 32 bytes of 0F.
@@ -7193,7 +7193,7 @@ PALLETTE_PTR_04: ; 0x0025A9
 	.db #$30
 	.db #$30
 	.db #$00
-PALLETTE_PTR_06: ; 0x0025B4
+PALETTE_PPU_FILE_06: ; 0x0025B4
 	.db #$3F ;3F10 ADDR
 	.db #$10
 	.db #$10 ;16 bytes
@@ -7213,7 +7213,7 @@ PALLETTE_PTR_06: ; 0x0025B4
 	.db #$07
 	.db #$17
 	.db #$0F
-PALLETTE_PTR_05: ; 0x0025C7
+PALETTE_PPU_FILE_05: ; 0x0025C7
 	.db #$3F ;3F00 Addr
 	.db #$00
 	.db #$10 ;16 bytes

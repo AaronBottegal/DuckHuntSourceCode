@@ -1,0 +1,11 @@
+PPU "file" format:
+
+PPU_ADDR H
+	If 0x00, EOF.
+PPU_ADDR L
+SETTINGS [ISCC.CCCC]
+	I=Increment +32 flag.
+	S=Single block provided after to use for count, otherwise array of bytes matching count.
+	C=Count, 0x01 to 0x3F value is as-is. 0x00 would be treated as 256 but also would break the code in Duck Hunt.
+[SINGLE BYTE OR ARRAY OF BYTES MATCHING COUNT]
+Repeat until EOF.

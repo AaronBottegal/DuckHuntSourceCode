@@ -8931,10 +8931,10 @@ MESSAGES_HIGH: ; 0x002C39
 	.db #$AA ;PART OF 9D STUFF.
 	.LOW MESSAGE_ROUND ;actual first index. 0 does different in this code.
 	.HIGH MESSAGE_ROUND
-	.LOW MESSAGE_UNK
-	.HIGH MESSAGE_UNK
-	.LOW MESSAGE_UNK_0
-	.HIGH MESSAGE_UNK_0
+	.LOW MESSAGE_GO
+	.HIGH MESSAGE_GO
+	.LOW MESSAGE_GO_BLANK
+	.HIGH MESSAGE_GO_BLANK
 	.LOW MESSAGE_GOOD
 	.HIGH MESSAGE_GOOD
 	.LOW MESSAGE_PERFECT
@@ -8984,7 +8984,7 @@ MESSAGE_ROUND: ; 0x002C4A
 	.db #$FC
 	.db #$FC
 	.db #$FD
-MESSAGE_UNK: ; 0x002C70
+MESSAGE_GO: ; 0x002C70
 	.db #$EE
 	.db #$10
 	.db #$35
@@ -8994,16 +8994,16 @@ MESSAGE_UNK: ; 0x002C70
 	.db #$B7
 	.db #$B7
 	.db #$B7
-	.db #$10
+	.db #$10 ;Text here.
 	.db #$18
-	.db #$FE
+	.db #$FE ;!!
 	.db #$B7
 	.db #$B7
 	.db #$B7
 	.db #$B7
 	.db #$B7
 	.db #$B7
-MESSAGE_UNK_0: ; 0x002C82
+MESSAGE_GO_BLANK: ; 0x002C82
 	.db #$EF
 	.db #$04
 	.db #$23

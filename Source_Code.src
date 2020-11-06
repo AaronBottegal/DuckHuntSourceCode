@@ -6088,7 +6088,7 @@ FRAME_11_DATA_07: ; 0x0020F0
 	.db #$20
 	.db #$C1
 	.db #$05
-	.db #$64
+	.db #$64 ;In SMB/DH, this bytes is 0x24
 	.db #$65
 	.db #$66
 	.db #$67
@@ -6156,7 +6156,7 @@ FRAME_11_DATA_07: ; 0x0020F0
 	.db #$07
 	.db #$85
 	.db #$86
-	.db #$64
+	.db #$64 ;In SMB/DH, this bytes is 0x24
 	.db #$87
 	.db #$88
 	.db #$67
@@ -13627,6 +13627,6 @@ FRAME_7_DATA_03: ; 0x003FF0
 	.LOW VECTOR_ENTRY_NMI
 	.HIGH VECTOR_ENTRY_NMI
 	.LOW VECTOR_ENTRY_RESET
-	.HIGH VECTOR_ENTRY_RESET
+	.HIGH VECTOR_ENTRY_RESET ;In SMB/DH, points to 0x8000.
 	.LOW VECTOR_ENTRY_RESET
 	.HIGH VECTOR_ENTRY_RESET

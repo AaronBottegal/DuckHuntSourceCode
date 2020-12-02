@@ -113,9 +113,9 @@ SCORE_UPPER_SPRITE:                      .rs 0x02 ;0x0083 to 0x0084
 	.rsset 0x0093
 PIGEON_MOVE_93:                          .rs 0x01 ;0x0093
 PIGEON_MOVE_94:                          .rs 0x01 ;0x0094
-PIGEON_MOVE_GROUPED_95:                  .rs 0x01 ;0x0095
-PIGEON_MOVE_GROUPED_96:                  .rs 0x01 ;0x0096
-PIGEON_MOVE_GROUPED_97:                  .rs 0x01 ;0x0097
+PIGEON_MOVE_GROUPED_95_SEED+SHIFT:       .rs 0x01 ;0x0095
+PIGEON_MOVE_GROUPED_96_CLEARED:          .rs 0x01 ;0x0096
+PIGEON_MOVE_GROUPED_97_CLEARED:          .rs 0x01 ;0x0097
 DUCK_COLOR_COMBO_INDEX:                  .rs 0x01 ;0x0098
 TARGETS_ACTIVATED_COUNT?:                .rs 0x01 ;0x0099
 SHOT_BLINK_COUNTER:                      .rs 0x01 ;0x009A
@@ -160,14 +160,14 @@ SHOT_FIRED_FLAG:                         .rs 0x01 ;0x00BE
 	.rsset 0x00C1
 LEVEL:                                   .rs 0x01 ;0x00C1
 HITS_REQUIRED_RAM_INDEX:                 .rs 0x01 ;0x00C2
-SCORE_INVERT_REQUEST_FLAG_SCORE:         .rs 0x01 ;0x00C3
+SCORE_INVERT_REQUEST_FLAG:               .rs 0x01 ;0x00C3
 SCORE_XX0000:                            .rs 0x01 ;0x00C4
 SCORE_00XX00:                            .rs 0x01 ;0x00C5
 SCORE_0000XX:                            .rs 0x01 ;0x00C6
-SCORE_INVERT_REQUEST_FLAG_CPYS:          .rs 0x01 ;0x00C7
-SCORE_CPY_XX0000:                        .rs 0x01 ;0x00C8
-SCORE_CPY_00XX00:                        .rs 0x01 ;0x00C9
-SCORE_CPY_0000XX:                        .rs 0x01 ;0x00CA
+SCORE_INVERT_REQUEST_FLAG_COPY:          .rs 0x01 ;0x00C7
+SCORE_COPY_XX0000:                       .rs 0x01 ;0x00C8
+SCORE_COPY_00XX00:                       .rs 0x01 ;0x00C9
+SCORE_COPY_0000XX:                       .rs 0x01 ;0x00CA
 
 	.rsset 0x00D0
 SND_D0_STREAM_INDEX:                     .rs 0x01 ;0x00D0
@@ -211,6 +211,9 @@ SND_FC_IND_PTR:                          .rs 0x01 ;0x00FC
 SND_FD_FLAG_UNK:                         .rs 0x01 ;0x00FD
 SND_FE_INDIR_PTR:                        .rs 0x01 ;0x00FE
 SND_FF_FLAG_UNK:                         .rs 0x01 ;0x00FF
+
+	.rsset 0x0200
+SPRITE_PAGE:                             .rs 0x100 ;0x0200 to 0x02FF
 
 	.rsset 0x02F0
 POINTS_SPRITE_AREA:                      .rs 0x10 ;0x02F0 to 0x02FF
@@ -320,7 +323,7 @@ SKIP_SEED_RNG: ; 0x00002C
 	JSR INIT_SOUND_PTR_TO_CODE_VARS_HIGH_ADDR_BYTE
 	LDA #$90
 	STA PPU_Ctrl ;sprites from 0x1000, enable NMI.
-	STA PPU_CTRL_RAM ;i personally would reverse these writes.
+	STA PPU_CTRL_RAM ;I personally would reverse these writes.
 	LDA #$02
 	STA PPU_MASK_RAM
 	LDX #$0B
@@ -341,7 +344,7 @@ SOUND_STUFF: ; 0x00006B
 SKIP_SOUND: ; 0x00006E
 	JSR DEC_MAIN_TIMERS ;handle timers.
 	JSR READ_CONTROLLERS
-	JSR MAIN_GAME_LOGIC
+	JSR MAIN_GAME_SCRIPT
 	INC FRAME_COUNTER
 	JSR CLEAR_NMIRAN/PPUSTUFFFLAG
 LOOP_FOREVER: ; 0x00007C
@@ -377,16 +380,16 @@ NO_PPU_STUFF: ; 0x0000A6
 	PLA 
 	PLP 
 	RTI 
-MAIN_GAME_LOGIC: ; 0x0000B3
+MAIN_GAME_SCRIPT: ; 0x0000B3
 	LDA IN_MENU_FLAG
 	BEQ NOT_IN_MENU ;not in menu go here?
 	JMP IN_MENU
 NOT_IN_MENU: ; 0x0000BA
 	LDA CTRL_HELD
 	AND #$10 ;button start
-	BEQ SWITCH_UNBLOCK_PAUSE ;no change.
+	BEQ CLEAR_BLOCK_UNPAUSE+SCRIPT ;not pressed.
 	LDY BLOCK_UNPAUSE
-	BNE IN_GAME_STATE_SWITCH ;skip unpausing for one update?
+	BNE IN_GAME_SCRIPT_SWITCH ;skip unpausing.
 	INY  ;Y=1
 	STY BLOCK_UNPAUSE ;set to 1
 	LDY IN_GAME_STATE ;pausable states?
@@ -399,7 +402,7 @@ NOT_IN_MENU: ; 0x0000BA
 	CPY #$0B
 	BEQ PAUSE_GAME
 	CPY #$0C
-	BNE IN_GAME_STATE_SWITCH ;state cant be paused continue on.
+	BNE IN_GAME_SCRIPT_SWITCH ;state cant be paused continue on.
 PAUSE_GAME: ; 0x0000DF
 	LDX #$05 ;Saves frame counter because 5 not 4.
 SAVE_TIMERS_LOOP: ; 0x0000E1
@@ -432,11 +435,11 @@ DONT_CHANGE_STATE: ; 0x000112
 	JSR SND_SET_F0_#$01 ;Do sound.
 	JSR WAIT_FOR_NMI
 	JMP SND_SET_F1_#$80 ;pause sound?
-SWITCH_UNBLOCK_PAUSE: ; 0x00011E
+CLEAR_BLOCK_UNPAUSE+SCRIPT: ; 0x00011E
 	LDA #$00
 	STA BLOCK_UNPAUSE ;clear paused setup flag.
-IN_GAME_STATE_SWITCH: ; 0x000123
-	LDA IN_GAME_STATE
+IN_GAME_SCRIPT_SWITCH: ; 0x000123
+	LDA IN_GAME_STATE ;Load state.
 	JSR SWITCH_TO_CODE_PTRS
 	.LOW GAME_STATE_0_INIT_RAM+SCREENS ;setup game start.
 	.HIGH GAME_STATE_0_INIT_RAM+SCREENS
@@ -444,16 +447,16 @@ IN_GAME_STATE_SWITCH: ; 0x000123
 	.HIGH GAME_STATE_1_SETUP_DUCKS
 	.LOW GAME_STATE_2_SETUP_ROUND ;ducks info setup.
 	.HIGH GAME_STATE_2_SETUP_ROUND
-	.LOW GAME_STATE_3_ZAP+TRGTS(+STATUS)+SHOT ;main game loop?
+	.LOW GAME_STATE_3_ZAP+TRGTS(+STATUS)+SHOT ;main game loop.
 	.HIGH GAME_STATE_3_ZAP+TRGTS(+STATUS)+SHOT
 	.LOW GAME_STATE_C_END_ROUND_SWITCH ;end round routines.
 	.HIGH GAME_STATE_C_END_ROUND_SWITCH
 	.LOW RTS_3 ;RTS's
 	.HIGH RTS_3
-	.LOW GAME_STATE_6_IDK ;start of round stuff?
-	.HIGH GAME_STATE_6_IDK
-	.LOW GAME_STATE_7_SCORE+TRGT3 ;continue target 3 only?
-	.HIGH GAME_STATE_7_SCORE+TRGT3
+	.LOW GAME_STATE_6_PREP_GAME_OVER ;prep game over.
+	.HIGH GAME_STATE_6_PREP_GAME_OVER
+	.LOW GAME_STATE_7_(DOG+)HIGHSCORE+TO_MENU ;game over.
+	.HIGH GAME_STATE_7_(DOG+)HIGHSCORE+TO_MENU
 	.LOW GAME_STATE_8_SETUP_PIGEONS ;Pigeons init.
 	.HIGH GAME_STATE_8_SETUP_PIGEONS
 	.LOW GAME_STATE_9_PIGEON_RND_SETUP ;pigeon setup.
@@ -464,8 +467,8 @@ IN_GAME_STATE_SWITCH: ; 0x000123
 	.HIGH GAME_STATE_B_PIGEON_MAIN
 	.LOW GAME_STATE_C_END_ROUND_SWITCH ;end round routines.
 	.HIGH GAME_STATE_C_END_ROUND_SWITCH
-	.LOW GAME_STATE_D_WAIT_UPDATES ;unsure
-	.HIGH GAME_STATE_D_WAIT_UPDATES
+	.LOW GAME_STATE_D_INTRO_MESSAGE_SCRIPT ;message script.
+	.HIGH GAME_STATE_D_INTRO_MESSAGE_SCRIPT
 	.LOW RTS_3 ;removed?
 	.HIGH RTS_3
 	.LOW RTS_3 ;removed?
@@ -478,7 +481,7 @@ IN_GAME_STATE_SWITCH: ; 0x000123
 	.HIGH GAME_STATE_12_WAIT_TO_FORWARD
 IN_MENU: ; 0x00014E
 	LDA #$00
-	STA ZAPPER_RESULT ;init result
+	STA ZAPPER_RESULT ;Init result.
 	LDA #$01
 	STA ZAP_SHOOTING_ENABLED_FLAG ;menu always enables zapper.
 	STA SHOTS_REMAINING ;menu always has 1 shot.
@@ -612,7 +615,7 @@ CLEAR_SPRITES: ; 0x00023B
 	LDY #$00
 	LDA #$F4 ;Clear value.
 CLR_LOOP: ; 0x00023F
-	STA $0200,Y ;clr sprites.
+	STA SPRITE_PAGE,Y ;clr sprites.
 	INY 
 	INY 
 	INY 
@@ -921,45 +924,45 @@ SCORE_ADD/SUB: ; 0x000437
 	TAX  ;To X, Score index selecting.
 	LDA TMP_04 ;SCORE_ADD_FLAG here.
 	BEQ SUBTRACT_DEFAULT ;Sub force.
-	LDA SCORE_INVERT_REQUEST_FLAG_SCORE,X
+	LDA SCORE_INVERT_REQUEST_FLAG,X
 	BEQ SCORE_GROUP_SUBTRACT ;If zero, do opposite?
 SCORE_GROUP_ADD: ; 0x000447
 	CLC  ;Prep for add, setting expected initial carry.
 	LDA SCORE_0000XX,X
 	STA TMP_03 ;digits group scratch
 	LDA TMP_07 ;adding digits 0000XX
-	JSR SCORE_ADD_GROUP
+	JSR BCD_ADD_A_TO_TMP_03
 	STA SCORE_0000XX,X ;store new score.
 	LDA SCORE_00XX00,X ;same as above
 	STA TMP_03 ;digits group scratch
 	LDA TMP_06 ;adding digits 00XX00
-	JSR SCORE_ADD_GROUP
+	JSR BCD_ADD_A_TO_TMP_03
 	STA SCORE_00XX00,X
 	LDA SCORE_XX0000,X ;same as above
 	STA TMP_03 ;digits group scratch
 	LDA TMP_05 ;adding digits 0000XX
-	JSR SCORE_ADD_GROUP
+	JSR BCD_ADD_A_TO_TMP_03
 	STA SCORE_XX0000,X
 	RTS 
 SUBTRACT_DEFAULT: ; 0x00046A
-	LDA SCORE_INVERT_REQUEST_FLAG_SCORE,X
+	LDA SCORE_INVERT_REQUEST_FLAG,X
 	BEQ SCORE_GROUP_ADD ;If zero, do opposite?
 SCORE_GROUP_SUBTRACT: ; 0x00046E
 	SEC  ;Prep for sub, setting expected initial carry.
 	LDA SCORE_0000XX,X
 	STA TMP_03 ;digit groups scratch
 	LDA TMP_07 ;digits subtracting 0000XX
-	JSR SCORE_SUB_GROUP
+	JSR BCD_SUB_TMP_03_FROM_A
 	STA SCORE_0000XX,X
 	LDA SCORE_00XX00,X
 	STA TMP_03 ;digit groups scratch
 	LDA TMP_06 ;digits subtracting 00XX00
-	JSR SCORE_SUB_GROUP
+	JSR BCD_SUB_TMP_03_FROM_A
 	STA SCORE_00XX00,X
 	LDA SCORE_XX0000,X
 	STA TMP_03 ;digit groups scratch
 	LDA TMP_05 ;digits subtracting XX0000
-	JSR SCORE_SUB_GROUP
+	JSR BCD_SUB_TMP_03_FROM_A
 	STA SCORE_XX0000,X
 	LDA SCORE_XX0000,X ;Useless load, it seems.
 	BNE SCORE_INDEXED_NOT_ZERO
@@ -969,26 +972,26 @@ SCORE_GROUP_SUBTRACT: ; 0x00046E
 	BEQ SCORE_INDEXED_IS_ZERO ;if zero skip
 SCORE_INDEXED_NOT_ZERO: ; 0x00049C
 	BCS RTS_28 ;If carry set, RTS. No underflow?
-	LDA SCORE_INVERT_REQUEST_FLAG_SCORE,X ;Load
+	LDA SCORE_INVERT_REQUEST_FLAG,X ;Load
 	EOR #$FF ;Invert flag.
 SCORE_INDEXED_IS_ZERO: ; 0x0004A2
-	STA SCORE_INVERT_REQUEST_FLAG_SCORE,X ;Store. Always 0 if direct.
+	STA SCORE_INVERT_REQUEST_FLAG,X ;Store. Always 0 if direct.
 	SEC  ;Prep subtract.
 	LDA #$00
 	STA TMP_03 ;Clear score digits.
-	LDA SCORE_0000XX,X ;Adjust these. TODO: Exactly why. Underflow?
-	JSR SCORE_SUB_GROUP
+	LDA SCORE_0000XX,X ;Adjust value taken.
+	JSR BCD_SUB_TMP_03_FROM_A
 	STA SCORE_0000XX,X
 	LDA SCORE_00XX00,X
-	JSR SCORE_SUB_GROUP
+	JSR BCD_SUB_TMP_03_FROM_A
 	STA SCORE_00XX00,X
 	LDA SCORE_XX0000,X
-	JSR SCORE_SUB_GROUP
+	JSR BCD_SUB_TMP_03_FROM_A
 	STA SCORE_XX0000,X
 RTS_28: ; 0x0004BE
 	RTS  ;Done.
-SCORE_ADD_GROUP: ; 0x0004BF
-	JSR PREP_TEMP_WITH_DIGITS_FOR_ADD/SUB ;A=value to add to base.
+BCD_ADD_A_TO_TMP_03: ; 0x0004BF
+	JSR BCD_PREP_TO_TEMPS ;A=value to add to base.
 	ADC TMP_01 ;Add low digit.
 	CMP #$0A ;BCD check.
 	BCC NO_BCD_ADD_REQD
@@ -1009,8 +1012,8 @@ NO_OVERFLOW_GROUP: ; 0x0004DB
 	CMP #$A0
 	BCS BCD_FINAL_MANIP ;If out of range, goto.
 	RTS  ;No group roll, is good, leave.
-SCORE_SUB_GROUP: ; 0x0004E0
-	JSR PREP_TEMP_WITH_DIGITS_FOR_ADD/SUB
+BCD_SUB_TMP_03_FROM_A: ; 0x0004E0
+	JSR BCD_PREP_TO_TEMPS
 	SBC TMP_01 ;Subtract low digit.
 	STA TMP_01 ;Store
 	BCS SCORE_SUB_NO_UNDERFLOW ;No underflow.
@@ -1030,7 +1033,7 @@ SCORE_SUB_NO_UNDERFLOW: ; 0x0004F3
 NO_UNDERFLOW: ; 0x0004FF
 	ORA TMP_01 ;Combine digits.
 	RTS  ;Done, leave.
-PREP_TEMP_WITH_DIGITS_FOR_ADD/SUB: ; 0x000502
+BCD_PREP_TO_TEMPS: ; 0x000502
 	PHA  ;A=add/sub value.
 	AND #$0F
 	STA TMP_01 ;Store lower digit adding/subbing.
@@ -1040,60 +1043,60 @@ PREP_TEMP_WITH_DIGITS_FOR_ADD/SUB: ; 0x000502
 	LDA TMP_03 ;Score original value in position.
 	AND #$0F ;Get lower score digit.
 	RTS  ;ret lower digit.
-MOVE_HIGHER_TO_SCORE: ; 0x000511
-	LDA #$00
+FIGURE_HIGHER_TO_SCORE_ARCADE: ; 0x000511
+	LDA #$00 ;This code seems to be made for arcade and reused, as no features are really used.
 	STA TMP_04 ;Clear
 	CLC  ;Add prep.
-	LDA TMP_00 ;Load value. Used as TODO
-	ADC #$10 ;Add, put into range?
-	AND #$F0 ;Mask top bits.
+	LDA TMP_00 ;Load value, offset.
+	ADC #$10 ;Add, unk val/why.
+	AND #$F0 ;Mask top bits, although always 0x00.
 	LSR A
 	LSR A ;>> 2, /2.
-	TAY  ;As Y index.
-	LDA TMP_00 ;Load 
-	AND #$07 ;Get bottom bits.
+	TAY  ;As Y index. Always 0x00 for us.
+	LDA TMP_00 ;Load  offset.
+	AND #$07 ;Get bottom bits, score index select.
 	ASL A
-	ASL A ;<< 2, *2. Score focus index.
+	ASL A ;<< 2, *2. Score focus index. Always 0x00 for us.
 	TAX  ;As X index.
 LOOP_ALL_X_INDEXES: ; 0x000526
-	LDA SCORE_INVERT_REQUEST_FLAG_SCORE,Y
-	BEQ Y_FLAG_NOT_SET ;Not set, goto.
-	LDA SCORE_INVERT_REQUEST_FLAG_CPYS,X
-	BEQ X_FLAG_NOT_SET ;Not set, goto.
-SUBTRACT_CPY_FROM_SCORE: ; 0x00052F
+	LDA SCORE_INVERT_REQUEST_FLAG,Y ;First run is high score. Wrong addrmode.
+	BEQ Y_FLAG_ZERO ;Not set, goto.
+	LDA SCORE_INVERT_REQUEST_FLAG_COPY,X
+	BEQ X_FLAG_ZERO ;Not set, goto.
+SUBTRACT_SCORE_FROM_COPY: ; 0x00052F
 	SEC  ;Sub prep.
-	LDA SCORE_0000XX,Y ;Score from Y to TMP
+	LDA SCORE_0000XX,Y ;Score from Y to TMP. Wrong Addrmode.
 	STA TMP_03
-	LDA SCORE_CPY_0000XX,X ;Sub from X
-	JSR SCORE_SUB_GROUP
-	LDA SCORE_00XX00,Y ;Y
+	LDA SCORE_COPY_0000XX,X ;Sub from X
+	JSR BCD_SUB_TMP_03_FROM_A
+	LDA SCORE_00XX00,Y ;Y. Wrong Addrmode.
 	STA TMP_03
-	LDA SCORE_CPY_00XX00,X ;Sub X
-	JSR SCORE_SUB_GROUP
-	LDA SCORE_XX0000,Y ;Y
+	LDA SCORE_COPY_00XX00,X ;Sub X
+	JSR BCD_SUB_TMP_03_FROM_A
+	LDA SCORE_XX0000,Y ;Y. Wrong Addrmode.
 	STA TMP_03
-	LDA SCORE_CPY_XX0000,X ;Sub X
-	JSR SCORE_SUB_GROUP
-	BCS SCORE_SUBBED_LOWER ;Subbed was lower?
-	LDA SCORE_INVERT_REQUEST_FLAG_SCORE,Y ;again
-	BNE SCORE_HIGHER_CODE ;always taken?
-X_FLAG_NOT_SET: ; 0x000555
+	LDA SCORE_COPY_XX0000,X ;Sub X
+	JSR BCD_SUB_TMP_03_FROM_A
+	BCS SCORE_SUBBED_LOWER ;Score was higher, subbed lower if taken.
+	LDA SCORE_INVERT_REQUEST_FLAG,Y ;Load val
+	BNE SCORE_HIGHER_CODE ;If not 0, goto.
+X_FLAG_ZERO: ; 0x000555
 	LDA #$FF
 	STA TMP_04 ;Set flag to add back
 	SEC  ;Set
-SCORE_WRITE_CPY_LOWER: ; 0x00055A
+ACTION_IN_CARRY: ; 0x00055A
 	TYA 
-	BNE RTS_2 ;If Y not 0, don't write.
-	BCC SKIP_COPY ;skip on no carry
-	LDA SCORE_INVERT_REQUEST_FLAG_CPYS,X ;Load flag
-	STA SCORE_INVERT_REQUEST_FLAG_SCORE ;Store to score.
-	LDA SCORE_CPY_XX0000,X ;X
-	STA SCORE_XX0000 ;To score.
-	LDA SCORE_CPY_00XX00,X ;2x
+	BNE RTS_2 ;If Y not 0, don't do?
+	BCC NEXT_X_GROUP_CHECK ;skip on no carry
+	LDA SCORE_INVERT_REQUEST_FLAG_COPY,X ;Move copy...
+	STA SCORE_INVERT_REQUEST_FLAG ;...to score.
+	LDA SCORE_COPY_XX0000,X
+	STA SCORE_XX0000
+	LDA SCORE_COPY_00XX00,X
 	STA SCORE_00XX00
-	LDA SCORE_CPY_0000XX,X ;3x
+	LDA SCORE_COPY_0000XX,X
 	STA SCORE_0000XX
-SKIP_COPY: ; 0x00056F
+NEXT_X_GROUP_CHECK: ; 0x00056F
 	LDA TMP_00 ;Load
 	AND #$08
 	BEQ RTS_2 ;If bit not set, RTS.
@@ -1104,15 +1107,15 @@ SKIP_COPY: ; 0x00056F
 	BPL LOOP_ALL_X_INDEXES ;Loop if positive.
 RTS_2: ; 0x00057B
 	RTS 
-Y_FLAG_NOT_SET: ; 0x00057C
-	LDA SCORE_INVERT_REQUEST_FLAG_CPYS,X ;See if flag set.
-	BEQ SUBTRACT_CPY_FROM_SCORE ;both are empty, sub.
+Y_FLAG_ZERO: ; 0x00057C
+	LDA SCORE_INVERT_REQUEST_FLAG_COPY,X ;See if flag set.
+	BEQ SUBTRACT_SCORE_FROM_COPY ;both are empty, sub.
 SCORE_SUBBED_LOWER: ; 0x000580
-	LDA SCORE_INVERT_REQUEST_FLAG_SCORE,Y
-	BNE X_FLAG_NOT_SET
+	LDA SCORE_INVERT_REQUEST_FLAG,Y
+	BNE X_FLAG_ZERO ;If set, use copy.
 SCORE_HIGHER_CODE: ; 0x000585
-	CLC 
-	BCC SCORE_WRITE_CPY_LOWER ;Always taken.
+	CLC  ;Used to tell not to move copy to score.
+	BCC ACTION_IN_CARRY ;Always taken.
 RNG_ADVANCE: ; 0x000588
 	LDA RNG_ARRAY ;LFSR between 0-2,1-2
 	AND #$02
@@ -1208,7 +1211,7 @@ GAME_STATE_12_WAIT_TO_FORWARD: ; 0x000625
 	STA IN_GAME_STATE
 RTS_4: ; 0x00062D
 	RTS  ;leave.
-SET_NEW_STATE_AFTER_TIMER: ; 0x00062E
+SET_GAME_STATE_X_AFTER_TIMER_A_STATE: ; 0x00062E
 	STX IN_GAME_FUTURE_STATE ;X = state to go to.
 	STA TIMER_SLOW ;A = time until switch.
 	LDA #$12 ;wait game state.
@@ -1230,7 +1233,7 @@ LOOPX: ; 0x000645
 	INX 
 	BNE LOOPX ;end when we write $FF
 	RTS 
-CLEAR_0040_00BF: ; 0x00064B
+CLEAR_RAM_$40-$BF: ; 0x00064B
 	LDA #$00 ;half of obj data? and other vars?
 	LDX #$7F
 MORE_CLEAR: ; 0x00064F
@@ -1242,11 +1245,11 @@ DISP_NEW_SCORE: ; 0x000655
 	LDX #$03 ;3 groups of digits.
 	LDY #$05 ;index?
 DIGITS_TO_UPDATE_BUF: ; 0x000659
-	LDA SCORE_INVERT_REQUEST_FLAG_SCORE,X ;get digits.
+	LDA SCORE_INVERT_REQUEST_FLAG,X ;get digits.
 	AND #$0F
 	STA PPU_BLOCK_BUF,Y ;store digits.
 	DEY  ;next spot.
-	LDA SCORE_INVERT_REQUEST_FLAG_SCORE,X ;get digit.
+	LDA SCORE_INVERT_REQUEST_FLAG,X ;get digit.
 	LSR A ;shift data.
 	LSR A
 	LSR A
@@ -1291,16 +1294,16 @@ LESS_THAN_A8: ; 0x00069E
 	STA TMP_0E ;Save here.
 	INY  ;Stream++
 	LDA TMP_0D ;Get saved Y
-	STA $0200,X ;Store Y pos.
+	STA SPRITE_PAGE,X ;Store Y pos.
 	INX  ;Next sprite index.
 	LDA #$56 ;Tile, 0x56, %10 pixel square.
-	STA $0200,X ;Store to tile.
+	STA SPRITE_PAGE,X ;Store to tile.
 	INX  ;Sprite++
 	LDA #$00 ;No sprite mod.
-	STA $0200,X ;Store
+	STA SPRITE_PAGE,X ;Store
 	INX  ;Sprite++
 	LDA TMP_0E ;Load X offset.
-	STA $0200,X ;Write to sprite data.
+	STA SPRITE_PAGE,X ;Write to sprite data.
 	INX  ;Next sprite area.
 	JMP LOOP_SPRITE_X_Y
 DISP_TARGETS_HIT: ; 0x0006C4
@@ -1365,57 +1368,57 @@ MAKE_SETUP_PPU_BLOCK: ; 0x00071D
 	STX TMP_02
 	STY TMP_03 ;setup ram pointer to PPU_BLOCK_BUF
 	JMP PPU_UPDATE_BUF_CONCAT
-GAME_STATE_7_SCORE+TRGT3: ; 0x00072C
+GAME_STATE_7_(DOG+)HIGHSCORE+TO_MENU: ; 0x00072C
 	LDA TIMER_SLOW
-	BEQ SCORE_SOMETHING ;wait until 0 to score.
+	BEQ SCORE_TO_COPY ;wait until 0 to score.
 	LDA GAME_MODE_IN
 	CMP #$02
 	BEQ RTS_6 ;if pigeons, no dog advance.
 	JMP FORWARD_TARGET_3
 RTS_6: ; 0x000739
 	RTS 
-SCORE_SOMETHING: ; 0x00073A
+SCORE_TO_COPY: ; 0x00073A
 	LDX #$03 ;score digits loop counter
-SCORE_TO_C7: ; 0x00073C
-	LDA SCORE_INVERT_REQUEST_FLAG_SCORE,X
-	STA SCORE_INVERT_REQUEST_FLAG_CPYS,X
+SCORE_TO_COPY_LOOP: ; 0x00073C
+	LDA SCORE_INVERT_REQUEST_FLAG,X ;Score to copy.
+	STA SCORE_INVERT_REQUEST_FLAG_COPY,X ;To copy.
 	DEX 
-	BPL SCORE_TO_C7
-	LDA GAME_MODE_IN
+	BPL SCORE_TO_COPY_LOOP
+	LDA GAME_MODE_IN ;Get mode
 	ASL A
-	ASL A ;mul game mode by 4
-	TAY  ;index
+	ASL A ;Mul by 4 for proper index for high score.
+	TAY  ;To index register.
 	STY TMP_0F ;score index
 	LDX #$00 ;ugh counting up
 LOOP_MOVE_HIGHSCORE_TO_CURR: ; 0x00074C
-	LDA HIGH_SCORES_ARRAY,Y
-	STA SCORE_INVERT_REQUEST_FLAG_SCORE,X
+	LDA HIGH_SCORES_ARRAY,Y ;High score
+	STA SCORE_INVERT_REQUEST_FLAG,X ;To score.
 	INY 
 	INX 
 	CPX #$04 ;moved 4 bytes?
 	BNE LOOP_MOVE_HIGHSCORE_TO_CURR ;move more
-	LDA #$F0 ;looking at
-	STA TMP_00
-	JSR MOVE_HIGHER_TO_SCORE
-	LDY TMP_0F
+	LDA #$F0 ;Addr offset for scores.
+	STA TMP_00 ;To TMP.
+	JSR FIGURE_HIGHER_TO_SCORE_ARCADE ;Move
+	LDY TMP_0F ;Load pos for score.
 	LDX #$00
-WRITE_HIGH_SCORE: ; 0x000762
-	LDA SCORE_INVERT_REQUEST_FLAG_SCORE,X
-	STA HIGH_SCORES_ARRAY,Y
+WRITE_HIGHER_SCORE_LOOP: ; 0x000762
+	LDA SCORE_INVERT_REQUEST_FLAG,X ;Load score
+	STA HIGH_SCORES_ARRAY,Y ;Store to high score array.
 	INY 
 	INX 
-	CPX #$04
-	BNE WRITE_HIGH_SCORE
+	CPX #$04 ;smh, terrible code here.
+	BNE WRITE_HIGHER_SCORE_LOOP
 	LDY #$00
-	STY ZAPPER_TRIG_RELEASED_FLAG
-	STY MENU_STATE ;menu state 0 inits menu.
-	INY 
-	STY IN_MENU_FLAG
-	JMP PPU_DISABLE_SPRITES/BACKGROUND
-GAME_STATE_6_IDK: ; 0x000779
-	JSR SND_SET_F1_#$04 ;clear sound?
+	STY ZAPPER_TRIG_RELEASED_FLAG ;Make have to be released.
+	STY MENU_STATE ;Menu state 0.
+	INY  ;Y=1
+	STY IN_MENU_FLAG ;Is in menu now.
+	JMP PPU_DISABLE_SPRITES/BACKGROUND ;Disable extras, abuse RTS.
+GAME_STATE_6_PREP_GAME_OVER: ; 0x000779
+	JSR SND_SET_F1_#$04 ;clear sound.
 	JSR WAIT_FOR_NMI ;wait for frame.
-	JSR SND_SET_F0_#$40 ;set sound now?
+	JSR SND_SET_F0_#$40 ;set sound now.
 	LDA #$01
 	STA TRGT3_TYPE ;set up dog?
 	STA TRGT3_STATE ;enable state?
@@ -1444,11 +1447,11 @@ WRITE_SETTING: ; 0x0007A1
 	LDY #$23 ;PPU ADDR
 	JMP MAKE_SETUP_PPU_BLOCK ;make update block
 MAKE_DISP_BUF_LEVEL: ; 0x0007B3
-	LDA LEVEL
-	STA TMP_03
+	LDA LEVEL ;Load level
+	STA TMP_03 ;To temp.
 	LDA #$01
 	CLC 
-	JSR SCORE_ADD_GROUP ;inc level
+	JSR BCD_ADD_A_TO_TMP_03 ;inc level
 	STA LEVEL
 	LDA #$12 ;1 group of 2 bytes
 	STA PPU_BLOCK_BUF_SETTING
@@ -1476,30 +1479,30 @@ WRITE_DIGIT: ; 0x0007E1
 	LDX #$05
 	LDY #$23 ;PPU ADDR for update
 	JMP MAKE_SETUP_PPU_BLOCK ;make buffer.
-GAME_STATE_D_WAIT_UPDATES: ; 0x0007EF
+GAME_STATE_D_INTRO_MESSAGE_SCRIPT: ; 0x0007EF
 	LDA MULTIPLE_BG_UPDATE_INDEX
 	BEQ INDEX_ZERO ;if not done updating the BG.
-	JMP BG_UPDATES_AUTOMATIC ;handle timer if not 0, abuse RTS.
+	JMP LEVEL_INTRO_MESSAGE_SCRIPT_RTN ;handle timer if not 0, abuse RTS.
 INDEX_ZERO: ; 0x0007F6
 	LDA #$0A ;Move to state A when update done.
 	STA IN_GAME_STATE ;new state when timer = 0.
 	RTS 
-BG_UPDATES_AUTOMATIC: ; 0x0007FB
+LEVEL_INTRO_MESSAGE_SCRIPT_RTN: ; 0x0007FB
 	LDA FAST_TIMERS
 	BNE RTS_7 ;rts if timer !0
 	LDY MULTIPLE_BG_UPDATE_INDEX
 	BEQ RTS_7 ;rts if flag clear.
-	LDA TIMER_9D_STUFF?,Y
+	LDA BEGINNING_ROUND_MESSAGE_SCRIPT,Y
 	CMP #$AA
 	BEQ EOF ;clear 9D if loaded?
 	PHA  ;save otherwise.
 	INY 
-	LDA TIMER_9D_STUFF?,Y ;get next byte.
+	LDA BEGINNING_ROUND_MESSAGE_SCRIPT,Y ;get next byte.
 	STA FAST_TIMERS ;set timer.
 	INY 
 	STY MULTIPLE_BG_UPDATE_INDEX ;save next value.
 	PLA  ;pull first value.
-	JMP SPR_BG_UNK ;use it to...
+	JMP BG_SHOW_MESSAGE ;use it to...
 EOF: ; 0x000818
 	LDA #$00
 	STA MULTIPLE_BG_UPDATE_INDEX ;No 9D index when reset.
@@ -1555,7 +1558,7 @@ GAME_STATE_3_ZAP+TRGTS(+STATUS)+SHOT: ; 0x00086E
 	JSR DISP_TARGETS_HIT
 	JSR DISP_SCORE_SPRITES
 	JSR DISP_WORD_SHOT_HANDLER
-	JSR BG_UPDATES_AUTOMATIC
+	JSR LEVEL_INTRO_MESSAGE_SCRIPT_RTN
 	NOP  ;removed feature?
 	NOP 
 	NOP 
@@ -2620,7 +2623,7 @@ SET_POINTS_FROM_Y: ; 0x000F7F
 	STA TMP_04 ;add/subtract flag.
 	STA TMP_05 ;score adding XX0000
 	STA TMP_07 ;adding digits 00000XX
-	LDA #$0F ;jsr setup
+	LDA #$0F ;First group setup val.
 	JSR SCORE_ADD/SUB ;do.
 	JMP DISP_NEW_SCORE ;put to screen.
 DISP_FLY_AWAY: ; 0x000F96
@@ -2658,19 +2661,19 @@ SPRITE_POINTS_ONSCREEN: ; 0x000FC5
 KEEP_ON_SCREEN: ; 0x000FD3
 	LDA SCORE_OBJ_Y,X
 	STA POINTS_SPRITE_AREA,Y
-	STA POINTS_SPRITE_AREA+4,Y ;Store Y
+	STA SPRITE_PAGE+244,Y ;Store Y
 	LDA SCORE_UPPER_SPRITE,X ;get tile for score.
-	STA POINTS_SPRITE_AREA+1,Y ;store tile
+	STA SPRITE_PAGE+241,Y ;store tile
 	LDA #$FF
-	STA POINTS_SPRITE_AREA+5,Y ;2nd blank?
+	STA SPRITE_PAGE+245,Y ;2nd blank?
 	LDA #$00 ;no attributes.
-	STA POINTS_SPRITE_AREA+2,Y
-	STA POINTS_SPRITE_AREA+6,Y
+	STA SPRITE_PAGE+242,Y
+	STA SPRITE_PAGE+246,Y
 	LDA SCORE_OBJ_X,X ;get x pos
-	STA POINTS_SPRITE_AREA+3,Y ;store.
+	STA SPRITE_PAGE+243,Y ;store.
 	CLC 
 	ADC #$08
-	STA POINTS_SPRITE_AREA+7,Y ;store +8
+	STA SPRITE_PAGE+247,Y ;store +8
 RTS_13: ; 0x000FF8
 	RTS 
 POINTS_DISPLAY_ADD: ; 0x000FF9
@@ -2722,7 +2725,7 @@ OBJ_SPRITE_OFF_SCREEN: ; 0x001042
 CLEAR_SPRITE_LOOP: ; 0x001044
 	CPX OBJ_ZP_SPRITE_SLOT_END ;Last index of obj.
 	BEQ RTS_14 ;if at end, leave.
-	STA $0200,X ;store data.
+	STA SPRITE_PAGE,X ;store data.
 	INX  ;next byte.
 	JMP CLEAR_SPRITE_LOOP
 RTS_14: ; 0x00104F
@@ -2797,12 +2800,12 @@ SPRITE_OUTPUT_FINALLY: ; 0x0010B9
 	ADC TARGET_Y_COORD_CPY ;add Y copy with data. does it do this to overflow if going to always?
 	JSR MAKE_Y_PROPER ;something to do with Y, proper value, and FF.
 	LDX SPRITE_INDEX_VAL ;get updating.
-	STA $0200,X ;finally some sprite code jesus. sprite Y stored.
+	STA SPRITE_PAGE,X ;finally some sprite code jesus. sprite Y stored.
 	INC SPRITE_INDEX_VAL ;next byte.
 	LDA (TMP_12),Y ;get data.
 	INY  ;next data.
 	LDX SPRITE_INDEX_VAL ;get index. idk why not using X here.
-	STA $0200,X ;store sprite tile.
+	STA SPRITE_PAGE,X ;store sprite tile.
 	INC SPRITE_INDEX_VAL ;next data.
 	LDA SPRITE_ATTR_COPY? ;get sprite attr copy.
 	LDX OBJ_ZP_DIRECTION ;direction? 0=>,1=<?
@@ -2815,7 +2818,7 @@ SPRITE_OUTPUT_FINALLY: ; 0x0010B9
 	ORA TMP_0C ;store in TMP. Does this because setting in obj would be screwed up.
 DIRECTION_RIGHT_0: ; 0x0010E9
 	LDX SPRITE_INDEX_VAL ;get index.
-	STA $0200,X ;store sprite attr.
+	STA SPRITE_PAGE,X ;store sprite attr.
 	INC SPRITE_INDEX_VAL ;next index.
 	LDX SPRITE_UPDATE_BASE ;get group index.
 	LDA SPR_X/Y_OFFSET_SKELETONS,X ;get value
@@ -2828,7 +2831,7 @@ IS_RIGHT: ; 0x0010FE
 	ADC TARGET_X_COORD_CPY ;add with X coord.
 	JSR MAKE_X_PROPER ;make X proper value.
 	LDX SPRITE_INDEX_VAL ;get index.
-	STA $0200,X ;sprite data store X.
+	STA SPRITE_PAGE,X ;sprite data store X.
 	INC SPRITE_INDEX_VAL ;next index.
 	JMP MORE_ANIM_DATA ;LOOP.
 MAKE_Y_PROPER: ; 0x00110E
@@ -3139,7 +3142,7 @@ NOT_ENOUGH_TARGETS: ; 0x00132B
 	JSR SND_SET_F2_#$80 ;game over sound?
 	LDX #$06 ;future in game state.
 	LDA #$0C ;timer.
-	JMP SET_NEW_STATE_AFTER_TIMER
+	JMP SET_GAME_STATE_X_AFTER_TIMER_A_STATE
 END_ROUND_STATE_3_BONUS: ; 0x00133D
 	LDA FAST_TIMERS
 	BNE RTS_17 ;if not 0, RTS.
@@ -3178,7 +3181,7 @@ BONUS_FOUND: ; 0x001369
 	LDA #$00
 	STA TMP_04
 	STA TMP_07 ;clear others.
-	LDA #$0F ;not sure init value.
+	LDA #$0F ;First group setting.
 	JSR SCORE_ADD/SUB
 	JSR DISP_NEW_SCORE
 	LDA #$03
@@ -3197,7 +3200,7 @@ END_ROUND_STATE_SWITCH: ; 0x00139B
 	BNE NOT_PIGEONS ;no if taken
 	LDX #$09 ;future state pigeons.
 NOT_PIGEONS: ; 0x0013A5
-	JSR SET_NEW_STATE_AFTER_TIMER
+	JSR SET_GAME_STATE_X_AFTER_TIMER_A_STATE
 	LDA #$00
 	JMP UPDATE_PPU_GROUP
 SHOW_TRGT_NO_HITS: ; 0x0013AD
@@ -3309,8 +3312,8 @@ UPDATE_PPU_GROUP: ; 0x001464
 	JSR WAIT_FOR_NMI ;NMI
 	JSR PLAY_SOUNDS ;Sounds
 	PLA  ;Recover
-SPR_BG_UNK: ; 0x00146C
-	STA SPRITE_UPDATE_BASE
+BG_SHOW_MESSAGE: ; 0x00146C
+	STA SPRITE_UPDATE_BASE ;Reuse var. MESSAGE_REQ_VAL
 	BEQ DISP_CLEAR_FIELD ;If A == 0, clear message on field.
 	ASL A ;*2 to makew into index.
 	TAX  ;Now in X.
@@ -3344,15 +3347,15 @@ ONLY_ONE_DIGIT: ; 0x0014A1
 	LDA LEVEL ;Load level again to get lower.
 	AND #$0F ;Bottom digit.
 	STA PPU_BLOCK_BUF+24 ;Store to buffer.
-	JMP NO_BONUS? ;Goto.
+	JMP NO_BONUS_TO_FILL_IN ;Goto.
 NO_LEVEL_IN_UPDATE: ; 0x0014AB
 	CMP #$05 ;perfect level bonus?
-	BNE NO_BONUS?
+	BNE NO_BONUS_TO_FILL_IN
 	LDA TMP_0C ;bonus score for level digits?
 	STA PPU_BLOCK_BUF+32
 	LDA TMP_0D
 	STA PPU_BLOCK_BUF+33
-	JMP NO_BONUS?
+	JMP NO_BONUS_TO_FILL_IN
 DISP_CLEAR_FIELD: ; 0x0014BC
 	LDX #$44 ;68 bytes. DATA: 50 data, 10 addr. should be #60?
 	LDA #$24 ;Tile, clear BG tile.
@@ -3364,7 +3367,7 @@ LOOP_MAKE_BUF: ; 0x0014C0
 	STA PPU_BLOCK_BUF_SETTING ;save the setting to update buf.
 	LDX #$CB ;where putting, $20XX
 	BNE PPU_UPDATE_BLOCK_$20XX ;always taken.
-NO_BONUS?: ; 0x0014CF
+NO_BONUS_TO_FILL_IN: ; 0x0014CF
 	LDY #$00
 	LDA (TMP_INDIR_JMP_L),Y
 	TAX  ;get ppu high addr
@@ -3373,7 +3376,7 @@ PPU_UPDATE_BLOCK_$20XX: ; 0x0014D4
 	JMP MAKE_SETUP_PPU_BLOCK ;X set to PPU_ADDR low. PPU_BLOCK_BUF to PPU_UPDATE_BUF
 CLEAR_MEMORIES: ; 0x0014D9
 	JSR CLEAR_SPRITES
-	JSR CLEAR_0040_00BF
+	JSR CLEAR_RAM_$40-$BF
 	JMP CLEAR_0300-03FF_OBJ_DATA_INIT
 SND_SET_F0_#$01: ; 0x0014E2
 	LDA #$01 ;disable all registers.
@@ -3701,7 +3704,7 @@ DIFFICULTY_LOOP: ; 0x001700
 	LDA OBJ_ZP_COPY_MOVESETS_INDEX
 	CMP #$30
 	BCS STATE_8 ;state 8 if >=30
-	JSR PIGEON_X/Y_SOMEHOW
+	JSR PIGEON_X/Y_ROUTINE
 	LDA OBJ_ZP_Y_COORD ;get Y coord.
 	SEC 
 	SBC #$40 ;minus 40...
@@ -3817,17 +3820,17 @@ DON'T_CHANGE_SPRITES: ; 0x0017DC
 	INX  ;next x index. obj_36 removes?
 	JMP NEXT_OBJ_DATA_CHECK_LOOP
 UPDATE_SPRITES: ; 0x0017E0
-	STA $0200,Y ;obj to Y coord.
+	STA SPRITE_PAGE,Y ;obj to Y coord.
 	INY  ;next sprite index.
 	LDA PIGEON_TILE+ATTR_INDEX,X ;get sprite.
-	STA $0200,Y ;store
+	STA SPRITE_PAGE,Y ;store
 	INY 
 	INX  ;next obj data
 	LDA PIGEON_TILE+ATTR_INDEX,X ;get attr data
-	STA $0200,Y ;store attr
+	STA SPRITE_PAGE,Y ;store attr
 	INY 
 	LDA OBJ_ZP_COPY_PARTICLES_Y_BASE,X ;get obj data
-	STA $0200,Y ;store to X
+	STA SPRITE_PAGE,Y ;store to X
 	INY 
 NEXT_OBJ_DATA_CHECK_LOOP: ; 0x0017F9
 	INX  ;next index.
@@ -3866,7 +3869,7 @@ GROUP_NO_SPILL: ; 0x00182B
 	STX OBJ_ZP_DUCK_DIFF ;store next arr value.
 	PLA  ;pull value saved from array.
 	RTS  ;return it.
-PIGEON_X/Y_SOMEHOW: ; 0x00182F
+PIGEON_X/Y_ROUTINE: ; 0x00182F
 	LDA OBJ_ZP_TIMER_FALLING/EXTRA ;terribly complicated way to handle this shit.
 	SEC 
 	SBC #$00 ;set carry, sub 0...no purpose?
@@ -3874,8 +3877,8 @@ PIGEON_X/Y_SOMEHOW: ; 0x00182F
 	LDA OBJ_ZP_COPY_TIMER_MULTIUSE ;get data
 	SBC #$10 ;subtract #$10
 	TAX  ;OBJ+30-10->X
-	LDA #$3B ;unk why value
-	JSR UNK_ROUTINE
+	LDA #$3B ;Seed for rtn.
+	JSR ADD_SHIFT_LOOP_PIGEONS
 	STY TMP_INDIR_JMP_L ;Y to
 	STX TMP_INDIR_JMP_H ;X to
 	LDA OBJ_ZP_TIMER_FALLING/EXTRA ;get value again
@@ -3886,7 +3889,7 @@ PIGEON_X/Y_SOMEHOW: ; 0x00182F
 	SBC #$10 ;subtract #$10 again
 	TAX  ;put to X
 	LDA #$E7 ;different seed/value.
-	JSR UNK_ROUTINE ;do routing again.
+	JSR ADD_SHIFT_LOOP_PIGEONS ;do routing again.
 	STY TMP_12 ;store to temps.
 	STX TMP_13
 	LDA OBJ_ZP_DATA_DIRECTION ;get direction.
@@ -3897,7 +3900,7 @@ PIGEON_X/Y_SOMEHOW: ; 0x00182F
 	SBC #$18 ;subtract with #$18. zero iirc?
 	TAX  ;put to X.
 	LDA #$7F ;see different again,
-	JSR UNK_ROUTINE ;do routing.
+	JSR ADD_SHIFT_LOOP_PIGEONS ;do routing.
 	CLC  ;clear for add.
 	TYA  ;Y to A
 	ADC #$4F ;add with this.
@@ -3918,7 +3921,7 @@ PIGEON_X/Y_SOMEHOW: ; 0x00182F
 	LDY $91 ;load these two.
 	LDX $92
 	LDA #$6C ;seed
-	JSR UNK_ROUTINE ;do routine.
+	JSR ADD_SHIFT_LOOP_PIGEONS ;do routine.
 	CLC 
 	TYA  ;Y to A.
 	ADC TMP_12 ;add with this.
@@ -3926,7 +3929,7 @@ PIGEON_X/Y_SOMEHOW: ; 0x00182F
 	TXA  ;X to A
 	ADC TMP_13 ;add with this.
 	TAX  ;back to X.
-	JSR UNK_ROUTINE_2 ;do this routine now.
+	JSR ROTATE_ADD/SUB_PIGEON ;do this routine now.
 	SBC #$00 ;this makes sense, can be clear or not.
 	EOR #$7F ;invert bottom bits.
 	STA OBJ_ZP_Y_COORD ;store to obj Y coord.
@@ -3937,8 +3940,8 @@ PIGEON_X/Y_SOMEHOW: ; 0x00182F
 	LDA OBJ_ZP_EXTRA_PTR/DATA ;get this data.
 	SBC #$09 ;subtract #$09
 	TAX  ;put to X.
-	JSR UNK_ROUTINE_2 ;do this again.
-	EOR #$80 ;invert bit.
+	JSR ROTATE_ADD/SUB_PIGEON ;do this again.
+	EOR #$80 ;Invert sign.
 	STA OBJ_ZP_X_COORD ;store at X coord.
 	RTS 
 PIGEON_OBJ_MOVE: ; 0x0018AE
@@ -3972,65 +3975,65 @@ IS_POSITIVE_2: ; 0x0018CC
 	TXA  ;get loop.
 	BNE LOOP_DO_MORE
 	RTS  ;leave.
-UNK_ROUTINE: ; 0x0018DB
+ADD_SHIFT_LOOP_PIGEONS: ; 0x0018DB
 	STY TMP_10 ;add value 95
 	STX TMP_11 ;add value 96
-	STA PIGEON_MOVE_GROUPED_95 ;bits to add?
+	STA PIGEON_MOVE_GROUPED_95_SEED+SHIFT ;bits to add?
 	LDA #$00
-	STA PIGEON_MOVE_GROUPED_96 ;clear these.
-	STA PIGEON_MOVE_GROUPED_97
+	STA PIGEON_MOVE_GROUPED_96_CLEARED ;clear these.
+	STA PIGEON_MOVE_GROUPED_97_CLEARED
 	LDX #$08 ;loop count?
-LOOP_UNK: ; 0x0018E9
-	ROR PIGEON_MOVE_GROUPED_95
-	BCC 95_BIT_CLEAR ;bit was clear.
+ADD_SHIFT_GROUPS_LOOP: ; 0x0018E9
+	ROR PIGEON_MOVE_GROUPED_95_SEED+SHIFT ;Shift seeded
+	BCC DONT_ADD_TO_GROUPS ;Bit clear, don't add.
 	CLC  ;clear for add.
-	LDA PIGEON_MOVE_GROUPED_96
+	LDA PIGEON_MOVE_GROUPED_96_CLEARED
 	ADC TMP_10 ;add with this.
-	STA PIGEON_MOVE_GROUPED_96 ;store back.
-	LDA PIGEON_MOVE_GROUPED_97 ;load this.
+	STA PIGEON_MOVE_GROUPED_96_CLEARED ;store back.
+	LDA PIGEON_MOVE_GROUPED_97_CLEARED ;load this.
 	ADC TMP_11 ;add
-	STA PIGEON_MOVE_GROUPED_97 ;store.
-95_BIT_CLEAR: ; 0x0018FA
-	ASL A ;shift bit out?
-	ROR PIGEON_MOVE_GROUPED_97 ;rotate right, bringing in bit.
-	ROR PIGEON_MOVE_GROUPED_96 ;ror, bringing bit again.
+	STA PIGEON_MOVE_GROUPED_97_CLEARED ;store.
+DONT_ADD_TO_GROUPS: ; 0x0018FA
+	ASL A ;Shift bit out for adds up top.
+	ROR PIGEON_MOVE_GROUPED_97_CLEARED ;rotate right, bringing in bit.
+	ROR PIGEON_MOVE_GROUPED_96_CLEARED ;ror, bringing bit again.
 	DEX  ;next loop.
-	BNE LOOP_UNK ;see if loop done.
-	LDY PIGEON_MOVE_GROUPED_96 ;return X and Y final values.
-	LDX PIGEON_MOVE_GROUPED_97
+	BNE ADD_SHIFT_GROUPS_LOOP ;see if loop done.
+	LDY PIGEON_MOVE_GROUPED_96_CLEARED ;return vals in X and Y.
+	LDX PIGEON_MOVE_GROUPED_97_CLEARED
 	RTS 
-UNK_ROUTINE_2: ; 0x001907
-	STY PIGEON_MOVE_GROUPED_96 ;store x
-	STX PIGEON_MOVE_GROUPED_97 ;store y
+ROTATE_ADD/SUB_PIGEON: ; 0x001907
+	STY PIGEON_MOVE_GROUPED_96_CLEARED ;Init
+	STX PIGEON_MOVE_GROUPED_97_CLEARED ;Init
 	LDA #$00
-	STA PIGEON_MOVE_GROUPED_95 ;clear
+	STA PIGEON_MOVE_GROUPED_95_SEED+SHIFT ;Clear
 	LDX #$07 ;8 loops.
 	CLC 
-	LDA PIGEON_MOVE_GROUPED_96 ;why not TYA?
-	ADC PIGEON_MOVE_93 ;add with whatever this is.
-	TAY  ;put to Y
-	LDA PIGEON_MOVE_GROUPED_97 ;get val
-	ADC PIGEON_MOVE_94 ;add with this.
+	LDA PIGEON_MOVE_GROUPED_96_CLEARED ;Load. Could also use TYA here.
+	ADC PIGEON_MOVE_93 ;Add this value.
+	TAY  ;Put to Y.
+	LDA PIGEON_MOVE_GROUPED_97_CLEARED ;Load val
+	ADC PIGEON_MOVE_94 ;Add this value.
 LOOP_UNK2: ; 0x00191B
-	BCC NO_OVERFLOW
-	STY PIGEON_MOVE_GROUPED_96 ;if overflow, store this.
-	STA PIGEON_MOVE_GROUPED_97 ;store this.
+	BCC NO_OVERFLOW ;If no overflow, goto.
+	STY PIGEON_MOVE_GROUPED_96_CLEARED ;Update if overflow.
+	STA PIGEON_MOVE_GROUPED_97_CLEARED
 NO_OVERFLOW: ; 0x001921
-	ROL PIGEON_MOVE_GROUPED_95 ;double, bit.
-	ROL PIGEON_MOVE_GROUPED_96 ;double, bit.
-	ROL PIGEON_MOVE_GROUPED_97 ;double, bit.
-	SEC  ;set carry for sub
-	LDA PIGEON_MOVE_GROUPED_96 ;get val
-	SBC PIGEON_MOVE_93 ;subtract with this.
-	TAY  ;put to Y
-	LDA PIGEON_MOVE_GROUPED_97 ;get value
-	SBC PIGEON_MOVE_94 ;subtract with this.
-	DEX  ;loop count.
-	BPL LOOP_UNK2 ;if not underflow, 8 loops, repeat.
+	ROL PIGEON_MOVE_GROUPED_95_SEED+SHIFT ;Rotate all
+	ROL PIGEON_MOVE_GROUPED_96_CLEARED
+	ROL PIGEON_MOVE_GROUPED_97_CLEARED
+	SEC  ;Prep sub.
+	LDA PIGEON_MOVE_GROUPED_96_CLEARED ;Val
+	SBC PIGEON_MOVE_93 ;Sub with.
+	TAY  ;Put to Y
+	LDA PIGEON_MOVE_GROUPED_97_CLEARED ;Val
+	SBC PIGEON_MOVE_94 ;Sub with.
+	DEX  ;Loop
+	BPL LOOP_UNK2 ;If not done, loop.
 	BCS LOAD_RTS ;if no underflow, load?
 	DEX  ;FE now instead of just loading?
 LOAD_RTS: ; 0x001937
-	LDA PIGEON_MOVE_GROUPED_95 ;load this...
+	LDA PIGEON_MOVE_GROUPED_95_SEED+SHIFT ;load this...
 	RTS  ;return.
 PROCESS_PIGEON_PARTICLES: ; 0x00193A
 	INC OBJ_ZP_ADD'L_STATE ;next state always...
@@ -8899,14 +8902,14 @@ PIGEON_LEVEL_DIFFICULTY_LUT: ; 0x002C17
 	.db #$20
 	.db #$20
 	.db #$28
-TIMER_9D_STUFF?: ; 0x002C1F
-	.db #$28 ;Not sure yet.
-	.db #$01
+BEGINNING_ROUND_MESSAGE_SCRIPT: ; 0x002C1F
+	.db #$28 ;Difficulty data, not part of script.
+	.db #$01 ;Script start for pigeons, only level shown.
 	.db #$80
 	.db #$00
 	.db #$00
-	.db #$AA ;rests index to 0.
-	.db #$01
+	.db #$AA ;EOF.
+	.db #$01 ;Pigeon intro, level and flashing go.
 	.db #$40
 	.db #$02
 	.db #$10
@@ -8928,7 +8931,7 @@ TIMER_9D_STUFF?: ; 0x002C1F
 MESSAGES_LOW: ; 0x002C38
 	.db #$00 ;PART OF ABOVE 
 MESSAGES_HIGH: ; 0x002C39
-	.db #$AA ;PART OF 9D STUFF.
+	.db #$AA ;EOF.
 	.LOW MESSAGE_ROUND ;actual first index. 0 does different in this code.
 	.HIGH MESSAGE_ROUND
 	.LOW MESSAGE_GO
@@ -12328,8 +12331,8 @@ FRAME_1A_DATA_05: ; 0x003AFC
 	.db #$FF
 	.db #$FF
 	.db #$FF
-SND_SAMPLE_1: ; 0x003B00
-	.db #$55
+SND_SAMPLE_0: ; 0x003B00
+	.db #$55 ;Sample is XYZ
 	.db #$AD
 	.db #$4A
 	.db #$55
@@ -12857,6 +12860,7 @@ FRAME_22_DATA_03: ; 0x003CFD
 	.db #$54
 FRAME_1E_DATA_03: ; 0x003CFF
 	.db #$EB
+SND_SAMPLE_1: ; 0x003D00
 	.db #$AA
 	.db #$52
 	.db #$55

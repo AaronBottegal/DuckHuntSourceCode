@@ -35,7 +35,7 @@ IN_GAME_FUTURE_STATE:                    .rs 0x01 ;0x001E
 GAME_MODE_IN:                            .rs 0x01 ;0x001F
 NMI_RAN:                                 .rs 0x01 ;0x0020
 PPU_UPDATE_BUF_FLAG:                     .rs 0x01 ;0x0021
-PPU_BLOCK_UPDATE_IN_NMI:                 .rs 0x01 ;0x0022
+PPU_BLOCK_UPDATE_IN_NMI_FLAG:            .rs 0x01 ;0x0022
 PALETTE_UPLOAD_REQUEST:                  .rs 0x01 ;0x0023
 IN_MENU_FLAG:                            .rs 0x01 ;0x0024
 IN_GAME_STATE:                           .rs 0x01 ;0x0025
@@ -121,7 +121,7 @@ TARGETS_ACTIVATED_COUNT?:                .rs 0x01 ;0x0099
 SHOT_BLINK_COUNTER:                      .rs 0x01 ;0x009A
 DISPLAY_BLINK_TIMER:                     .rs 0x01 ;0x009B
 DUCK_MOVEMENT_CHANGE?:                   .rs 0x01 ;0x009C
-MULTIPLE_BG_UPDATE_INDEX:                .rs 0x01 ;0x009D
+INTRO_MESSAGE_INDEX:                     .rs 0x01 ;0x009D
 OBJ3_SOUND_COUNT_DOWN:                   .rs 0x01 ;0x009E
 ACTIVATE_SHOOTING_COUNTDOWN?:            .rs 0x01 ;0x009F
 
@@ -134,7 +134,7 @@ COUNTDOWN_TO_ENABLE_TARGETS:             .rs 0x01 ;0x00A6
 PIGEON_FLAG_NEEDS_CLEARED?:              .rs 0x01 ;0x00A7
 PIGEON_DIFFICULTY:                       .rs 0x01 ;0x00A8
 END_OF_ROUND_STATE:                      .rs 0x01 ;0x00A9
-TARGETS_IN_LEVEL:                        .rs 0x01 ;0x00AA
+TARGETS_HIT_IN_ROUND:                    .rs 0x01 ;0x00AA
 HITS_REQUIRED_RAM:                       .rs 0x01 ;0x00AB
 
 	.rsset 0x00AD
@@ -152,7 +152,7 @@ ZAP_PREVIOUS_STATE:                      .rs 0x01 ;0x00B7
 ZAP_STATE_COUNT:                         .rs 0x01 ;0x00B8
 ZAP_SHOOTING_ENABLED_FLAG:               .rs 0x01 ;0x00B9
 SHOTS_REMAINING:                         .rs 0x01 ;0x00BA
-GAME_TARGETS_SHOWN?:                     .rs 0x01 ;0x00BB
+ROUND_TARGETS_SHOWN:                     .rs 0x01 ;0x00BB
 NUM_TARGETS_REMAINING:                   .rs 0x01 ;0x00BC
 TRGT_SHOT_DURING_ATTEMPT:                .rs 0x01 ;0x00BD
 SHOT_FIRED_FLAG:                         .rs 0x01 ;0x00BE
@@ -363,17 +363,17 @@ VECTOR_ENTRY_NMI: ; 0x000086
 	STA PPU_OAM_Addr
 	LDA #$02
 	STA PPU_DMA ;write sprites to screen.
-	LDA PPU_BLOCK_UPDATE_IN_NMI
-	BNE NO_PPU_STUFF ;needs to be 0 to run PPU stuff.
+	LDA PPU_BLOCK_UPDATE_IN_NMI_FLAG ;Load flag
+	BNE NO_PPU_UPDATE_BUF_UPLOAD ;needs to be 0 to run PPU stuff.
 	JSR PPU_UPLOAD_UPDATE_BUF
 	JSR UPLOAD_PALETTE_REQUESTED
 	JSR UPDATE_RAM_PALETTE_FOR_SPRITES
-	JSR SET_PPU_SCROLL
-NO_PPU_STUFF: ; 0x0000A6
+	JSR SET_PPU_SCROLL ;Last for scrolling fix.
+NO_PPU_UPDATE_BUF_UPLOAD: ; 0x0000A6
 	LDY #$01
-	STY PPU_BLOCK_UPDATE_IN_NMI
-	STY NMI_RAN
-	PLA 
+	STY PPU_BLOCK_UPDATE_IN_NMI_FLAG ;Block again.
+	STY NMI_RAN ;Store to.
+	PLA  ;Restore and exit NMI.
 	TAY 
 	PLA 
 	TAX 
@@ -441,33 +441,33 @@ CLEAR_BLOCK_UNPAUSE+SCRIPT: ; 0x00011E
 IN_GAME_SCRIPT_SWITCH: ; 0x000123
 	LDA IN_GAME_STATE ;Load state.
 	JSR SWITCH_TO_CODE_PTRS
-	.LOW GAME_STATE_0_INIT_RAM+SCREENS ;setup game start.
-	.HIGH GAME_STATE_0_INIT_RAM+SCREENS
-	.LOW GAME_STATE_1_SETUP_DUCKS ;ducks main setup.
-	.HIGH GAME_STATE_1_SETUP_DUCKS
-	.LOW GAME_STATE_2_SETUP_ROUND ;ducks info setup.
+	.LOW GAME_STATE_0_INIT_SCREENS/RAM ;Setup system, moves to pigeon or duck state after.
+	.HIGH GAME_STATE_0_INIT_SCREENS/RAM
+	.LOW GAME_STATE_1_SETUP_DUCK_SCREEN ;Ducks screen setup.
+	.HIGH GAME_STATE_1_SETUP_DUCK_SCREEN
+	.LOW GAME_STATE_2_SETUP_ROUND ;Ducks info setup.
 	.HIGH GAME_STATE_2_SETUP_ROUND
-	.LOW GAME_STATE_3_ZAP+TRGTS(+STATUS)+SHOT ;main game loop.
-	.HIGH GAME_STATE_3_ZAP+TRGTS(+STATUS)+SHOT
-	.LOW GAME_STATE_C_END_ROUND_SWITCH ;end round routines.
-	.HIGH GAME_STATE_C_END_ROUND_SWITCH
+	.LOW GAME_STATE_3_DUCKS_MAIN ;Main duck loop.
+	.HIGH GAME_STATE_3_DUCKS_MAIN
+	.LOW GAME_STATE_END_ROUND_SWITCH ;End round routines.
+	.HIGH GAME_STATE_END_ROUND_SWITCH
 	.LOW RTS_3 ;RTS's
 	.HIGH RTS_3
-	.LOW GAME_STATE_6_PREP_GAME_OVER ;prep game over.
+	.LOW GAME_STATE_6_PREP_GAME_OVER ;Prep game over.
 	.HIGH GAME_STATE_6_PREP_GAME_OVER
-	.LOW GAME_STATE_7_(DOG+)HIGHSCORE+TO_MENU ;game over.
+	.LOW GAME_STATE_7_(DOG+)HIGHSCORE+TO_MENU ;Game over.
 	.HIGH GAME_STATE_7_(DOG+)HIGHSCORE+TO_MENU
-	.LOW GAME_STATE_8_SETUP_PIGEONS ;Pigeons init.
-	.HIGH GAME_STATE_8_SETUP_PIGEONS
-	.LOW GAME_STATE_9_PIGEON_RND_SETUP ;pigeon setup.
+	.LOW GAME_STATE_8_SETUP_PIGEONS_SCREEN ;Pigeons init.
+	.HIGH GAME_STATE_8_SETUP_PIGEONS_SCREEN
+	.LOW GAME_STATE_9_PIGEON_RND_SETUP ;Pigeon
 	.HIGH GAME_STATE_9_PIGEON_RND_SETUP
-	.LOW GAME_STATE_A_ROUND_INIT ;sets up duck targets and inits stuff.
+	.LOW GAME_STATE_A_ROUND_INIT ;Set up pigeon round.
 	.HIGH GAME_STATE_A_ROUND_INIT
-	.LOW GAME_STATE_B_PIGEON_MAIN ;target/anim processing
+	.LOW GAME_STATE_B_PIGEON_MAIN ;Main loop.
 	.HIGH GAME_STATE_B_PIGEON_MAIN
-	.LOW GAME_STATE_C_END_ROUND_SWITCH ;end round routines.
-	.HIGH GAME_STATE_C_END_ROUND_SWITCH
-	.LOW GAME_STATE_D_INTRO_MESSAGE_SCRIPT ;message script.
+	.LOW GAME_STATE_END_ROUND_SWITCH ;End round.
+	.HIGH GAME_STATE_END_ROUND_SWITCH
+	.LOW GAME_STATE_D_INTRO_MESSAGE_SCRIPT ;Message script intro.
 	.HIGH GAME_STATE_D_INTRO_MESSAGE_SCRIPT
 	.LOW RTS_3 ;removed?
 	.HIGH RTS_3
@@ -1202,7 +1202,7 @@ UPLOAD_PPU_FILE: ; 0x000617
 CLEAR_NMIRAN/PPUSTUFFFLAG: ; 0x00061E
 	LDA #$00
 	STA NMI_RAN ;NMI not ran.
-	STA PPU_BLOCK_UPDATE_IN_NMI ;dont block ppu stuff.
+	STA PPU_BLOCK_UPDATE_IN_NMI_FLAG ;dont block ppu stuff.
 	RTS  ;return.
 GAME_STATE_12_WAIT_TO_FORWARD: ; 0x000625
 	LDA TIMER_SLOW ;timer slow is handled by NMI.
@@ -1374,7 +1374,7 @@ GAME_STATE_7_(DOG+)HIGHSCORE+TO_MENU: ; 0x00072C
 	LDA GAME_MODE_IN
 	CMP #$02
 	BEQ RTS_6 ;if pigeons, no dog advance.
-	JMP FORWARD_TARGET_3
+	JMP FORWARD_DOG_OBJECT ;Forward only for ducks.
 RTS_6: ; 0x000739
 	RTS 
 SCORE_TO_COPY: ; 0x00073A
@@ -1420,8 +1420,8 @@ GAME_STATE_6_PREP_GAME_OVER: ; 0x000779
 	JSR WAIT_FOR_NMI ;wait for frame.
 	JSR SND_SET_F0_#$40 ;set sound now.
 	LDA #$01
-	STA TRGT3_TYPE ;set up dog?
-	STA TRGT3_STATE ;enable state?
+	STA TRGT3_TYPE ;Set up dog.
+	STA TRGT3_STATE ;Enabled state.
 	LDA #$07
 	STA IN_GAME_STATE ;go to state 7, does score and stuff.
 	LDA #$15 ;set timer.
@@ -1480,17 +1480,17 @@ WRITE_DIGIT: ; 0x0007E1
 	LDY #$23 ;PPU ADDR for update
 	JMP MAKE_SETUP_PPU_BLOCK ;make buffer.
 GAME_STATE_D_INTRO_MESSAGE_SCRIPT: ; 0x0007EF
-	LDA MULTIPLE_BG_UPDATE_INDEX
+	LDA INTRO_MESSAGE_INDEX
 	BEQ INDEX_ZERO ;if not done updating the BG.
 	JMP LEVEL_INTRO_MESSAGE_SCRIPT_RTN ;handle timer if not 0, abuse RTS.
 INDEX_ZERO: ; 0x0007F6
-	LDA #$0A ;Move to state A when update done.
-	STA IN_GAME_STATE ;new state when timer = 0.
+	LDA #$0A ;Move to state when timer 0, pigeon round init.
+	STA IN_GAME_STATE
 	RTS 
 LEVEL_INTRO_MESSAGE_SCRIPT_RTN: ; 0x0007FB
 	LDA FAST_TIMERS
 	BNE RTS_7 ;rts if timer !0
-	LDY MULTIPLE_BG_UPDATE_INDEX
+	LDY INTRO_MESSAGE_INDEX
 	BEQ RTS_7 ;rts if flag clear.
 	LDA BEGINNING_ROUND_MESSAGE_SCRIPT,Y
 	CMP #$AA
@@ -1500,15 +1500,15 @@ LEVEL_INTRO_MESSAGE_SCRIPT_RTN: ; 0x0007FB
 	LDA BEGINNING_ROUND_MESSAGE_SCRIPT,Y ;get next byte.
 	STA FAST_TIMERS ;set timer.
 	INY 
-	STY MULTIPLE_BG_UPDATE_INDEX ;save next value.
+	STY INTRO_MESSAGE_INDEX ;save next value.
 	PLA  ;pull first value.
 	JMP BG_SHOW_MESSAGE ;use it to...
 EOF: ; 0x000818
 	LDA #$00
-	STA MULTIPLE_BG_UPDATE_INDEX ;No 9D index when reset.
+	STA INTRO_MESSAGE_INDEX ;No 9D index when reset.
 RTS_7: ; 0x00081C
 	RTS 
-GAME_STATE_0_INIT_RAM+SCREENS: ; 0x00081D
+GAME_STATE_0_INIT_SCREENS/RAM: ; 0x00081D
 	JSR CLEAR_RAM_$30-$FF
 	JSR WAIT_FOR_NMI
 	JSR CLEAR_BOTH_SCREENS
@@ -1522,7 +1522,7 @@ GAME_STATE_0_INIT_RAM+SCREENS: ; 0x00081D
 GAME_MODE_<2: ; 0x000836
 	STX IN_GAME_STATE ;now either 1 or 8.
 	RTS 
-GAME_STATE_1_SETUP_DUCKS: ; 0x000839
+GAME_STATE_1_SETUP_DUCK_SCREEN: ; 0x000839
 	JSR WAIT_FOR_NMI ;set up game for ducks here.
 	LDX #$42
 	LDY #$E0
@@ -1544,15 +1544,15 @@ GAME_STATE_2_SETUP_ROUND: ; 0x000854
 	NOP 
 	LDA #$00
 	STA ZAPPER_TRIG_RELEASED_FLAG ;not true.
-	STA MULTIPLE_BG_UPDATE_INDEX ;(cleared with above jsr's)
+	STA INTRO_MESSAGE_INDEX ;(cleared with above jsr's)
 	LDA #$03
 	STA IN_GAME_STATE ;switch state
 	RTS 
-GAME_STATE_3_ZAP+TRGTS(+STATUS)+SHOT: ; 0x00086E
-	JSR ZAP_PROC_TRIGGER
-	JSR PROCESS_ZAPPER
-	JSR FORWARD_TARGET_3 ;dog obj handling.
-	JSR FORWARD_TARGETS_1+2 ;target handling.
+GAME_STATE_3_DUCKS_MAIN: ; 0x00086E
+	JSR ZAP_PROC_TRIGGER ;Trigger process.
+	JSR PROCESS_ZAPPER ;Process zapper.
+	JSR FORWARD_DOG_OBJECT ;dog obj handling.
+	JSR FORWARD_TARGET_OBJECTS ;target handling.
 	JSR PPU_DISP_SHOTS_LEFT
 	JSR UPDATE_ACTIVE_TARGET_STATUS
 	JSR DISP_TARGETS_HIT
@@ -1563,7 +1563,7 @@ GAME_STATE_3_ZAP+TRGTS(+STATUS)+SHOT: ; 0x00086E
 	NOP 
 	NOP 
 	RTS  ;return.
-FORWARD_TARGETS_1+2: ; 0x000890
+FORWARD_TARGET_OBJECTS: ; 0x000890
 	LDA TRGT1_TYPE ;get if is target.
 	BEQ FORWARD_TARGET_2 ;not active
 	LDY #$00
@@ -1689,7 +1689,7 @@ WRITE_A_TO_MOVEMENT_CHANGE?: ; 0x000958
 	LDA OBJ_DATA_UNK_HIGH,X ;Move pointer loaded to object.
 	STA OBJ_ZP_EXTRA_PTR/DATA
 	LDA OBJ_DATA_UNK_LOW,X
-	STA OBJ_ZP_COPY+21
+	STA OBJ_ZP_EXTRA_PTR/DATA+1
 	JSR RNG_ADVANCE ;get new rand number.
 	AND #$3F ;Time between targets, 100%.
 	TAY 
@@ -1789,8 +1789,8 @@ SET_COUNTDOWN: ; 0x000A08
 	LDA #$00
 	STA DUCK_MOVEMENT_LAST_HELD_CONTROLLER ;Clear held.
 TWO_TARGET_SKIP: ; 0x000A0E
-	INC GAME_TARGETS_SHOWN? ;Init'd objects += 1
-	LDA GAME_TARGETS_SHOWN? ;Get value.
+	INC ROUND_TARGETS_SHOWN ;Init'd objects += 1
+	LDA ROUND_TARGETS_SHOWN ;Get value.
 	STA OBJ_ZP_TARGET_NUMBER+1 ;1 or 2, which slot this is in.
 	DEC NUM_TARGETS_REMAINING ;one less target remaining overall.
 	INC OBJ_ZP_STATE ;Init'd, next state.
@@ -2105,7 +2105,7 @@ SKIP_WRITE_X_COORD: ; 0x000C16
 	SEC 
 	SBC #$01
 	BNE MOVE_OBJ_LOOP ;ddifficulty is number of loops.
-	JMP TARGET_ANIM_TIMER_CHECK/DISP ;put obj/disp
+	JMP ANIMATION_CHECK/UPDATE_RTN ;put obj/disp
 TARGET_STATE_4_HIT_SHOCKED: ; 0x000C1F
 	LDX OBJ_ZP_TARGET_NUMBER+1 ;get which hit.
 	LDA #$01
@@ -2131,7 +2131,7 @@ TARGET_STATE_5_ANIMATE/SOUND: ; 0x000C3D
 	BNE SKIP_SOUND_ANIMATE_ONLY ;!=, skip sound set.
 	JSR SND_SET_F2_#$02 ;Sound, idk.
 SKIP_SOUND_ANIMATE_ONLY: ; 0x000C4C
-	JMP TARGET_ANIM_TIMER_CHECK/DISP
+	JMP ANIMATION_CHECK/UPDATE_RTN
 TARGET_STATE_6_FALLING: ; 0x000C4F
 	JSR POINTS_DISPLAY_ADD ;Display points.
 	JSR SND_SET_F0_#$10 ;Falling sound
@@ -2168,8 +2168,8 @@ TARGET_STATE_8_REMOVE_OBJ: ; 0x000C8B
 	LDA #$00
 	STA OBJ_ZP_STATE ;disable object.
 	LDX OBJ_ZP_SPRITE_SLOT_START ;get its start.
-	JMP OBJ_SPRITE_OFF_SCREEN ;put off screen.
-FORWARD_TARGET_3: ; 0x000C94
+	JMP OBJ_ZP_SPRITE_OFF_SCREEN ;put off screen.
+FORWARD_DOG_OBJECT: ; 0x000C94
 	LDA TRGT3_TYPE
 	BEQ RTS_10 ;deativated, nothing to display.
 	LDA #$02
@@ -2185,46 +2185,46 @@ OBJ_DOG_STATE_SWITCH: ; 0x000CA9
 	JSR SWITCH_TO_CODE_PTRS
 	.LOW RTS_3 ;RTS, default state?
 	.HIGH RTS_3
-	.LOW TRGT_STATE_1_SETUP_GAME_VARS ;setup dog, moves to 2.
+	.LOW TRGT_STATE_1_SETUP_GAME_VARS ;Setup
 	.HIGH TRGT_STATE_1_SETUP_GAME_VARS
 	.LOW TRGT_STATE_2_ANIMATE_DOG_INTRO/LEVEL ;setup obj anim ptr, display.
 	.HIGH TRGT_STATE_2_ANIMATE_DOG_INTRO/LEVEL
-	.LOW TRGT_STATE_3_COUNT_FRAME ;watch counter, animate, go to state 6 or 4.
-	.HIGH TRGT_STATE_3_COUNT_FRAME
-	.LOW TRGT_STATE_4_STEP_0+SCRIPT ;step 0, setup animation script.
-	.HIGH TRGT_STATE_4_STEP_0+SCRIPT
-	.LOW TARGET_ANIM_TIMER_CHECK/DISP ;copy of state 0x11
-	.HIGH TARGET_ANIM_TIMER_CHECK/DISP
-	.LOW TRGT_STATE_6_SETUP_ANIM_SCRIPT ;setup.
+	.LOW TRGT_STATE_3_WALKING_WATCHER ;Walking out watcher.
+	.HIGH TRGT_STATE_3_WALKING_WATCHER
+	.LOW TRGT_STATE_4_SNIFF_ANIMATION ;Sniff animation swap.
+	.HIGH TRGT_STATE_4_SNIFF_ANIMATION
+	.LOW ANIMATION_CHECK/UPDATE_RTN ;Sniff animate.
+	.HIGH ANIMATION_CHECK/UPDATE_RTN
+	.LOW TRGT_STATE_6_SETUP_ANIM_SCRIPT ;Dog excited setup.
 	.HIGH TRGT_STATE_6_SETUP_ANIM_SCRIPT
-	.LOW TARGET_ANIM_TIMER_CHECK/DISP ;another copy.
-	.HIGH TARGET_ANIM_TIMER_CHECK/DISP
-	.LOW TRGT_STATE_8_SET_SND_COUNTDOWN+SCRIPT ;setup script, set 9E=4
-	.HIGH TRGT_STATE_8_SET_SND_COUNTDOWN+SCRIPT
-	.LOW TRGT_STATE_9_CNTDWN_TO_SND ;9E, sound.
-	.HIGH TRGT_STATE_9_CNTDWN_TO_SND
-	.LOW TRGT_STATE_A_FTIMER_CNTDWN2SND+_SETXY+SCRIPT ;as named, lots here.
-	.HIGH TRGT_STATE_A_FTIMER_CNTDWN2SND+_SETXY+SCRIPT
-	.LOW TARGET_ANIM_TIMER_CHECK/DISP ;unused?
-	.HIGH TARGET_ANIM_TIMER_CHECK/DISP
-	.LOW TRGT_STATE_C_CNTDOWNTMR2SND_SETY_SCRIPT1/2 ;2B,setup,sound.
-	.HIGH TRGT_STATE_C_CNTDOWNTMR2SND_SETY_SCRIPT1/2
-	.LOW TARGET_ANIM_TIMER_CHECK/DISP ;unused?
-	.HIGH TARGET_ANIM_TIMER_CHECK/DISP
-	.LOW TRGT_STATE_E_SETUP_BETWEEN_ROUNDS? ;init game and other?
-	.HIGH TRGT_STATE_E_SETUP_BETWEEN_ROUNDS?
-	.LOW TRGT_STATE_F_CHK_TRGTS+IDK ;end of round?
-	.HIGH TRGT_STATE_F_CHK_TRGTS+IDK
-	.LOW TRGT_STATE_10_SET_X_BEHIND_BG_SETY_SCRIPT ;pigeons start from state 1?
-	.HIGH TRGT_STATE_10_SET_X_BEHIND_BG_SETY_SCRIPT
-	.LOW TARGET_ANIM_TIMER_CHECK/DISP ;disp obj?
-	.HIGH TARGET_ANIM_TIMER_CHECK/DISP
-	.LOW TRGT_STATE_12_CLR_WHEN_SCRIPT_DONE ;clears sprites when animation ends.
-	.HIGH TRGT_STATE_12_CLR_WHEN_SCRIPT_DONE
+	.LOW ANIMATION_CHECK/UPDATE_RTN ;Show excited.
+	.HIGH ANIMATION_CHECK/UPDATE_RTN
+	.LOW TRGT_STATE_8_BARK_SETUP ;Setup next state.
+	.HIGH TRGT_STATE_8_BARK_SETUP
+	.LOW TRGT_STATE_9_BARK+ANIMATE ;Bark sound and jumping animation continue.
+	.HIGH TRGT_STATE_9_BARK+ANIMATE
+	.LOW TRGT_STATE_A_DOG_LAUGHING_AT_SETUP ;as named, lots here.
+	.HIGH TRGT_STATE_A_DOG_LAUGHING_AT_SETUP
+	.LOW ANIMATION_CHECK/UPDATE_RTN ;Animate laughing at you.
+	.HIGH ANIMATION_CHECK/UPDATE_RTN
+	.LOW TRGT_STATE_C_DOG_HAS_DUCK_SETUP ;Duck succesfully shot popup setup.
+	.HIGH TRGT_STATE_C_DOG_HAS_DUCK_SETUP
+	.LOW ANIMATION_CHECK/UPDATE_RTN ;Animate
+	.HIGH ANIMATION_CHECK/UPDATE_RTN
+	.LOW TRGT_STATE_E_NEXT_ATTEMPT ;Init round.
+	.HIGH TRGT_STATE_E_NEXT_ATTEMPT
+	.LOW TRGT_STATE_F_CHECK_END_ROUND ;End of attempt checks.
+	.HIGH TRGT_STATE_F_CHECK_END_ROUND
+	.LOW TRGT_STATE_10_DOG_LAUGH_END_OF_GAME_SETUP ;Setup.
+	.HIGH TRGT_STATE_10_DOG_LAUGH_END_OF_GAME_SETUP
+	.LOW ANIMATION_CHECK/UPDATE_RTN ;Animate, final dog laugh.
+	.HIGH ANIMATION_CHECK/UPDATE_RTN
+	.LOW TRGT_STATE_12_WAIT_UNTIL_DOG_ANIM_DONE ;Clear sprites when animation ends.
+	.HIGH TRGT_STATE_12_WAIT_UNTIL_DOG_ANIM_DONE
 TRGT_STATE_1_SETUP_GAME_VARS: ; 0x000CD4
 	LDX #$1F ;index
 MOVE_DATA: ; 0x000CD6
-	LDA TARGET_3_DATA,X ;move initial data here to OBJ_ZP_COPY
+	LDA DOG_OBJ_INIT_DATA,X ;move initial data here to OBJ_ZP_COPY
 	STA OBJ_ZP_COPY,X
 	DEX 
 	BPL MOVE_DATA
@@ -2232,28 +2232,28 @@ MOVE_DATA: ; 0x000CD6
 	STA SHOTS_REMAINING ;set shots remaining.
 	LDA #$01
 	STA SHOT_FIRED_FLAG ;disable shooting the screen.
-	STA UPDATE_TARGETS_HIT ;unk, set to 1.
+	STA UPDATE_TARGETS_HIT ;Update
 	LDA #$02
 	STA PALETTE_UPLOAD_REQUEST ;upload pallette.
 	LDA IN_GAME_STATE
-	CMP #$07 ;if game state is 7 (pigeons start?)
-	BNE GAME_HAS_DOG
+	CMP #$07 ;If in game state is 7, game over state.
+	BNE GAME_NOT_OVER
 	LDA #$10
-	STA OBJ_ZP_STATE ;move this to state #$10 if state is 7.
+	STA OBJ_ZP_STATE ;Laughing at end state.
 	RTS 
-GAME_HAS_DOG: ; 0x000CF7
-	LDA LEVEL
+GAME_NOT_OVER: ; 0x000CF7
+	LDA LEVEL ;Load level.
 	LDY #$18 ;X coord for dog in intro, very left.
-	LDX #$00 ;not sure.
-	CMP #$01
-	BEQ IS_LEVEL_1 ;put dog earlier, not closer to middle.
-	LDY #$50 ;puts dog mid screen here.
-	LDX #$18
+	LDX #$00 ;Frame C count.
+	CMP #$01 ;If _ Level 1
+	BEQ IS_LEVEL_1 ;==, skip putting dog middle.
+	LDY #$50 ;Put dog in middle of screen.
+	LDX #$18 ;Frame C count see higher. Switches to 4 faster.
 IS_LEVEL_1: ; 0x000D05
 	STY OBJ_ZP_X_COORD ;X coord.
 	STX OBJ_ZP_EXTRA_PTR/DATA ;animation step? Not sure.
 	LDA #$01
-	STA MULTIPLE_BG_UPDATE_INDEX ;Set index 1 for stepped updates.
+	STA INTRO_MESSAGE_INDEX ;Set index 1 for stepped updates.
 	JSR WAIT_FOR_NMI
 	JSR PLAY_SOUNDS ;init sounds to clear garbage up?
 	INC OBJ_ZP_STATE ;inc object state to 2.
@@ -2261,88 +2261,88 @@ IS_LEVEL_1: ; 0x000D05
 TRGT_STATE_2_ANIMATE_DOG_INTRO/LEVEL: ; 0x000D16
 	LDX #$8E ;points to $E78E, animation script.
 	LDY #$E7 ;this is the dog walking across the screen.
-	JMP SETUP_INC_TRGT_GOTO_11
-TRGT_STATE_3_COUNT_FRAME: ; 0x000D1D
+	JMP INC_TRGT_STATE_AND_ANIMATE
+TRGT_STATE_3_WALKING_WATCHER: ; 0x000D1D
 	LDA OBJ_ZP_FRAME ;get frame showing.
 	CMP #$0C ;if is frame X.
-	BNE FRAME_NOT_C
-	INC OBJ_ZP_EXTRA_PTR/DATA ;is counter on dog. inc count.
-	LDA OBJ_ZP_EXTRA_PTR/DATA ;get value.
-	CMP #$20 ;if is 20...
-	BCC FRAME_NOT_C
-	INC OBJ_ZP_STATE ;go to next state.
+	BNE FRAME_NOT_C ;If not, goto.
+	INC OBJ_ZP_EXTRA_PTR/DATA ;Inc C frame count.
+	LDA OBJ_ZP_EXTRA_PTR/DATA ;Load val
+	CMP #$20 ;If _ #$20
+	BCC FRAME_NOT_C ;<, just display.
+	INC OBJ_ZP_STATE ;Goto state 4 if A >= val
 RTS_11: ; 0x000D2D
-	RTS 
+	RTS  ;Leave
 FRAME_NOT_C: ; 0x000D2E
-	JSR TARGET_ANIM_TIMER_CHECK/DISP ;check animation/disp.
-	LDA OBJ_ZP_X_COORD
-	CMP OBJ_ZP_COPY+21 ;idk what for yet. is pointer data? why this?
-	BNE RTS_11 ;if not eq, rts.
-	LDA #$06
-	STA OBJ_ZP_STATE ;set state to 6 when eq.
+	JSR ANIMATION_CHECK/UPDATE_RTN ;Show and animate.
+	LDA OBJ_ZP_X_COORD ;Get X coord.
+	CMP OBJ_ZP_EXTRA_PTR/DATA+1 ;Target value for dog X position.
+	BNE RTS_11 ;If not done, RTS.
+	LDA #$06 ;State to when jumping.
+	STA OBJ_ZP_STATE ;Set state.
 	RTS 
-TRGT_STATE_4_STEP_0+SCRIPT: ; 0x000D3C
+TRGT_STATE_4_SNIFF_ANIMATION: ; 0x000D3C
 	LDA #$00
-	STA OBJ_ZP_EXTRA_PTR/DATA
+	STA OBJ_ZP_EXTRA_PTR/DATA ;Clear counter.
 	LDX #$98
 	LDY #$E7 ;script at E798
-SETUP_INC_TRGT_GOTO_11: ; 0x000D44
+INC_TRGT_STATE_AND_ANIMATE: ; 0x000D44
 	JSR SETUP_OBJ_ANIM_[PTR,INDEX,TIMER]
 	INC OBJ_ZP_STATE ;State++
-	JMP TARGET_ANIM_TIMER_CHECK/DISP ;display this obj NOW.
+	JMP ANIMATION_CHECK/UPDATE_RTN ;Display obj.
 TRGT_STATE_6_SETUP_ANIM_SCRIPT: ; 0x000D4C
 	LDX #$A7 ;Animation ptr to script.
 	LDY #$E7
-	BNE SETUP_INC_TRGT_GOTO_11
-TRGT_STATE_8_SET_SND_COUNTDOWN+SCRIPT: ; 0x000D52
+	BNE INC_TRGT_STATE_AND_ANIMATE
+TRGT_STATE_8_BARK_SETUP: ; 0x000D52
 	LDA #$04
-	STA OBJ3_SOUND_COUNT_DOWN ;unk why.
-	LDX #$AC
-	LDY #$E7 ;animation script.
-	BNE SETUP_INC_TRGT_GOTO_11
-TRGT_STATE_9_CNTDWN_TO_SND: ; 0x000D5C
-	DEC OBJ3_SOUND_COUNT_DOWN
-	LDA OBJ3_SOUND_COUNT_DOWN
-	BNE ANIMATE_ONLY ;if 9E != 0, no sound, just animate.
-	LDA #$10 ;new timer.
-	STA OBJ3_SOUND_COUNT_DOWN ;save.
-	JSR SND_SET_F2_#$01 ;play sound.
+	STA OBJ3_SOUND_COUNT_DOWN ;Sound countdown.
+	LDX #$AC ;Animation script.
+	LDY #$E7
+	BNE INC_TRGT_STATE_AND_ANIMATE ;Always taken.
+TRGT_STATE_9_BARK+ANIMATE: ; 0x000D5C
+	DEC OBJ3_SOUND_COUNT_DOWN ;Counter--
+	LDA OBJ3_SOUND_COUNT_DOWN ;Load
+	BNE ANIMATE_ONLY ;Animate if not 0.
+	LDA #$10 ;Reset timer.
+	STA OBJ3_SOUND_COUNT_DOWN ;Put to obj.
+	JSR SND_SET_F2_#$01 ;Play sound, bark.
 ANIMATE_ONLY: ; 0x000D69
-	JMP TARGET_ANIM_TIMER_CHECK/DISP ;animate, abuse their rts.
-TRGT_STATE_A_FTIMER_CNTDWN2SND+_SETXY+SCRIPT: ; 0x000D6C
-	LDA FAST_TIMERS
+	JMP ANIMATION_CHECK/UPDATE_RTN ;animate, abuse their rts.
+TRGT_STATE_A_DOG_LAUGHING_AT_SETUP: ; 0x000D6C
+	LDA FAST_TIMERS ;Load fast timer.,
 	BNE RTS_11 ;if timer not 0.
 	JSR SND_SET_F0_#$40 ;play sound.
 	LDA #$80
 	STA OBJ_ZP_X_COORD ;move obj to near center screen.
-	JSR RESET_OBJ_ZP_TIMER/PTR_INDEX/Y_COORD
+	JSR PREP_DOG_ANIMATION_FOR_POPUP ;Reset attrs.
 	LDX #$46 ;anim script ptr to E846
 	LDY #$E8
-	BNE SETUP_INC_TRGT_GOTO_11
-TRGT_STATE_C_CNTDOWNTMR2SND_SETY_SCRIPT1/2: ; 0x000D80
+	BNE INC_TRGT_STATE_AND_ANIMATE
+TRGT_STATE_C_DOG_HAS_DUCK_SETUP: ; 0x000D80
 	LDA FAST_TIMERS
-	BNE RTS_11 ;if timer not 0, leave.
-	JSR SND_SET_F1 ;set sound.
-	JSR RESET_OBJ_ZP_TIMER/PTR_INDEX/Y_COORD ;more clearing of stuff.
+	BNE RTS_11 ;Wait for 0.
+	JSR SND_SET_F1 ;Set sound.
+	JSR PREP_DOG_ANIMATION_FOR_POPUP ;Clear.
 	LDX #$94
-	LDY #$E8 ;loads animation ptr. E894
+	LDY #$E8 ;Animation ptr, $E894.
 	LDA TRGT_SHOT_DURING_ATTEMPT
 	CMP #$01
-	BEQ SETUP_INC_TRGT_GOTO_11 ;use this animation script if BD=1
+	BEQ INC_TRGT_STATE_AND_ANIMATE ;use this animation script if BD=1
 	LDX #$A3 ;load this ptr instead, E8A3.
 	LDY #$E8
-	BNE SETUP_INC_TRGT_GOTO_11
-TRGT_STATE_E_SETUP_BETWEEN_ROUNDS?: ; 0x000D9A
+	BNE INC_TRGT_STATE_AND_ANIMATE
+TRGT_STATE_E_NEXT_ATTEMPT: ; 0x000D9A
 	LDA #$30 ;mostly self explainatory.
-	STA COUNTDOWN_TO_ENABLE_TARGETS
+	STA COUNTDOWN_TO_ENABLE_TARGETS ;Store countdown val.
 	LDA #$01
-	STA ZAP_SHOOTING_ENABLED_FLAG
+	STA ZAP_SHOOTING_ENABLED_FLAG ;Enable shooting.
 	LDA #$03
-	STA SHOTS_REMAINING
+	STA SHOTS_REMAINING ;Store remaining.
 	LDA #$01
-	STA SHOT_FIRED_FLAG
+	STA SHOT_FIRED_FLAG ;Store fired, ez disable.
 	LDA #$00
-	STA TRGT_SHOT_DURING_ATTEMPT
+	STA TRGT_SHOT_DURING_ATTEMPT ;Clear flag.
 	LDA #$02 ;targets in mode
 	LDY #$01 ;target 2 state+type
 	LDX GAME_MODE_IN
@@ -2395,45 +2395,45 @@ FIRST_LEVEL: ; 0x000DD9
 	LDA #$00
 	STA OBJ_ZP_ANIM_TIMER ;init
 	RTS 
-TRGT_STATE_F_CHK_TRGTS+IDK: ; 0x000E18
-	LDA GAME_TARGETS_SHOWN?
-	CMP #$0A ;is targets shown 100%?
-	BNE OBJ_GOTO_STATE_E ;if not complete, continue.
+TRGT_STATE_F_CHECK_END_ROUND: ; 0x000E18
+	LDA ROUND_TARGETS_SHOWN
+	CMP #$0A ;All targets value.
+	BNE OBJ_GOTO_STATE_E ;Not complete, next attempt.
 	LDA #$00
-	STA END_OF_ROUND_STATE ;clear A9 state.
+	STA END_OF_ROUND_STATE ;Clear end round state.
 	LDA #$04
-	STA IN_GAME_STATE ;move to state end of round.
-	JMP CLEAR_SPRITES
+	STA IN_GAME_STATE ;In game state switch.
+	JMP CLEAR_SPRITES ;Clear sprites.
 OBJ_GOTO_STATE_E: ; 0x000E29
 	LDA #$0E
-	STA OBJ_ZP_STATE ;sets up round of targets and whatnot.
+	STA OBJ_ZP_STATE ;Set up next round instead.
 	RTS 
-TRGT_STATE_10_SET_X_BEHIND_BG_SETY_SCRIPT: ; 0x000E2E
+TRGT_STATE_10_DOG_LAUGH_END_OF_GAME_SETUP: ; 0x000E2E
 	LDA #$80
-	STA OBJ_ZP_X_COORD ;sets x coord to $80.
+	STA OBJ_ZP_X_COORD ;Set to middle of screen.
 	LDA #$01
-	STA OBJ_ZP_BEHIND_BG_FLAG ;set to behind BG.
-	JSR RESET_OBJ_ZP_TIMER/PTR_INDEX/Y_COORD ;Init this stuff too.
-	LDX #$B2 ;animation script ptr E8B2
+	STA OBJ_ZP_BEHIND_BG_FLAG ;Put behind BG.
+	JSR PREP_DOG_ANIMATION_FOR_POPUP ;Init more.
+	LDX #$B2 ;Animation script.
 	LDY #$E8
-	JMP SETUP_INC_TRGT_GOTO_11
-TRGT_STATE_12_CLR_WHEN_SCRIPT_DONE: ; 0x000E40
+	JMP INC_TRGT_STATE_AND_ANIMATE ;Goto.
+TRGT_STATE_12_WAIT_UNTIL_DOG_ANIM_DONE: ; 0x000E40
 	LDA OBJ_ZP_ANIM_TIMER
-	BNE TARGET_ANIM_TIMER_CHECK/DISP ;Do animation stuff if timer valid.
-	LDA #$00 ;else, clear obj and remove from screen.
-	STA OBJ_ZP_STATE ;clear state, disable object.
-	LDX OBJ_ZP_SPRITE_SLOT_START ;get start of index to clear.
-	JMP OBJ_SPRITE_OFF_SCREEN
-TARGET_ANIM_TIMER_CHECK/DISP: ; 0x000E4D
-	LDA OBJ_ZP_ANIM_TIMER ;obj substate?
-	BEQ UPDATE_ANIMATION_TO_PTR ;if update time...?
-	DEC OBJ_ZP_ANIM_TIMER ;not sure why dec.
-	JMP OBJ_ZP_TO_SCREEN_ROUTINE
+	BNE ANIMATION_CHECK/UPDATE_RTN ;Do animation stuff if timer valid. Could have brached around load.
+	LDA #$00 ;Clearing...
+	STA OBJ_ZP_STATE ;State to 0.
+	LDX OBJ_ZP_SPRITE_SLOT_START ;Slot start.
+	JMP OBJ_ZP_SPRITE_OFF_SCREEN ;Goto, abuse RTS.
+ANIMATION_CHECK/UPDATE_RTN: ; 0x000E4D
+	LDA OBJ_ZP_ANIM_TIMER ;Animation timer.
+	BEQ UPDATE_ANIMATION_TO_PTR ;If zero, update.
+	DEC OBJ_ZP_ANIM_TIMER ;Otherwise, dec.
+	JMP OBJ_ZP_TO_SCREEN_ROUTINE ;Put on screen if not 0.
 UPDATE_ANIMATION_TO_PTR: ; 0x000E56
 	LDY OBJ_ZP_ANIM_PTR_INDEX ;index of animation data pointed to by OBJ.
 	LDA (OBJ_ZP_ANIM_PTR_L),Y ;get either 1. frames until change, or 2. flag.
 	CMP #$FA ;if <= FA, not flag.
-	BCC OBJ_ANIM_NO_COMMAND ;if < FA, go here.
+	BCC OBJ_ANIM_DATA_NOT_COMMAND ;if < FA, go here.
 	INC OBJ_ZP_ANIM_PTR_INDEX ;next index.
 	SEC 
 	SBC #$FA ;if >= #$FA, make index 0 to 5.
@@ -2443,88 +2443,88 @@ ANIMATION_FLAGS_SWITCH: ; 0x000E63
 	.HIGH RTS_3
 	.LOW RTS_3 ;FB, does nothing.
 	.HIGH RTS_3
-	.LOW OBJ_ZP_INDEX_TO_#$1E ;FC, sets animation index to #$1E.
-	.HIGH OBJ_ZP_INDEX_TO_#$1E
-	.LOW OBJ_PUT_BEHIND_BG? ;FD, push animation behind BG.
-	.HIGH OBJ_PUT_BEHIND_BG?
+	.LOW OBJ_ZP_ANIMATION_INDEX_TO_#$1E ;FC, sets animation index to #$1E.
+	.HIGH OBJ_ZP_ANIMATION_INDEX_TO_#$1E
+	.LOW OBJ_PUT_BEHIND_BG_TRUE ;FD, push animation behind BG.
+	.HIGH OBJ_PUT_BEHIND_BG_TRUE
 	.LOW OBJ_ZP_PTR_INDEX_TO_0 ;FE, restarts animation.
 	.HIGH OBJ_ZP_PTR_INDEX_TO_0
-	.LOW OBJ_ZP_NEW_STATE_FROM_PTR ;sets up substate from new pointer.
-	.HIGH OBJ_ZP_NEW_STATE_FROM_PTR
-OBJ_ANIM_NO_COMMAND: ; 0x000E72
-	LDY OBJ_ZP_ANIM_PTR_INDEX ;get index int anim data.
+	.LOW OBJ_ZP_STATE+ANIM_TIMER_FROM_ANIM_STREAM ;sets up substate from new pointer.
+	.HIGH OBJ_ZP_STATE+ANIM_TIMER_FROM_ANIM_STREAM
+OBJ_ANIM_DATA_NOT_COMMAND: ; 0x000E72
+	LDY OBJ_ZP_ANIM_PTR_INDEX ;Get anim stream index and slot from.
 	LDX OBJ_ZP_ORIGIN_SLOT#
-	CPX #$02 ;if dog origin?
-	BNE OBJ_ORIGIN_NOT_DOG ;if not dog, go here.
-	LDX OBJ_ZP_STATE ;load dog state.
-	CPX #$09 ;state
-	BEQ OBJ_STATE_9 ;if is
-	CPX #$0B ;state
-	BEQ OBJ_STATE_B/D/11_(POPUP) ;if is
-	CPX #$0D ;state
-	BEQ OBJ_STATE_B/D/11_(POPUP) ;if is
-	CPX #$11 ;state
+	CPX #$02 ;If slot is eq to 2, the dog.
+	BNE GET_ANIM_TIMER_FROM_STREAM ;Not dog, do this instead.
+	LDX OBJ_ZP_STATE ;Load state.
+	CPX #$09 ;State, dog jumping into grass.
+	BEQ OBJ_STATE_9 ;Goto its stream handler.
+	CPX #$0B ;State, laughing at player.
+	BEQ OBJ_STATE_B/D/11_MOVE_Y ;if is
+	CPX #$0D ;State, holding duck.
+	BEQ OBJ_STATE_B/D/11_MOVE_Y ;if is
+	CPX #$11 ;State, end of game laughing at you.
 	BNE NOT_ANY_OBJ_STATE_WANTED ;Not any obj state we care for.
-OBJ_STATE_B/D/11_(POPUP): ; 0x000E8C
-	LDX OBJ_ZP_TIMER_MISC? ;load idk.
-	BEQ OBJ_POPUP_ZERO ;skip if 0.
-	DEC OBJ_ZP_TIMER_MISC? ;count down otherwise.
-	LDA OBJ_ZP_EXTRA_PTR/DATA_INDEX_STORAGE ;load popup amount.
+OBJ_STATE_B/D/11_MOVE_Y: ; 0x000E8C
+	LDX OBJ_ZP_TIMER_MISC? ;Load timer.
+	BEQ OBJ_POPUP_ZERO ;If 0, goto.
+	DEC OBJ_ZP_TIMER_MISC? ;Dec otherwise.
+	LDA OBJ_ZP_EXTRA_PTR/DATA_INDEX_STORAGE ;Popup direction.
 	CLC 
 	ADC OBJ_ZP_Y_COORD ;Add to Y.
 	STA OBJ_ZP_Y_COORD ;store changed.
 	JMP OBJ_ZP_TO_SCREEN_ROUTINE
 OBJ_POPUP_ZERO: ; 0x000E9C
-	STA OBJ_ZP_TIMER_MISC? ;store data loaded by ptr
+	STA OBJ_ZP_TIMER_MISC? ;Store data from ptr way back.
 	INY  ;next byte.
-	LDA (OBJ_ZP_ANIM_PTR_L),Y ;load next byte.
-	BPL IS_POSITIVE ;unsigned positive value.
-	AND #$7F ;get lower bits.
-	JSR TWO_COMPLIMENT_A_REGISTER ;get inverse.
-IS_POSITIVE: ; 0x000EA8
-	STA OBJ_ZP_EXTRA_PTR/DATA_INDEX_STORAGE ;store
-	JMP MOVE_MORE_PTR_DATA
+	LDA (OBJ_ZP_ANIM_PTR_L),Y ;Load next byte from anim.
+	BPL UPDATE_Y_ADD_VAL ;Not negative. This code is because FF would be cmd, work around.
+	AND #$7F ;Get lower bits, subtrack value.
+	JSR TWO_COMPLIMENT_A_REGISTER ;Get compliment, making data that would be animation commands.
+UPDATE_Y_ADD_VAL: ; 0x000EA8
+	STA OBJ_ZP_EXTRA_PTR/DATA_INDEX_STORAGE ;Store val.
+	JMP GET_ANIM_FRAME_FROM_STREAM_WITH_INC ;Goto.
 OBJ_STATE_9: ; 0x000EAD
-	TAX  ;script value to X.
-	BPL IS_POSITIVE_0
-	AND #$7F ;if negative, 2 compliment.
+	TAX  ;Loaded value to X. Dog jumping in animationer?
+	BPL IS_POSITIVE_0 ;Positive, use as-is.
+	AND #$7F ;Work around anim command, as above.
 	JSR TWO_COMPLIMENT_A_REGISTER
 IS_POSITIVE_0: ; 0x000EB5
 	CLC 
-	ADC OBJ_ZP_Y_COORD ;add to the Y coord.
+	ADC OBJ_ZP_Y_COORD ;Add to Y coord.
 	STA OBJ_ZP_Y_COORD ;store Y coord.
-	INY 
-	LDA (OBJ_ZP_ANIM_PTR_L),Y ;get direction.
-	LDX OBJ_ZP_DIRECTION
-	BEQ DIRECTION_RIGHT_NO_SUB
-	JSR TWO_COMPLIMENT_A_REGISTER ;two compliment if subtracting.
+	INY  ;Stream++
+	LDA (OBJ_ZP_ANIM_PTR_L),Y ;Get X offset.
+	LDX OBJ_ZP_DIRECTION ;Load direction.
+	BEQ DIRECTION_RIGHT_NO_SUB ;If 0 (to right), then don't invert.
+	JSR TWO_COMPLIMENT_A_REGISTER ;Two comp if direction left.
 DIRECTION_RIGHT_NO_SUB: ; 0x000EC4
-	CLC 
-	ADC OBJ_ZP_X_COORD ;moe on X axis.
-	STA OBJ_ZP_X_COORD ;store X axis.
-MOVE_MORE_PTR_DATA: ; 0x000EC9
-	INY  ;next data ptr.
-	LDA (OBJ_ZP_ANIM_PTR_L),Y ;load
-	STA OBJ_ZP_FRAME ;animation frame from file.
-	INY 
-	STY OBJ_ZP_ANIM_PTR_INDEX ;store pointer to next byte.
-	JMP OBJ_ZP_TO_SCREEN_ROUTINE ;sprite on screen.
+	CLC  ;Ready add
+	ADC OBJ_ZP_X_COORD ;Mod X pos.
+	STA OBJ_ZP_X_COORD ;Store X pos.
+GET_ANIM_FRAME_FROM_STREAM_WITH_INC: ; 0x000EC9
+	INY  ;Stream++
+	LDA (OBJ_ZP_ANIM_PTR_L),Y ;Load from stream
+	STA OBJ_ZP_FRAME ;Put frame.
+	INY  ;Stream++
+	STY OBJ_ZP_ANIM_PTR_INDEX ;Store ptr.
+	JMP OBJ_ZP_TO_SCREEN_ROUTINE ;Put to screen.
 NOT_ANY_OBJ_STATE_WANTED: ; 0x000ED4
 	CPX #$03 ;If state isn't currently 3.
-	BNE OBJ_ORIGIN_NOT_DOG
+	BNE GET_ANIM_TIMER_FROM_STREAM
 	LDA #$02 ;offset two each step?
 	LDX OBJ_ZP_DIRECTION ;get direction?
-	BEQ MOVING_RIGHT ;if right, dont invert.
+	BEQ DIRECTION_TO_RIGHT ;if right, dont invert.
 	JSR TWO_COMPLIMENT_A_REGISTER ;invert for -2
-MOVING_RIGHT: ; 0x000EE1
+DIRECTION_TO_RIGHT: ; 0x000EE1
 	CLC 
 	ADC OBJ_ZP_X_COORD ;add to coord.
 	STA OBJ_ZP_X_COORD ;save to obj.
-OBJ_ORIGIN_NOT_DOG: ; 0x000EE6
-	LDA (OBJ_ZP_ANIM_PTR_L),Y ;get frame timer to hold this animation.
+GET_ANIM_TIMER_FROM_STREAM: ; 0x000EE6
+	LDA (OBJ_ZP_ANIM_PTR_L),Y ;Get animation hold timer.
 	STA OBJ_ZP_ANIM_TIMER ;write that to obj timer.
-	JMP MOVE_MORE_PTR_DATA
-OBJ_ZP_NEW_STATE_FROM_PTR: ; 0x000EED
+	JMP GET_ANIM_FRAME_FROM_STREAM_WITH_INC
+OBJ_ZP_STATE+ANIM_TIMER_FROM_ANIM_STREAM: ; 0x000EED
 	LDY OBJ_ZP_ANIM_PTR_INDEX ;get index.
 	LDA (OBJ_ZP_ANIM_PTR_L),Y ;get data at index.
 	STA OBJ_ZP_STATE ;store to state.
@@ -2537,12 +2537,12 @@ OBJ_ZP_PTR_INDEX_TO_0: ; 0x000EF9
 WRITE_OBJ_PTR_INDEX: ; 0x000EFB
 	STA OBJ_ZP_ANIM_PTR_INDEX ;store index value.
 	JMP UPDATE_ANIMATION_TO_PTR
-OBJ_PUT_BEHIND_BG?: ; 0x000F00
+OBJ_PUT_BEHIND_BG_TRUE: ; 0x000F00
 	LDA #$01
 	STA OBJ_ZP_BEHIND_BG_FLAG ;set to true.
 	JMP UPDATE_ANIMATION_TO_PTR
-OBJ_ZP_INDEX_TO_#$1E: ; 0x000F07
-	LDA #$1E
+OBJ_ZP_ANIMATION_INDEX_TO_#$1E: ; 0x000F07
+	LDA #$1E ;TODO: Exactly where/why. What obj uses.
 	BNE WRITE_OBJ_PTR_INDEX ;always taken.
 SETUP_OBJ_ANIM_[PTR,INDEX,TIMER]: ; 0x000F0B
 	STX OBJ_ZP_ANIM_PTR_L ;Pointer from X+Y, animation to play.
@@ -2572,11 +2572,11 @@ CHANGE_DIRECTION_UP: ; 0x000F33
 	JMP Y_COORD_>=90 ;Move upwards?
 JMP_MOVE_DUCKS_AUTOMATICALLY: ; 0x000F36
 	JMP MOVE_DUCKS_AUTOMATICALLY ;moves wherever.
-RESET_OBJ_ZP_TIMER/PTR_INDEX/Y_COORD: ; 0x000F39
-	LDA #$00 ;clear two below.
-	STA OBJ_ZP_TIMER_MISC? ;clear misc timer?
-	STA OBJ_ZP_EXTRA_PTR/DATA_INDEX_STORAGE ;clear misc index?
-	LDA #$AC ;Y pos.
+PREP_DOG_ANIMATION_FOR_POPUP: ; 0x000F39
+	LDA #$00 ;Clear below.
+	STA OBJ_ZP_TIMER_MISC? ;Timer
+	STA OBJ_ZP_EXTRA_PTR/DATA_INDEX_STORAGE ;Timer
+	LDA #$AC ;Y pos below grass.
 	STA OBJ_ZP_Y_COORD
 	RTS 
 DUCK_COLOR_DATA_TO_RAM_PALETTE: ; 0x000F44
@@ -2720,14 +2720,14 @@ END_FRAME_DATA_CHECK: ; 0x001038
 	CMP #$00 ;EOF. MISTAKE: No need to compare to 0.
 	BNE NOT_END_OF_FRAME_FILE ;if not 0, maniuplate data.
 	LDX SPRITE_INDEX_VAL ;index for sprite obj something.
-OBJ_SPRITE_OFF_SCREEN: ; 0x001042
+OBJ_ZP_SPRITE_OFF_SCREEN: ; 0x001042
 	LDA #$F4 ;move sprite off screen.
-CLEAR_SPRITE_LOOP: ; 0x001044
+CLEAR_SPRITES_LOOP: ; 0x001044
 	CPX OBJ_ZP_SPRITE_SLOT_END ;Last index of obj.
 	BEQ RTS_14 ;if at end, leave.
 	STA SPRITE_PAGE,X ;store data.
 	INX  ;next byte.
-	JMP CLEAR_SPRITE_LOOP
+	JMP CLEAR_SPRITES_LOOP
 RTS_14: ; 0x00104F
 	RTS 
 NOT_END_OF_FRAME_FILE: ; 0x001050
@@ -3008,7 +3008,7 @@ WRITE_ZAPPER_RESULT_FROM_A: ; 0x001235
 	JSR WAIT_FOR_NMI
 	JMP PPU_ENABLE_SPRITES/BACKGROUND ;RTS's here, screen back.
 TARGET_WAS_HIT: ; 0x001246
-	INC TARGETS_IN_LEVEL ;not sure why inc IN level.
+	INC TARGETS_HIT_IN_ROUND ;not sure why inc IN level.
 	INC TRGT_SHOT_DURING_ATTEMPT ;set to true by INC, so 1 or 2 targets both true.
 	LDX #$04 ;target state to write.
 	LDA LIGHT_HIT_INDEX
@@ -3070,26 +3070,26 @@ NO_MORE_DATA: ; 0x0012B1
 	STY HITS_REQUIRED_RAM_INDEX ;store back current index.
 	STA HITS_REQUIRED_RAM ;Store loaded value.
 	LDA #$00
-	STA GAME_TARGETS_SHOWN? ;clear idk
-	STA TARGETS_IN_LEVEL ;Reset
+	STA ROUND_TARGETS_SHOWN ;clear idk
+	STA TARGETS_HIT_IN_ROUND ;Reset
 	LDA #$01
 	STA TRGT3_TYPE ;Dog type?
 	STA TRGT3_STATE ;State.
 	LDA #$FF
 	STA DUCK_MOVEMENT_CHANGE? ;Set idk.
 	RTS 
-GAME_STATE_C_END_ROUND_SWITCH: ; 0x0012C9
+GAME_STATE_END_ROUND_SWITCH: ; 0x0012C9
 	LDA END_OF_ROUND_STATE
 	JSR SWITCH_TO_CODE_PTRS
-	.LOW END_ROUND_STATE_0_TIMER+NEXT ;A9 next state. sets up timer.
-	.HIGH END_ROUND_STATE_0_TIMER+NEXT
-	.LOW END_ROUND_STATE_1_TARGET_SHIFT ;watch timer 2B, at 0 exec end of round
+	.LOW END_ROUND_STATE_0_MOVE_DELAY_SETUP ;Wait to shift targets on bottom.
+	.HIGH END_ROUND_STATE_0_MOVE_DELAY_SETUP
+	.LOW END_ROUND_STATE_1_TARGET_SHIFT ;Target switch.
 	.HIGH END_ROUND_STATE_1_TARGET_SHIFT
-	.LOW END_ROUND_STATE_3_BONUS ;find bonus.
+	.LOW END_ROUND_STATE_3_BONUS ;Find bonus.
 	.HIGH END_ROUND_STATE_3_BONUS
-	.LOW END_ROUND_STATE_3_NEXT_ROUND ;display and play bonus sound.
+	.LOW END_ROUND_STATE_3_NEXT_ROUND ;Display bonus.
 	.HIGH END_ROUND_STATE_3_NEXT_ROUND
-END_ROUND_STATE_0_TIMER+NEXT: ; 0x0012D6
+END_ROUND_STATE_0_MOVE_DELAY_SETUP: ; 0x0012D6
 	LDA #$10 ;timer for duck counting.
 	STA FAST_TIMERS ;set fast timer.
 	INC END_OF_ROUND_STATE ;next round state.
@@ -3097,51 +3097,51 @@ END_ROUND_STATE_0_TIMER+NEXT: ; 0x0012D6
 END_ROUND_STATE_1_TARGET_SHIFT: ; 0x0012DD
 	LDA FAST_TIMERS
 	BNE RTS_17 ;RTS if timer not 0.
-	LDY #$00 ;Y is no_changes.
-	LDX #$01 ;start with index 1
+	LDY #$00 ;Y is no changes flag.
+	LDX #$01 ;First check index.
 DUCK_MOVE_LOOP: ; 0x0012E5
-	LDA DUCKS_HIT_ARRAY,X ;get status+1
-	BEQ SKIP_STATUS_SHIFT ;if not hit, skip.
-	LDA DUCKS_HIT_ARRAY-1,X ;get status
-	BNE SKIP_STATUS_SHIFT ;if hit, skip.
-	INC DUCKS_HIT_ARRAY-1,X ;curr now hit.
-	DEC DUCKS_HIT_ARRAY,X ;+1 not hit now.
-	LDY #$01 ;changed, do again.
+	LDA DUCKS_HIT_ARRAY,X ;Get status of [X+1]
+	BEQ SKIP_STATUS_SHIFT ;If 0, goto.
+	LDA DUCKS_HIT_ARRAY-1,X ;Get status of [X]
+	BNE SKIP_STATUS_SHIFT ;If hit, skip.
+	INC DUCKS_HIT_ARRAY-1,X ;Reverse by swapping  hit flags. INC lesser
+	DEC DUCKS_HIT_ARRAY,X ;DEC upper, swapping.
+	LDY #$01 ;Changed flag true as two swapped.
 SKIP_STATUS_SHIFT: ; 0x0012F7
-	INX  ;next target
-	CPX #$0A
-	BNE DUCK_MOVE_LOOP ;not done, loop.
-	DEY  ;if changed, Y=0.
-	BNE FINALIZE_ROUND ;finalize if no changes.
+	INX  ;Next target
+	CPX #$0A ;If X _ 0x0A
+	BNE DUCK_MOVE_LOOP ;!=, loop, not done.
+	DEY  ;Test if any swapped.
+	BNE FINALIZE_ROUND ;If rolled to 0xFF, finalized.
 	LDA #$00
-	STA END_OF_ROUND_STATE ;do end round again, not finished.
-	JSR SND_SET_F1_#$20 ;play swapped music.
-	JMP PPU_DISP_TARGET_STATUS ;show new ducks, abuse RTS.
+	STA END_OF_ROUND_STATE ;Reset to delay state.
+	JSR SND_SET_F1_#$20 ;Play sound.
+	JMP PPU_DISP_TARGET_STATUS ;Show new targets marks.
 FINALIZE_ROUND: ; 0x001309
-	LDA TARGETS_IN_LEVEL
-	CMP HITS_REQUIRED_RAM
-	BCC NOT_ENOUGH_TARGETS ;if A is less than REQ'd.
-	JSR SND_SET_F1_#$40 ;set success sound.
+	LDA TARGETS_HIT_IN_ROUND ;Load val
+	CMP HITS_REQUIRED_RAM ;Test compared to needed.
+	BCC NOT_ENOUGH_TARGETS ;A < REQ'd, goto, game over.
+	JSR SND_SET_F1_#$40 ;Set success sound.
 	LDA #$00
-	STA SHOT_FIRED_FLAG ;reset
-	LDA #$10 ;timer value
+	STA SHOT_FIRED_FLAG ;Reset
+	LDA #$10 ;Set timer.
 	STA FAST_TIMERS
-	INC END_OF_ROUND_STATE ;next state.
-	LDA LEVEL
-	AND #$0F ;get bottom digit
-	BNE RTS_17 ;if level X1-X9, rts?
-	JSR CLEAR_SPRITES
-	LDA #$04
-	JMP UPDATE_PPU_GROUP ;update something.
+	INC END_OF_ROUND_STATE ;Next state.
+	LDA LEVEL ;Load level. This code probably left over from port. No message at spot in arcade.
+	AND #$0F ;Isolate bottom digit.
+	BNE RTS_17 ;Leave if not X0 level.
+	JSR CLEAR_SPRITES ;Clear sprites if X0
+	LDA #$04 ;"Good" message. Probably mistake and was always meant to be shown but forgot about.
+	JMP UPDATE_PPU_GROUP ;Show message on background.
 RTS_17: ; 0x00132A
 	RTS 
 NOT_ENOUGH_TARGETS: ; 0x00132B
-	JSR CLEAR_SPRITES
+	JSR CLEAR_SPRITES ;Clear sprites.
 	LDA #$08
-	JSR UPDATE_PPU_GROUP ;game over group?
-	JSR SND_SET_F2_#$80 ;game over sound?
-	LDX #$06 ;future in game state.
-	LDA #$0C ;timer.
+	JSR UPDATE_PPU_GROUP ;Game over BG update.
+	JSR SND_SET_F2_#$80 ;Game over sound.
+	LDX #$06 ;Future state.
+	LDA #$0C ;Future timer.
 	JMP SET_GAME_STATE_X_AFTER_TIMER_A_STATE
 END_ROUND_STATE_3_BONUS: ; 0x00133D
 	LDA FAST_TIMERS
@@ -3152,7 +3152,7 @@ END_ROUND_STATE_3_BONUS: ; 0x00133D
 	LDA SHOT_FIRED_FLAG
 	CMP #$0F
 	BNE SHOW_TRGT_NO_HITS ;pallette changing stuff, i believe.
-	LDA TARGETS_IN_LEVEL
+	LDA TARGETS_HIT_IN_ROUND
 	CMP #$0A ;is perfect?
 	BNE NOT_PERFECT ;not perfect?
 	JSR SND_SET_F2_#$10 ;play perfect sound.
@@ -3433,7 +3433,7 @@ SND_SET_F1_0: ; 0x001523
 	STA SND_PLAY_F1
 	RTS 
 SND_SET_F2_#$01: ; 0x001528
-	LDA #$01
+	LDA #$01 ;Dog bark.
 	BNE SND_SET_F2
 SND_SET_F2_#$02: ; 0x00152C
 	LDA #$02
@@ -3457,7 +3457,7 @@ SND_SET_F2: ; 0x001546
 	ORA SND_PLAY_F2
 	STA SND_PLAY_F2
 	RTS 
-GAME_STATE_8_SETUP_PIGEONS: ; 0x00154B
+GAME_STATE_8_SETUP_PIGEONS_SCREEN: ; 0x00154B
 	JSR WAIT_FOR_NMI ;this is for the pigeons game.
 	LDX #$6C ;ptr $E26C
 	LDY #$E2
@@ -3465,7 +3465,7 @@ GAME_STATE_8_SETUP_PIGEONS: ; 0x00154B
 	LDA #$03
 	STA PALETTE_UPLOAD_REQUEST ;Upload palette.
 	LDA #$00
-	STA MULTIPLE_BG_UPDATE_INDEX ;reset update index.
+	STA INTRO_MESSAGE_INDEX ;reset update index.
 	LDA #$09
 	STA IN_GAME_STATE ;go to next state.
 	JSR SET_PPU_SCROLL
@@ -3484,10 +3484,10 @@ GAME_STATE_9_PIGEON_RND_SETUP: ; 0x00156A
 	STA SHOTS_REMAINING ;set remaining.
 	JSR PPU_DISP_SHOTS_LEFT
 	JSR PPU_DISP_TARGET_STATUS
-	LDA #$06
-	STA MULTIPLE_BG_UPDATE_INDEX ;Set to bg updates index.
+	LDA #$06 ;Intro message index.
+	STA INTRO_MESSAGE_INDEX ;Set to intro message index.
 	LDA #$0D
-	STA IN_GAME_STATE ;move to state.
+	STA IN_GAME_STATE ;Move to intro message state.
 	RTS 
 GAME_STATE_A_ROUND_INIT: ; 0x001593
 	LDA #$01
@@ -3567,7 +3567,7 @@ IS_MOVING: ; 0x001627
 	JSR DISP_SHOT_TEXT ;display text always.
 	LDA #$00
 	STA ZAP_SHOOTING_ENABLED_FLAG ;disable shot.
-	LDA GAME_TARGETS_SHOWN? ;end of round?
+	LDA ROUND_TARGETS_SHOWN ;end of round?
 	CMP #$0A ;end of targets.
 	BEQ ALL_TARGETS_SHOWN?
 	LDA #$0A ;game state. pigeons main.
@@ -3653,8 +3653,8 @@ NO_MATCH_9C: ; 0x001697
 	STA OBJ_ZP_EXTRA_PTR/DATA_INDEX_STORAGE
 	LDA PIGEON_DATA_FLYAWAY_COUNTDOWN,X
 	STA OBJ_ZP_COPY_FLYAWAY_COUNTDOWN
-	INC GAME_TARGETS_SHOWN? ;targets_shown++
-	LDA GAME_TARGETS_SHOWN?
+	INC ROUND_TARGETS_SHOWN ;targets_shown++
+	LDA ROUND_TARGETS_SHOWN
 	STA OBJ_ZP_TARGET_NUMBER+1 ;store target this is.
 	DEC NUM_TARGETS_REMAINING
 	LDA #$FF
@@ -3769,7 +3769,7 @@ LOOP_COORD_STUFF: ; 0x001774
 	BNE LOOP_COORD_STUFF ;loop 16 times.
 	JSR ADD_TO_SCORE_PIGEON ;add to score.
 	LDX OBJ_ZP_SPRITE_SLOT_START
-	JSR OBJ_SPRITE_OFF_SCREEN ;take off screen.
+	JSR OBJ_ZP_SPRITE_OFF_SCREEN ;take off screen.
 	INC OBJ_ZP_STATE ;next state.
 	RTS 
 TARGET_STATE_5_EXPLOSION_ANIMATION: ; 0x00178F
@@ -3806,7 +3806,7 @@ TARGET_STATE_8_REMOVE_OBJ_0: ; 0x0017C5
 	LDA #$00 ;no hit, disable.
 	STA OBJ_ZP_STATE
 	LDX OBJ_ZP_SPRITE_SLOT_START ;get where spr index starts.
-	JMP OBJ_SPRITE_OFF_SCREEN ;move off screen. abuse RTS.
+	JMP OBJ_ZP_SPRITE_OFF_SCREEN ;move off screen. abuse RTS.
 PIGEON_UPDATE_PARTICLES: ; 0x0017CE
 	STA TMP_0D ;if set, remove sprites.
 	STY TMP_0C ;save spr index.
@@ -3839,14 +3839,14 @@ NEXT_OBJ_DATA_CHECK_LOOP: ; 0x0017F9
 	STY SPRITE_INDEX_VAL ;save y index, not sure why.
 	TYA  ;Y->
 	TAX  ;X
-	JMP OBJ_SPRITE_OFF_SCREEN ;remove extras.
+	JMP OBJ_ZP_SPRITE_OFF_SCREEN ;remove extras.
 PIGEON_CLEAR_OBJ_SPRITES+MOVE_START?: ; 0x001805
 	LDA PIGEON_FLAG_NEEDS_CLEARED?
 	BEQ RTS_22 ;RTS if 0
 	LDA #$00
 	STA PIGEON_FLAG_NEEDS_CLEARED? ;clear
 	LDX OBJ_ZP_SPRITE_SLOT_START ;get obj index start
-	JSR OBJ_SPRITE_OFF_SCREEN ;clear sprite.
+	JSR OBJ_ZP_SPRITE_OFF_SCREEN ;clear sprite.
 	LDA #$50
 	STA OBJ_ZP_SPRITE_SLOT_START ;modify start index.
 	LDA #$9F
@@ -7653,19 +7653,15 @@ DUCK_COLOR_COMBO_LUT: ; 0x002766
 	.db #$20
 	.db #$21
 	.db #$22 ;and up to 0x7 is all combos of ducks available.
-TARGET_3_DATA: ; 0x00276E
-	.db #$01 ;type?
-	.db #$01 ;state?
+DOG_OBJ_INIT_DATA: ; 0x00276E
+	.db #$01 ;Type
+	.db #$01 ;State
 	.db #$AC ;Y coord.
 	.db #$18 ;X coord.
-	.db #$00
-	.db #$00
-	.db #$00
-	.db #$BF ;not sure.
-	.db #$00
-	.db #$00
-	.db #$00
-	.db #$00
+	.db #$00 ;Direction
+	.db #$00 ;Frame
+	.db #$00 ;Sprite slot start
+	.db #$BF ;Sprite slot end. Set to crazy value to clear sprites?
 	.db #$00
 	.db #$00
 	.db #$00
@@ -7675,7 +7671,11 @@ TARGET_3_DATA: ; 0x00276E
 	.db #$00
 	.db #$00
 	.db #$00
-	.db #$60
+	.db #$00
+	.db #$00
+	.db #$00
+	.db #$00
+	.db #$60 ;Target end value for intro animation. OBJ_ZP+21
 	.db #$00
 	.db #$00
 	.db #$00
@@ -7695,7 +7695,7 @@ OBJ3_ANIMATION_SCRIPT_STATE_2: ; 0x00278E
 	.db #$0E ;file
 	.db #$06 ;speed
 	.db #$0F ;file
-	.db #$FE ;flag special. in code. index to 0. repeat animation
+	.db #$FE ;flag special. in code. index to 0, repeating animation.
 	.db #$00
 OBJ3_ANIMATION_SCRIPT_STATE_4: ; 0x002798
 	.db #$08
@@ -12332,7 +12332,7 @@ FRAME_1A_DATA_05: ; 0x003AFC
 	.db #$FF
 	.db #$FF
 SND_SAMPLE_0: ; 0x003B00
-	.db #$55 ;Sample is XYZ
+	.db #$55 ;Sample is dog bark.
 	.db #$AD
 	.db #$4A
 	.db #$55
@@ -12861,7 +12861,7 @@ FRAME_22_DATA_03: ; 0x003CFD
 FRAME_1E_DATA_03: ; 0x003CFF
 	.db #$EB
 SND_SAMPLE_1: ; 0x003D00
-	.db #$AA
+	.db #$AA ;Sample is duck quack.
 	.db #$52
 	.db #$55
 	.db #$55

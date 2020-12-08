@@ -60,7 +60,7 @@ OBJ_ZP_SPRITE_SLOT_END:                  .rs 0x01 ;0x0037
 OBJ_ZP_BEHIND_BG_FLAG:                   .rs 0x01 ;0x0038
 OBJ_ZP_POINTS:                           .rs 0x01 ;0x0039
 OBJ_ZP_COPY_PIGEON_SPEED?UNUSED?:        .rs 0x01 ;0x003A
-OBJ_ZP_TARGET_NUMBER+1:                  .rs 0x01 ;0x003B
+OBJ_ZP_TARGET_NUMBER:                    .rs 0x01 ;0x003B
 OBJ_ZP_DISP_ATTR?:                       .rs 0x01 ;0x003C
 
 	.rsset 0x003F
@@ -153,7 +153,7 @@ ZAP_STATE_COUNT:                         .rs 0x01 ;0x00B8
 ZAP_SHOOTING_ENABLED_FLAG:               .rs 0x01 ;0x00B9
 SHOTS_REMAINING:                         .rs 0x01 ;0x00BA
 ROUND_TARGETS_SHOWN:                     .rs 0x01 ;0x00BB
-NUM_TARGETS_REMAINING:                   .rs 0x01 ;0x00BC
+NUM_TARGETS_PER_ATTEMPT:                 .rs 0x01 ;0x00BC
 TRGT_SHOT_DURING_ATTEMPT:                .rs 0x01 ;0x00BD
 SHOT_FIRED_FLAG:                         .rs 0x01 ;0x00BE
 
@@ -180,7 +180,7 @@ SND_D9_CHANNEL_TIMER:                    .rs 0x01 ;0x00D9
 SND_DA_CHANNEL_TIMER:                    .rs 0x01 ;0x00DA
 SND_DB_CHANNEL_TIMER:                    .rs 0x01 ;0x00DB
 SND_DC:                                  .rs 0x01 ;0x00DC
-UNK_DD:                                  .rs 0x01 ;0x00DD
+SND_DD:                                  .rs 0x01 ;0x00DD
 SND_DE:                                  .rs 0x01 ;0x00DE
 SND_DF:                                  .rs 0x01 ;0x00DF
 SND_E0_TIMERS_UNK_BASE:                  .rs 0x04 ;0x00E0 to 0x00E3
@@ -1591,7 +1591,7 @@ DO_ZAPPER: ; 0x0008B4
 WRITE_COUNTDOWN: ; 0x0008C4
 	DEY  ;dec countdown.
 	STY ACTIVATE_SHOOTING_COUNTDOWN? ;store back to now.
-	LDA NUM_TARGETS_REMAINING
+	LDA NUM_TARGETS_PER_ATTEMPT
 	BNE DEC_TARGET_ENABLE_COUNTDOWN ;If targets in mode, dec A6.
 	LDA TRGT1_STATE
 	BNE RTS_8 ;in state, rts.
@@ -1791,8 +1791,8 @@ SET_COUNTDOWN: ; 0x000A08
 TWO_TARGET_SKIP: ; 0x000A0E
 	INC ROUND_TARGETS_SHOWN ;Init'd objects += 1
 	LDA ROUND_TARGETS_SHOWN ;Get value.
-	STA OBJ_ZP_TARGET_NUMBER+1 ;1 or 2, which slot this is in.
-	DEC NUM_TARGETS_REMAINING ;one less target remaining overall.
+	STA OBJ_ZP_TARGET_NUMBER ;1 or 2, which slot this is in.
+	DEC NUM_TARGETS_PER_ATTEMPT ;one less target remaining overall.
 	INC OBJ_ZP_STATE ;Init'd, next state.
 	RTS 
 TARGET_STATE_3_FLY+BOX+STATE4: ; 0x000A19
@@ -2107,7 +2107,7 @@ SKIP_WRITE_X_COORD: ; 0x000C16
 	BNE MOVE_OBJ_LOOP ;ddifficulty is number of loops.
 	JMP ANIMATION_CHECK/UPDATE_RTN ;put obj/disp
 TARGET_STATE_4_HIT_SHOCKED: ; 0x000C1F
-	LDX OBJ_ZP_TARGET_NUMBER+1 ;get which hit.
+	LDX OBJ_ZP_TARGET_NUMBER ;get which hit.
 	LDA #$01
 	STA DUCKS_HIT_ARRAY-1,X ;set hit in status array -1 because of +1.
 	LDA #$01
@@ -2350,7 +2350,7 @@ TRGT_STATE_E_NEXT_ATTEMPT: ; 0x000D9A
 	LDA #$01 ;one target
 	LDY #$00 ;disable target 2
 TWO_TARGET_GAME_2: ; 0x000DBA
-	STA NUM_TARGETS_REMAINING
+	STA NUM_TARGETS_PER_ATTEMPT
 	STY TRGT2_TYPE
 	STY TRGT2_STATE ;enabled for 2 target games, disabled for 1 target.
 	LDA #$01 ;always enabled, enable.
@@ -3510,7 +3510,7 @@ LEVEL_MAXED: ; 0x0015AD
 	LDA #$03
 	STA SHOTS_REMAINING ;store shots remaining.
 	LDA #$02
-	STA NUM_TARGETS_REMAINING ;set # trgts
+	STA NUM_TARGETS_PER_ATTEMPT ;set # trgts
 	LDA #$00
 	STA ZAPPER_TRIG_RELEASED_FLAG ;disable trigger.
 	STA ZAP_SHOOTING_ENABLED_FLAG ;disable shots.
@@ -3550,7 +3550,7 @@ PROCESS_TARGET_2: ; 0x001600
 	JSR PIGEON_TARGET_STATE_SWITCH
 	JSR COPY_OBJ_ZP_BACK_TO_ORIGIN ;move to $500.
 PROCESS_OTHER: ; 0x001612
-	LDA NUM_TARGETS_REMAINING
+	LDA NUM_TARGETS_PER_ATTEMPT
 	BNE TARGET_ENABLE_COUNTDOWN_PIGEONS
 	LDX TRGT1_STATE
 	LDY TRGT2_STATE
@@ -3655,8 +3655,8 @@ NO_MATCH_9C: ; 0x001697
 	STA OBJ_ZP_COPY_FLYAWAY_COUNTDOWN
 	INC ROUND_TARGETS_SHOWN ;targets_shown++
 	LDA ROUND_TARGETS_SHOWN
-	STA OBJ_ZP_TARGET_NUMBER+1 ;store target this is.
-	DEC NUM_TARGETS_REMAINING
+	STA OBJ_ZP_TARGET_NUMBER ;store target this is.
+	DEC NUM_TARGETS_PER_ATTEMPT
 	LDA #$FF
 	STA OBJ_ZP_$47_PIGEON_UNK
 	JSR SND_SET_F2_#$20 ;Set rising sound?
@@ -3739,7 +3739,7 @@ STATE_8: ; 0x00174D
 	STA OBJ_ZP_STATE
 	RTS 
 TARGET_STATE_4_HIT_EXPLOSION_SETUP: ; 0x001752
-	LDX OBJ_ZP_TARGET_NUMBER+1 ;get target index.
+	LDX OBJ_ZP_TARGET_NUMBER ;get target index.
 	LDA #$01
 	STA DUCKS_HIT_ARRAY-1,X ;mark hit.
 	STA UPDATE_TARGETS_HIT ;update graphics bottom of screen.
@@ -11004,7 +11004,7 @@ SQ2_TIMER_WAS_WRITTEN: ; 0x003475
 	LDY SND_SQ2.DUTY ;To move.
 WRITE_SQ2.DUTY: ; 0x003477
 	STY APU_PULSE2_DUTY ;Store duty
-	LDA UNK_DD ;Move
+	LDA SND_DD ;Move
 	STA SND_D9_CHANNEL_TIMER
 FB_NO_UPDATE: ; 0x00347E
 	LDA SND_FD_FLAG_UNK

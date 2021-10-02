@@ -39,7 +39,7 @@ FLAG_BLOCK_PPU_UPDATE:                   .rs 0x01 ;0x0022
 PALETTE_UPLOAD_REQUEST:                  .rs 0x01 ;0x0023
 IN_MENU_FLAG:                            .rs 0x01 ;0x0024
 SWITCH_MAIN_GAME_STATE:                  .rs 0x01 ;0x0025
-MENU_STATE:                              .rs 0x01 ;0x0026
+SWITCH_MENU:                             .rs 0x01 ;0x0026
 DYNAMIC_PALETTE_UPLOAD_FLAG:             .rs 0x01 ;0x0027
 SAVE_STATE_X:                            .rs 0x01 ;0x0028
 SAVE_STATE_Y:                            .rs 0x01 ;0x0029
@@ -141,12 +141,12 @@ HITS_REQUIRED_RAM:                       .rs 0x01 ;0x00AB
 FLAG_UPDATE_TARGETS_HIT:                 .rs 0x01 ;0x00AD
 FLYAWAY_CHANGES_ENABLED:                 .rs 0x01 ;0x00AE
 DUCK_MOVEMENT_LAST_HELD_CONTROLLER:      .rs 0x01 ;0x00AF
-LIGHT_HIT_INDEX:                         .rs 0x01 ;0x00B0
+TESTING_FOR_HIT_OBJ_INDEX:               .rs 0x01 ;0x00B0
 TARGET_Y_COORD_CPY:                      .rs 0x01 ;0x00B1
 TARGET_X_COORD_CPY:                      .rs 0x01 ;0x00B2
 SPRITE_ATTR_COPY?:                       .rs 0x01 ;0x00B3
 SPRITE_INDEX_VAL:                        .rs 0x01 ;0x00B4
-ZAPPER_TRIG_RELEASED_FLAG:               .rs 0x01 ;0x00B5
+FLAG_ZAPPER_TRIGGER_RELEASED:            .rs 0x01 ;0x00B5
 FLAG_ZAPPER_TRIGGER_PULLED:              .rs 0x01 ;0x00B6
 ZAP_TIGGER_PREVIOUS_STATE:               .rs 0x01 ;0x00B7
 ZAP_STATES_MATCHED_COUNT:                .rs 0x01 ;0x00B8
@@ -217,17 +217,17 @@ SPRITE_PAGE:                             .rs 0x100 ;0x0200 to 0x02FF
 
 	.rsset 0x02F0
 POINTS_SPRITE_AREA:                      .rs 0x10 ;0x02F0 to 0x02FF
-TRGT1_TYPE:                              .rs 0x01 ;0x0300
+TRGT1_STATUS:                            .rs 0x01 ;0x0300
 TRGT1_STATE:                             .rs 0x01 ;0x0301
 TRGT1_Y_COORD:                           .rs 0x01 ;0x0302
 TRGT1_X_COORD:                           .rs 0x01 ;0x0303
 
 	.rsset 0x030A
-TRGT1_SKELETON_TO_USE?:                  .rs 0x01 ;0x030A
+TRGT1_SKELETON_USING:                    .rs 0x01 ;0x030A
 TARGET_0_ID_NUMBER:                      .rs 0x01 ;0x030B
 
 	.rsset 0x0350
-TRGT2_TYPE:                              .rs 0x01 ;0x0350
+TRGT2_STATUS:                            .rs 0x01 ;0x0350
 TRGT2_STATE:                             .rs 0x01 ;0x0351
 
 	.rsset 0x03A0
@@ -333,7 +333,7 @@ LOOP_MOVE_DAT: ; 0x000056
 SCRIPT_RUN_START: ; 0x000061
 	LDA IN_MENU_FLAG ;Load flag.
 	BEQ SOUND_STUFF ;Not in menu, goto.
-	LDA MENU_STATE
+	LDA SWITCH_MENU
 	CMP #$01 ;If MENU_STATE _ 1
 	BNE DONT_PLAY_SOUNDS ;!=, goto. Skip sound rtn.
 SOUND_STUFF: ; 0x00006B
@@ -343,7 +343,7 @@ DONT_PLAY_SOUNDS: ; 0x00006E
 	JSR READ_CONTROLLERS ;Read controllers.
 	JSR GAMEPLAY_SCRIPTS ;Do scripts.
 	INC FRAME_COUNTER ;Counter++
-	JSR CLEAR_NMIRAN/PPUSTUFFFLAG ;Clear flags.
+	JSR CLEAR_NMI_RAN/BLOCK_PPU_UPDATE_FLAGS ;Clear flags.
 LOOP_FOREVER: ; 0x00007C
 	LDA FLAG_NMI_RAN ;Load flag.
 	BNE SCRIPT_RUN_START ;Run script.
@@ -379,9 +379,9 @@ NO_PPU_UPDATE_BUF_UPLOAD: ; 0x0000A6
 	RTI  ;Leave NMI.
 GAMEPLAY_SCRIPTS: ; 0x0000B3
 	LDA IN_MENU_FLAG ;Load flag.
-	BEQ PAUSE_AND_GAMEPLAY ;Not in menu, goto.
-	JMP MENU_HANDLER ;Menu, goto.
-PAUSE_AND_GAMEPLAY: ; 0x0000BA
+	BEQ GAMEPLAY_SCRIPTS_HANDLER ;Not in menu, goto.
+	JMP MENU_SCRIPTS_HANDLER ;Menu, goto.
+GAMEPLAY_SCRIPTS_HANDLER: ; 0x0000BA
 	LDA CTRL_HELD
 	AND #$10 ;button start
 	BEQ CLEAR_PAUSE_HELD ;Not held, can unpause after.
@@ -448,8 +448,8 @@ GAMEPLAY_SWITCH: ; 0x000123
 	.HIGH STATE_0x03_DUCKS_VOLLEY ;0x03
 	.LOW STATE_0x04_ROUND_END_SWITCH ;End round routines.
 	.HIGH STATE_0x04_ROUND_END_SWITCH ;0x04
-	.LOW RTS_3 ;RTS's
-	.HIGH RTS_3 ;0x05
+	.LOW STATE_0x01_IDLE ;RTS's
+	.HIGH STATE_0x01_IDLE ;0x05
 	.LOW STATE_0x06_GAME_OVER_PREP ;Prep game over.
 	.HIGH STATE_0x06_GAME_OVER_PREP ;0x06
 	.LOW STATE_0x07_GAME_OVER ;Game over.
@@ -466,53 +466,53 @@ GAMEPLAY_SWITCH: ; 0x000123
 	.HIGH STATE_0x04_ROUND_END_SWITCH ;0x0C
 	.LOW STATE_0x0D_PIGEON_MESSAGE_SCRIPT ;Message script intro.
 	.HIGH STATE_0x0D_PIGEON_MESSAGE_SCRIPT ;0x0D
-	.LOW RTS_3 ;removed?
-	.HIGH RTS_3 ;0x0E
-	.LOW RTS_3 ;removed?
-	.HIGH RTS_3 ;0x0F
-	.LOW RTS_3 ;Pause state actual, does nothing. Processing before gameplay switch.
-	.HIGH RTS_3 ;0x10
+	.LOW STATE_0x01_IDLE ;removed?
+	.HIGH STATE_0x01_IDLE ;0x0E
+	.LOW STATE_0x01_IDLE ;removed?
+	.HIGH STATE_0x01_IDLE ;0x0F
+	.LOW STATE_0x01_IDLE ;Pause state actual, does nothing. Processing before gameplay switch.
+	.HIGH STATE_0x01_IDLE ;0x10
 	.LOW STATE_0x11_UNPAUSE ;Unpause routine.
 	.HIGH STATE_0x11_UNPAUSE ;0x11
 	.LOW STATE_0x12_FORWARD_FUTURE_HANDLER ;Back to game state.
 	.HIGH STATE_0x12_FORWARD_FUTURE_HANDLER ;0x12
-MENU_HANDLER: ; 0x00014E
+MENU_SCRIPTS_HANDLER: ; 0x00014E
 	LDA #$00
 	STA ZAPPER_RESULT ;Init result.
 	LDA #$01
 	STA ZAP_SHOOTING_ENABLED_FLAG ;Menu always has enabled.
 	STA SHOTS_REMAINING ;Give it one bullet.
-	LDA MENU_STATE ;Load state.
-	BEQ SKIP_MENU ;Zero, goto.
-	JSR ZAP_PROC_TRIGGER ;process zapper trigger
-	JSR PROCESS_ZAPPER_0 ;changes result
-	LDA ZAPPER_RESULT ;menu was hit?
-	CMP #$01 ;was hit
-	BEQ GAME_SELECTED_FROM_MENU
-	CMP #$02 ;miss
-	BEQ NEXT_MENU_OPTION
-	LDA CTRL_HELD ;get buttons held
-	AND #$30 ;get select and start
-	CMP #$10 ;comp start
-	BNE START_NOT_PRESSED ;not pressed alone. (Why alone checked?)
+	LDA SWITCH_MENU ;Load state.
+	BEQ JMP_TO_SKIP_TO_MENU_HANDLER ;Zero, goto. No zapper stuff until set up.
+	JSR PROCESS_ZAPPER_TRIGGER ;Menu in idle, do zapper stuff. Process the trigger.
+	JSR PROCESS_ZAPPER_READING ;changes result
+	LDA ZAPPER_RESULT ;Load result.
+	CMP #$01 ;Screen hit, goto.
+	BEQ GAME_SELECTED_FROM_MENU ;==, screen hit, goto.
+	CMP #$02 ;Screen missed, goto.
+	BEQ NEXT_MENU_OPTION ;==, missed screen, goto next object.
+	LDA CTRL_HELD ;Get buttons held.
+	AND #$30 ;Get select and start.
+	CMP #$10 ;Only start pressed.
+	BNE START_NOT_PRESSED ;Only start not pressed.
 GAME_SELECTED_FROM_MENU: ; 0x000176
 	LDA #$00 ;go to game here. Start works, too.
 	STA IN_MENU_FLAG ;Clear flag.
 	STA SWITCH_MAIN_GAME_STATE ;Initial in-game state.
-	JSR SND_HALT ;disable all sounds
-	JSR PPU_DISABLE_SPRITES/BACKGROUND ;disable screen
+	JSR SND_HALT ;Init sounds.
+	JSR PPU_DISABLE_SPRITES/BACKGROUND ;Turn off rendering.
 	LDA #$02
-	STA TIMER_LARGE_COUNT ;play music when back on title screen
-	STA TIMER_SLOW ;set to low number.
-	RTS 
+	STA TIMER_LARGE_COUNT ;Play music when back on title screen.
+	STA TIMER_SLOW ;Set to low value.
+	RTS  ;Leave. Game set up to start.
 START_NOT_PRESSED: ; 0x000189
-	LDX MENU_STATE ;wait for selection
-	BNE START_NOT_PRESSED/ALONE ;always taken?
-SKIP_MENU: ; 0x00018D
-	JMP COUNT_DOWN_MENU ;X=0=selected?
+	LDX SWITCH_MENU ;Load val.
+	BNE START_NOT_PRESSED/ALONE ;If nonzero, do checks.
+JMP_TO_SKIP_TO_MENU_HANDLER: ; 0x00018D
+	JMP SKIP_TO_MENU_HANDLER ;Run switch if 0x00.
 START_NOT_PRESSED/ALONE: ; 0x000190
 	CMP #$20 ;select pressed?
-	BNE SELECT_NOT_PRESSED/ALONE ;no press/alone
+	BNE SELECT_NOT_PRESSED/ALONE ;Not val wanted, goto.
 	LDA FLAG_CURSOR_UPDATED
 	BNE RESET_COUNTDOWN ;no update without full release
 NEXT_MENU_OPTION: ; 0x000199
@@ -525,10 +525,10 @@ WRITE_MENU_OPTION: ; 0x0001A3
 	STY MENU_OPTION_ON ;Store menu option.
 	JMP MENU_SELECTION_UPDATE_CREATOR ;Create update.
 SELECT_NOT_PRESSED/ALONE: ; 0x0001A9
-	CMP #$00
-	BNE MENU_SELECTION_UPDATE_CREATOR
-	STA FLAG_CURSOR_UPDATED ;allow updates, all released.
-	BEQ NOTHING_PRESSED ;always taken
+	CMP #$00 ;Anything pressed?
+	BNE MENU_SELECTION_UPDATE_CREATOR ;Something pressed, goto.
+	STA FLAG_CURSOR_UPDATED ;Clear flag, nothing pressed.
+	BEQ NOTHING_PRESSED ;Always taken, goto.
 MENU_SELECTION_UPDATE_CREATOR: ; 0x0001B2
 	LDA #$01 ;moved cursor, needs full release for next go.
 	STA FLAG_CURSOR_UPDATED ;Set to true, update cursor.
@@ -537,7 +537,7 @@ RESET_COUNTDOWN: ; 0x0001B7
 	STA TIMER_SLOW ;reset countdown for menu music.
 NOTHING_PRESSED: ; 0x0001BB
 	CPX #$01 ;blocking switch?
-	BNE COUNT_DOWN_MENU ;no?
+	BNE SKIP_TO_MENU_HANDLER ;no?
 	LDA #$51 ;loop counter= 5 times, 1 byte each
 	STA PPU_BLOCK_BUF_SETTING
 	LDA #$24 ;blanks
@@ -566,38 +566,38 @@ MOVE_DIGITS_FOR_DISP_LOOP: ; 0x0001EA
 	AND #$0F ;get digit
 	STA PPU_BLOCK_BUF,Y ;write to update buf
 	DEY 
-	LDA HIGH_SCORES_ARRAY,X
+	LDA HIGH_SCORES_ARRAY,X ;Load from high scores.
+	LSR A ;>> 4, /16. Get digit.
 	LSR A
 	LSR A
 	LSR A
-	LSR A
-	STA PPU_BLOCK_BUF,Y ;again
-	DEX 
-	DEY 
-	BPL MOVE_DIGITS_FOR_DISP_LOOP
+	STA PPU_BLOCK_BUF,Y ;to buf.
+	DEX  ;Index--
+	DEY  ;Index--
+	BPL MOVE_DIGITS_FOR_DISP_LOOP ;If positive, move all.
 	LDA PPU_BLOCK_BUF ;get top char
 	BNE NO_BLANK_ZERO ;is 0?
 	LDA #$24
-	STA PPU_BLOCK_BUF ;make top 0 space instead
+	STA PPU_BLOCK_BUF ;Blank tile leading 0's.
 NO_BLANK_ZERO: ; 0x00020B
-	LDA #$16 ;setting is 1 group of 6 bytes
-	STA PPU_BLOCK_BUF_SETTING
+	LDA #$16 ;Attributes of 1 group, 6 bytes.
+	STA PPU_BLOCK_BUF_SETTING ;Set attr.
 	LDX #$12 ;put to PPUADDR 2312
 	LDY #$23
-	JSR MAKE_SETUP_PPU_BLOCK ;make the buffer to upload.
-COUNT_DOWN_MENU: ; 0x000217
-	LDA TIMER_SLOW ;count down for menu music
-	BNE MENU_STATE_SWITCH ;only set music when "switched" to
-	JSR SND_TITLE_SCREEN_MUSIC ;title sound play?
-	LDA #$FF ;DEC $2D would have been better tsk tsk.
-	STA TIMER_SLOW ;title screen countdown reset
-MENU_STATE_SWITCH: ; 0x000222
-	LDA MENU_STATE ;which selected?
-	JSR SWITCH_TO_CODE_PTRS ;1=RTS, 0=UPLOAD FILE
-	.LOW SETUP_MENU_SCREEN_STATE
-	.HIGH SETUP_MENU_SCREEN_STATE ;selection made?
-	.LOW RTS_3
-	.HIGH RTS_3 ;RTS's.
+	JSR MAKE_SETUP_PPU_BLOCK ;Make buffer.
+SKIP_TO_MENU_HANDLER: ; 0x000217
+	LDA TIMER_SLOW ;Count down for menu music.
+	BNE SWITCH_MENU ;Only play music when state is non-zero.
+	JSR SND_TITLE_SCREEN_MUSIC ;Play title music.
+	LDA #$FF ;Reset timer. DEC $2D would have done the same, bad code, tsk tsk.
+	STA TIMER_SLOW
+SWITCH_MENU: ; 0x000222
+	LDA SWITCH_MENU ;Load state.
+	JSR SWITCH_TO_CODE_PTRS
+	.LOW STATE_0x00_INIT_TITLE_SCREEN ;Set up screen.
+	.HIGH STATE_0x00_INIT_TITLE_SCREEN
+	.LOW STATE_0x01_IDLE ;RTS, idle state.
+	.HIGH STATE_0x01_IDLE
 CLEAR_BOTH_SCREENS: ; 0x00022B
 	LDA #$02 ;clear screen $2400
 	JSR SETUP_CLEAR_SCREEN ;screen cleared here
@@ -617,8 +617,8 @@ CLR_LOOP: ; 0x00023F
 	INY 
 	INY 
 	INY 
-	BNE CLR_LOOP
-	RTS 
+	BNE CLR_LOOP ;Index != 0, loop.
+	RTS  ;Leave.
 UPLOAD_PALETTE_REQUESTED: ; 0x000249
 	LDY PALETTE_UPLOAD_REQUEST
 	BEQ RTS ;none to upload
@@ -1130,32 +1130,32 @@ RNG_ROTATE: ; 0x00059A
 	ROR RNG_ARRAY+3
 	LDA RNG_ARRAY
 	RTS 
-SETUP_MENU_SCREEN_STATE: ; 0x0005AA
+STATE_0x00_INIT_TITLE_SCREEN: ; 0x0005AA
 	JSR PPU_DISABLE_SPRITES/BACKGROUND ;Disable.
 	JSR CLEAR_SCREEN_1 ;clears nametable
 	JSR WAIT_FOR_NMI ;Wait for NMI
 	LDA #$02
 	STA TMP_01 ;nametable $2400 to clear
 	LDA #$50
-	STA TMP_00 ;tile to clear with
-	JSR CLEAR_SCREEN_WITH_SINGLE_TILE
-	JSR CLEAR_SPRITES
-	JSR WAIT_FOR_NMI
+	STA TMP_00 ;Tile to use to clear.
+	JSR CLEAR_SCREEN_WITH_SINGLE_TILE ;Clear with tile.
+	JSR CLEAR_SPRITES ;No sprites.
+	JSR WAIT_FOR_NMI ;Wait for frame.
 	LDX #$04
 	LDY #$E4 ;upload file from E404
-	JSR UPLOAD_PPU_FILE
+	JSR UPLOAD_PPU_FILE ;Upload file, title screen.
 	LDA #$01
-	STA PALETTE_UPLOAD_REQUEST ;palette
+	STA PALETTE_UPLOAD_REQUEST ;Palette.
 	LDA #$01
-	STA FLAG_CURSOR_UPDATED ;Block update.
-	INC MENU_STATE ;Next menu state (RTS state)
-	JMP PPU_ENABLE_SPRITES/BACKGROUND
+	STA FLAG_CURSOR_UPDATED ;Update cursor.
+	INC SWITCH_MENU ;Idle state.
+	JMP PPU_ENABLE_SPRITES/BACKGROUND ;Enable GFX output.
 WAIT_FOR_NMI: ; 0x0005D9
-	JSR CLEAR_NMIRAN/PPUSTUFFFLAG ;waited always clears current.
+	JSR CLEAR_NMI_RAN/BLOCK_PPU_UPDATE_FLAGS ;waited always clears current.
 WAIT_FOR_NMI_LOOP: ; 0x0005DC
 	LDA FLAG_NMI_RAN
 	BEQ WAIT_FOR_NMI_LOOP
-RTS_3: ; 0x0005E0
+STATE_0x01_IDLE: ; 0x0005E0
 	RTS  ;Jumped to from somewhere else.
 PPU_DISABLE_SPRITES/BACKGROUND: ; 0x0005E1
 	JSR WAIT_FOR_NMI ;Wait for NMI.
@@ -1174,7 +1174,7 @@ COPY_OBJ_$3YY_TO_OBJ_ZP: ; 0x0005F7
 	STY OBJ_ZP_ORIGIN_OFFSET ;save for move back later
 	LDX #$00 ;these bytes are the object data.
 LOOP_OBJ_TO_ZP_OBJ: ; 0x0005FB
-	LDA TRGT1_TYPE,Y ;it moves them to work on them all in zp.
+	LDA TRGT1_STATUS,Y ;it moves them to work on them all in zp.
 	STA OBJ_ZP_COPY,X ;and then moves them back.
 	INY  ;thanks for coming to my ted talk.
 	INX 
@@ -1186,7 +1186,7 @@ COPY_OBJ_ZP_BACK_TO_ORIGIN: ; 0x000607
 	LDX #$00
 LOOP_MOVE_BACK: ; 0x00060B
 	LDA OBJ_ZP_COPY,X
-	STA TRGT1_TYPE,Y ;store back.
+	STA TRGT1_STATUS,Y ;store back.
 	INY 
 	INX 
 	CPX #$50
@@ -1196,7 +1196,7 @@ UPLOAD_PPU_FILE: ; 0x000617
 	STX TMP_00
 	STY TMP_01
 	JMP PPU_DATA_FILE_TEST_STREAM
-CLEAR_NMIRAN/PPUSTUFFFLAG: ; 0x00061E
+CLEAR_NMI_RAN/BLOCK_PPU_UPDATE_FLAGS: ; 0x00061E
 	LDA #$00
 	STA FLAG_NMI_RAN ;NMI not ran.
 	STA FLAG_BLOCK_PPU_UPDATE ;dont block ppu stuff.
@@ -1218,7 +1218,7 @@ CLEAR_0300-03FF_OBJ_DATA_INIT: ; 0x000637
 	LDY #$00
 	TYA  ;A = 0
 MORE_CLEARED: ; 0x00063A
-	STA TRGT1_TYPE,Y ;$300 generic.
+	STA TRGT1_STATUS,Y ;$300 generic.
 	INY 
 	BNE MORE_CLEARED
 	RTS 
@@ -1264,9 +1264,9 @@ SPRITE_SKELETON_HIT_BOX_CREATE: ; 0x00067C
 	LDA TMP_0C ;Get temp data byte. Skeleton?
 	ASL A ;make index.
 	TAY  ;to index reg.
-	LDA SPRITE_X_Y_OFFSETS_LOW,Y
+	LDA SKELETON_DATA_PTR_L,Y
 	STA TMP_10 ;Skeleton stream ptr.
-	LDA SPRITE_X_Y_OFFSETS_HIGH,Y
+	LDA SKELETON_DATA_PTR_H,Y
 	STA TMP_11
 	LDY #$00 ;Start of stream/data.
 	LDX #$00 ;Sprite page index.
@@ -1280,17 +1280,17 @@ COMMIT_SPRITE_DATA_RTN: ; 0x000695
 	CLC  ;Prep add
 	ADC TARGET_Y_COORD_CPY ;Add offset to Y pos.
 	CMP #$A8 ;If A _ 0xA8
-	BCC LESS_THAN_A8 ;<, goto.
-	LDA #$F4 ;Move off screen.
+	BCC LESS_THAN_A8 ;<, goto. Ypos high enough on screen, keep.
+	LDA #$F4 ;Move off screen otherwise.
 LESS_THAN_A8: ; 0x00069E
 	STA TMP_0D ;Y coord to.
 	INY  ;Stream++
 	LDA (TMP_10),Y ;Get next.
 	CLC 
 	ADC TARGET_X_COORD_CPY ;Add X offset.
-	STA TMP_0E ;Save here.
+	STA TMP_0E ;Save Xpos.
 	INY  ;Stream++
-	LDA TMP_0D ;Get saved Y
+	LDA TMP_0D ;Get saved Ypos.
 	STA SPRITE_PAGE,X ;Store Y pos.
 	INX  ;Next sprite index.
 	LDA #$56 ;Tile, 0x56, %10 pixel square.
@@ -1333,7 +1333,7 @@ PPU_SHOW_TARGETS_BUFFER: ; 0x0006E9
 	LDX #$4C ;location on screen.
 	LDY #$23
 	JMP MAKE_SETUP_PPU_BLOCK ;put to screen.
-PPU_DISP_SHOTS_LEFT: ; 0x0006F5
+DISP_SHOTS_LEFT: ; 0x0006F5
 	LDA FLAG_UPDATE_BULLETS_DISPLAY ;Bullets need updated?
 	BEQ RTS_5 ;No, leave.
 	LDA #$00
@@ -1407,8 +1407,8 @@ WRITE_HIGHER_SCORE_LOOP: ; 0x000762
 	CPX #$04 ;smh, terrible code here.
 	BNE WRITE_HIGHER_SCORE_LOOP
 	LDY #$00
-	STY ZAPPER_TRIG_RELEASED_FLAG ;Make have to be released.
-	STY MENU_STATE ;Menu state 0.
+	STY FLAG_ZAPPER_TRIGGER_RELEASED ;Make have to be released.
+	STY SWITCH_MENU ;Menu state 0.
 	INY  ;Y=1
 	STY IN_MENU_FLAG ;Is in menu now.
 	JMP PPU_DISABLE_SPRITES/BACKGROUND ;Disable extras, abuse RTS.
@@ -1540,28 +1540,28 @@ STATE_0x02_DUCKS_SETUP_ROUND: ; 0x000854
 	NOP 
 	NOP 
 	LDA #$00
-	STA ZAPPER_TRIG_RELEASED_FLAG ;not true.
+	STA FLAG_ZAPPER_TRIGGER_RELEASED ;not true.
 	STA AUTOMESSAGE_DISPLAY_INDEX ;(cleared with above jsr's)
 	LDA #$03
 	STA SWITCH_MAIN_GAME_STATE ;switch state
 	RTS 
 STATE_0x03_DUCKS_VOLLEY: ; 0x00086E
-	JSR ZAP_PROC_TRIGGER ;Trigger process.
-	JSR PROCESS_ZAPPER_0 ;Process zapper.
-	JSR FORWARD_DOG_OBJECT ;dog obj handling.
-	JSR FORWARD_DUCK_TARGETS ;target handling.
-	JSR PPU_DISP_SHOTS_LEFT
-	JSR UPDATE_ACTIVE_TARGET_STATUS
-	JSR DISP_TARGETS_HIT
-	JSR DISP_SCORE_SPRITES
-	JSR DISP_WORD_SHOT_HANDLER
-	JSR DISP_AUTO_MESSAGE
+	JSR PROCESS_ZAPPER_TRIGGER ;Trigger process.
+	JSR PROCESS_ZAPPER_READING ;Process zapper.
+	JSR FORWARD_DOG_OBJECT ;Dog object switch.
+	JSR FORWARD_DUCK_TARGETS ;Duck objs switch.
+	JSR DISP_SHOTS_LEFT ;Display shots left.
+	JSR DISP_TARGETS_STATUS ;Display status on the bottom, blinking active targets.
+	JSR DISP_TARGETS_HIT ;Display the targets hit.
+	JSR DISP_SCORE_SPRITES ;Display the score.
+	JSR DISP_WORD_SHOT_HANDLER ;Blink/add shot text.
+	JSR DISP_AUTO_MESSAGE ;Intro message.
 	NOP  ;removed feature?
 	NOP 
 	NOP 
 	RTS  ;return.
 FORWARD_DUCK_TARGETS: ; 0x000890
-	LDA TRGT1_TYPE ;get if is target.
+	LDA TRGT1_STATUS ;get if is target.
 	BEQ FORWARD_OTHER_TARGET ;not active
 	LDY #$00
 	STY ORIGIN_SLOT_OF_ZP_OBJ_COPY ;where obj came from
@@ -1569,7 +1569,7 @@ FORWARD_DUCK_TARGETS: ; 0x000890
 	JSR PROCESS_OBJ_DUCK_TARGET ;do obj stuff.
 	JSR COPY_OBJ_ZP_BACK_TO_ORIGIN
 FORWARD_OTHER_TARGET: ; 0x0008A2
-	LDA TRGT2_TYPE
+	LDA TRGT2_STATUS
 	BEQ PROCESS_ZAPPER ;not active, next step.
 	LDY #$50
 	INC ORIGIN_SLOT_OF_ZP_OBJ_COPY ;Not sure where this is reset to 0, INC seems dangerous.
@@ -1621,8 +1621,8 @@ RTS_8: ; 0x000901
 PROCESS_OBJ_DUCK_TARGET: ; 0x000902
 	LDA OBJ_ZP_STATE
 	JSR SWITCH_TO_CODE_PTRS
-	.LOW RTS_3 ;NULL state, does nothing.
-	.HIGH RTS_3
+	.LOW STATE_0x01_IDLE ;NULL state, does nothing.
+	.HIGH STATE_0x01_IDLE
 	.LOW TRGT_STATE_1_INIT_OBJ ;Init data in $30 area.
 	.HIGH TRGT_STATE_1_INIT_OBJ
 	.LOW TARGET_STATE_2_SPAWN ;Spawn state.
@@ -2180,8 +2180,8 @@ RTS_10: ; 0x000CA8
 OBJ_DOG_STATE_SWITCH: ; 0x000CA9
 	LDA OBJ_ZP_STATE
 	JSR SWITCH_TO_CODE_PTRS
-	.LOW RTS_3 ;RTS, default state?
-	.HIGH RTS_3 ;0x00
+	.LOW STATE_0x01_IDLE ;RTS, default state?
+	.HIGH STATE_0x01_IDLE ;0x00
 	.LOW STATE_0x01_INIT ;Setup
 	.HIGH STATE_0x01_INIT ;0x01
 	.LOW STATE_0x02_DOG_ANIMATED_INTRO ;setup obj anim ptr, display.
@@ -2348,10 +2348,10 @@ STATE_0x0E_INIT_DUCK_VOLLEY: ; 0x000D9A
 	LDY #$00 ;disable target 2
 TWO_TARGET_GAME_2: ; 0x000DBA
 	STA NUM_TARGETS_PER_ATTEMPT
-	STY TRGT2_TYPE
+	STY TRGT2_STATUS
 	STY TRGT2_STATE ;enabled for 2 target games, disabled for 1 target.
 	LDA #$01 ;always enabled, enable.
-	STA TRGT1_TYPE
+	STA TRGT1_STATUS
 	STA TRGT1_STATE
 	JSR RNG_ADVANCE ;rng advance and get number in A.
 	STA TMP_0C ;random number stored.
@@ -2436,10 +2436,10 @@ UPDATE_ANIMATION_TO_PTR: ; 0x000E56
 	SBC #$FA ;if >= #$FA, make index 0 to 5.
 ANIMATION_FLAGS_SWITCH: ; 0x000E63
 	JSR SWITCH_TO_CODE_PTRS ;ANIMATION COMMANDS BELOW.
-	.LOW RTS_3 ;0xFA, nothing/removed.
-	.HIGH RTS_3
-	.LOW RTS_3 ;0xFB, nothing/removed.
-	.HIGH RTS_3
+	.LOW STATE_0x01_IDLE ;0xFA, nothing/removed.
+	.HIGH STATE_0x01_IDLE
+	.LOW STATE_0x01_IDLE ;0xFB, nothing/removed.
+	.HIGH STATE_0x01_IDLE
 	.LOW STREAM_COMMAND_INDEX_0x1E ;0xFC
 	.HIGH STREAM_COMMAND_INDEX_0x1E
 	.LOW STREAM_COMMAND_PUT_OBJ_BEHIND_BG ;0xFD
@@ -2858,12 +2858,12 @@ TWO_COMPLIMENT_A_REGISTER: ; 0x00112B
 	CLC 
 	ADC #$01 ;add 1 to correct to 2's compliment.
 	RTS  ;return value.
-ZAP_PROC_TRIGGER: ; 0x001131
+PROCESS_ZAPPER_TRIGGER: ; 0x001131
 	LDA APU_FRAMECOUNTER ;Get zapper
 	AND #$10 ;Read trigger.
 	CMP ZAP_TIGGER_PREVIOUS_STATE ;If curr _ prev
 	BEQ ZAP_TRIGGER_STATES_MATCH ;If ==, goto.
-	STA ZAP_TIGGER_PREVIOUS_STATE ;Update to different.
+	STA ZAP_TIGGER_PREVIOUS_STATE ;Update differing read.
 EXIT_RESET_MATCH_COUNT: ; 0x00113C
 	LDA #$00
 	STA ZAP_STATES_MATCHED_COUNT ;Reset clear.
@@ -2875,183 +2875,183 @@ ZAP_TRIGGER_STATES_MATCH: ; 0x001141
 	CPY #$01 ;If _ #$01. Twice in a row.
 	BNE RTS_15 ;RTS if match count only at 1.
 	AND #$10 ;Test zapper trigger state.
-	BEQ ZAP_TRIGGER_STATE_RELEASED ;Was released.
+	BEQ NOT_PRESSED ;Not pressed, two in a row.
 	LDA #$01
-	STA FLAG_ZAPPER_TRIGGER_PULLED ;State pressed true.
+	STA FLAG_ZAPPER_TRIGGER_PULLED ;Set flag true.
 	BNE EXIT_RESET_MATCH_COUNT ;Always taken.
-ZAP_TRIGGER_STATE_RELEASED: ; 0x001153
-	LDA FLAG_ZAPPER_TRIGGER_PULLED ;Load pressed flag.
-	BEQ EXIT_RESET_MATCH_COUNT ;Not pressed, reset count.
+NOT_PRESSED: ; 0x001153
+	LDA FLAG_ZAPPER_TRIGGER_PULLED ;Load flag for pulled.
+	BEQ EXIT_RESET_MATCH_COUNT ;Not set as pulled, just reset count.
 	LDY #$00
-	STY FLAG_ZAPPER_TRIGGER_PULLED ;Clear flag.
+	STY FLAG_ZAPPER_TRIGGER_PULLED ;Clear flag, trigger released.
 	INY  ;Y = 1
-	STY ZAPPER_TRIG_RELEASED_FLAG ;Set flag.
+	STY FLAG_ZAPPER_TRIGGER_RELEASED ;Set flag to process for release.
 	BNE EXIT_RESET_MATCH_COUNT ;Always taken.
-PROCESS_ZAPPER_0: ; 0x001160
-	LDA ZAP_SHOOTING_ENABLED_FLAG ;Test flag.
+PROCESS_ZAPPER_READING: ; 0x001160
+	LDA ZAP_SHOOTING_ENABLED_FLAG ;Test flag. Also, beware, this routine is an awful mess.
 	BNE SHOOTING_ENABLED ;If flag is set, goto.
 EXIT_TRIGGER_WITHOUT_RELEASE: ; 0x001164
 	LDA #$00
-	STA ZAPPER_TRIG_RELEASED_FLAG ;Don't release if disabled.
+	STA FLAG_ZAPPER_TRIGGER_RELEASED ;Don't release if disabled.
 RTS_16: ; 0x001168
 	RTS  ;Leave.
 SHOOTING_ENABLED: ; 0x001169
-	LDA ZAPPER_TRIG_RELEASED_FLAG ;Load released flag.
-	BEQ RTS_16 ;Not set, leave, need release.
+	LDA FLAG_ZAPPER_TRIGGER_RELEASED ;Load released flag.
+	BEQ RTS_16 ;Not released, leave.
 	LDA SHOTS_REMAINING ;Load shots left.
 	BEQ EXIT_TRIGGER_WITHOUT_RELEASE ;If 0, inject not released.
 	DEC SHOTS_REMAINING ;Shots--
 	LDA #$01
 	STA FLAG_UPDATE_BULLETS_DISPLAY ;Set flag true.
 	LDA #$00
-	STA ZAPPER_TRIG_RELEASED_FLAG ;Set not released, shooting now.
+	STA FLAG_ZAPPER_TRIGGER_RELEASED ;Set not released, shooting now.
 	JSR SND_GUNSHOT ;Play sound.
 	LDA #$04 ;Palette 3 for screen, all black BG, white sprite 0.
 	STA PALETTE_UPLOAD_REQUEST ;Set var.
 	JSR CLEAR_SPRITES ;Clear all sprites.
-	JSR PPU_DISABLE_SPRITES/BACKGROUND ;Wait for NMI.
+	JSR PPU_DISABLE_SPRITES/BACKGROUND ;Wait for NMI, screen black after exit here.
 	LDA IN_MENU_FLAG ;Test in-menu.
 	BEQ IN_GAME_SHOT_TESTING ;Do in game.
 	JSR SND_HALT ;Disable all registers.
 	JSR PLAY_SOUNDS ;Forward audio.
 	JSR SND_GUNSHOT ;Init noise+dmc?
 	LDA #$02
-	STA LIGHT_HIT_INDEX ;Set to obj for hit.
+	STA TESTING_FOR_HIT_OBJ_INDEX ;Set testing object to menu index.
 	LDA #$FF ;Scroll screen to white screen.
-	STA PPU_SCROLL_X_RAM ;Store to scroll.
-	BNE WAIT_NO_LIGHT_PREP ;Always taken, goto.
+	STA PPU_SCROLL_X_RAM ;Store to scroll, white screen area.
+	BNE INITIAL_LIGHT_TEST_MENU_ENTRY ;Always taken, goto.
 IN_GAME_SHOT_TESTING: ; 0x00119F
 	LDA #$05 ;Palette 5, game palette black?
 	STA PALETTE_UPLOAD_REQUEST ;Upload.
 	LDA #$00
-	STA LIGHT_HIT_INDEX ;Obj index.
+	STA TESTING_FOR_HIT_OBJ_INDEX ;Obj index.
 	LDY #$00 ;target origin.
-	LDA TRGT1_TYPE ;Load type.
-	BEQ DETECT_TARGET_2 ;If 0, not active, goto.
-	LDA TRGT1_STATE
-	CMP #$03
-	BEQ TARGET_TEST_HIT ;If in this state, is shootable.
-DETECT_TARGET_2: ; 0x0011B5
+	LDA TRGT1_STATUS ;Load type.
+	BEQ PRIMARY_DETECT_TARGET_2 ;Not active, do target 2 instead.
+	LDA TRGT1_STATE ;Load state.
+	CMP #$03 ;State _ #$03, flying.
+	BEQ INITIAL_LIGHT_TEST_TARGET ;If in this state, is shootable.
+PRIMARY_DETECT_TARGET_2: ; 0x0011B5
 	LDA #$01
-	STA LIGHT_HIT_INDEX ;obj 1 if hit.
+	STA TESTING_FOR_HIT_OBJ_INDEX ;Target 2 index.
 	LDY #$50 ;target origin.
-	LDA TRGT2_TYPE ;Load type.
-	BEQ UPLOAD_PELETTE_FOR_GAME ;Not enabled, game palette.
+	LDA TRGT2_STATUS ;Load type.
+	BEQ EXIT_PALETTES_RESTORE ;Not enabled, exit.
 	LDA TRGT2_STATE ;Load target 2.
 	CMP #$03 ;If state 3
-	BNE UPLOAD_PELETTE_FOR_GAME ;Can't shoot if not state 3.
-TARGET_TEST_HIT: ; 0x0011C7
-	JSR OBJ_Y_SKELETON/POS_ZAPPER_HIT_BOX_CREATE ;Display box sprite.
-WAIT_NO_LIGHT_PREP: ; 0x0011CA
-	JSR CLEAR_NMIRAN/PPUSTUFFFLAG ;clear NMI_RAN
-WAIT_NO_LIGHT_LOOP: ; 0x0011CD
-	LDA FLAG_NMI_RAN
-	BNE NO_LIGHT_SUCCESS ;If whole frame no light, success.
+	BNE EXIT_PALETTES_RESTORE ;Not right state, leave.
+INITIAL_LIGHT_TEST_TARGET: ; 0x0011C7
+	JSR OBJ_Y_SKELETON/POS_ZAPPER_HIT_BOX_CREATE ;Display box sprite for target.
+INITIAL_LIGHT_TEST_MENU_ENTRY: ; 0x0011CA
+	JSR CLEAR_NMI_RAN/BLOCK_PPU_UPDATE_FLAGS ;Clear flags.
+INITIAL_LIGHT_TEST_LOOP: ; 0x0011CD
+	LDA FLAG_NMI_RAN ;Load NMI ran flag.
+	BNE INITIAL_LIGHT_TEST_TIMEOUT ;Was set without detecting light. Success, goto.
 	LDA APU_FRAMECOUNTER ;get zapper state
 	AND #$08 ;Test light.
-	BNE WAIT_NO_LIGHT_LOOP ;Loop if no light yet, success.
-	LDA LIGHT_HIT_INDEX ;Failure here. Load index.
-	JMP TESTING_TARGET_NOT_HIT ;does menu stuff too.
-UPLOAD_PELETTE_FOR_GAME: ; 0x0011DD
+	BNE INITIAL_LIGHT_TEST_LOOP ;Loop if no light yet, loop.
+	LDA TESTING_FOR_HIT_OBJ_INDEX ;Load object testing.
+	JMP EXIT_ZAPPER_MISS ;Was lighted when not expected, missed automatically.
+EXIT_PALETTES_RESTORE: ; 0x0011DD
 	LDA GAME_MODE_IN ;get mode in.
-	CMP #$02 ;is pigeons.
-	BNE UPLOAD_PALETTE_DUCKS
-	JMP GAME_MODE_PIGEONS
-UPLOAD_PALETTE_DUCKS: ; 0x0011E6
+	CMP #$02 ;If _ #$02, pigeons val.
+	BNE DUCKS_PALETTE ;Not pigeons, goto.
+	JMP EXIT_RESTORE_PIGEONS_PALETTE ;Pigeons, goto.
+DUCKS_PALETTE: ; 0x0011E6
 	LDY #$02
 	STY PALETTE_UPLOAD_REQUEST ;palette 2
 	JSR WAIT_FOR_NMI ;wait until palette updated.
 	LDY #$01
-	STY DYNAMIC_PALETTE_UPLOAD_FLAG ;set flag
-	JMP DISP_WHITE_BOX ;displays the white box.
-NO_LIGHT_SUCCESS: ; 0x0011F4
-	JSR CLEAR_NMIRAN/PPUSTUFFFLAG ;Setup flag.
-	LDA PPU_MASK_RAM
-	AND #$E7 ;disable sprites/bg
+	STY DYNAMIC_PALETTE_UPLOAD_FLAG ;Set flag to use RAM copy.
+	JMP EXIT_SPRITES_CLEAR_ENABLE_GFX ;displays the white box.
+INITIAL_LIGHT_TEST_TIMEOUT: ; 0x0011F4
+	JSR CLEAR_NMI_RAN/BLOCK_PPU_UPDATE_FLAGS ;Clear flag.
+	LDA PPU_MASK_RAM ;Load mask.
+	AND #$E7 ;Disable sprites/BG.
 	STA PPU_MASK_RAM
-	LDA #$08 ;enable BG
-	LDY LIGHT_HIT_INDEX
-	CPY #$02 ;on menu?
-	BEQ WRITE_PPU_MASK ;if so, use BG for detection.
-	LDA #$10 ;otherwise, sprites only.
-WRITE_PPU_MASK: ; 0x001207
-	ORA PPU_MASK_RAM ;do what was told.
-	STA PPU_MASK_RAM
-	STA PPU_Mask ;write what was wanted.
-	JSR CLEAR_SPRITES ;clear sprites.
-	LDA TRGT2_TYPE
-	BEQ TEST_LIGHT_LOOP ;doesn't exist.
-	LDA TRGT2_STATE
-	CMP #$03 ;state active
-	BNE TEST_LIGHT_LOOP ;not valid rn
-	LDY #$50 ;valid target, do something...
-	JSR OBJ_Y_SKELETON/POS_ZAPPER_HIT_BOX_CREATE ;Disp box.
-TEST_LIGHT_LOOP: ; 0x001222
-	LDA FLAG_NMI_RAN
-	BNE TARGET_NOT_HIT ;test for light for whole frame.
-	LDA APU_FRAMECOUNTER ;load controller.
-	AND #$08
-	BNE TEST_LIGHT_LOOP ;not detected, loop.
-	LDA LIGHT_HIT_INDEX ;detected, hit target.
-	CMP #$02
-	BNE TARGET_WAS_HIT ;Not value, goto.
-	LDA #$01 ;Menu hit.
-WRITE_ZAPPER_RESULT_FROM_A: ; 0x001235
+	LDA #$08 ;Mask with BG enabled.
+	LDY TESTING_FOR_HIT_OBJ_INDEX ;Load testing index.
+	CPY #$02 ;If _ #$02, on menu val.
+	BEQ TESTING_MENU_MASK ;Use val as-is, on menu.
+	LDA #$10 ;Otherwise we want to test targets, not screen.
+TESTING_MENU_MASK: ; 0x001207
+	ORA PPU_MASK_RAM ;Set other bits.
+	STA PPU_MASK_RAM ;Store decided mask.
+	STA PPU_Mask ;Write decided.
+	JSR CLEAR_SPRITES ;Clear sprites.
+	LDA TRGT2_STATUS ;Load target 2 type.
+	BEQ SECONDARY_LIGHT_TEST ;Not active, goto. Huge assuumption here of not-menu.
+	LDA TRGT2_STATE ;Load state for target 2.
+	CMP #$03 ;If _ #$03, In-flight state.
+	BNE SECONDARY_LIGHT_TEST ;Not right mode, goto, no sprites.
+	LDY #$50 ;Do target 2 hit test.
+	JSR OBJ_Y_SKELETON/POS_ZAPPER_HIT_BOX_CREATE ;Display box for target 2.
+SECONDARY_LIGHT_TEST: ; 0x001222
+	LDA FLAG_NMI_RAN ;Load flag for frame passed.
+	BNE SECONDARY_TEST_NO_HIT ;Set, no light all frame.
+	LDA APU_FRAMECOUNTER ;Load zapper.
+	AND #$08 ;Test light.
+	BNE SECONDARY_LIGHT_TEST ;Not detected, loop.
+	LDA TESTING_FOR_HIT_OBJ_INDEX ;Load what we're testing. We hit it here.
+	CMP #$02 ;Menu val.
+	BNE GAMEPLAY_TARGET_HIT ;Not menu, goto.
+	LDA #$01 ;Result of menu hit.
+ZAPPER_RESULT_COMMIT_FROM_A: ; 0x001235
 	STA ZAPPER_RESULT ;1=Hit, 2=Miss
-	LDA #$01 ;upload palette 0
+	LDA #$01 ;Restore palette.
 	STA PALETTE_UPLOAD_REQUEST
-	LDA #$00 ;back to screen.
+	LDA #$00 ;Scroll back to main screen.
 	STA PPU_SCROLL_X_RAM
-	JSR WAIT_FOR_NMI
-	JMP PPU_ENABLE_SPRITES/BACKGROUND ;RTS's here, screen back.
-TARGET_WAS_HIT: ; 0x001246
+	JSR WAIT_FOR_NMI ;Wait frame.
+	JMP PPU_ENABLE_SPRITES/BACKGROUND ;Enable GFX, abuse RTS.
+GAMEPLAY_TARGET_HIT: ; 0x001246
 	INC TARGETS_HIT_IN_ROUND ;not sure why inc IN level.
 	INC TRGTS_SHOT_DURING_ATTEMPT ;set to true by INC, so 1 or 2 targets both true.
-	LDX #$04 ;target state to write.
-	LDA LIGHT_HIT_INDEX
-	BNE HIT_TARGET_2
-	STX TRGT1_STATE ;target 1 hit.
-	JMP TEST_TARGETS_CONTINUE
+	LDX #$04 ;Target state shot.
+	LDA TESTING_FOR_HIT_OBJ_INDEX ;Load index.
+	BNE HIT_TARGET_2 ;Nonzero, goto.
+	STX TRGT1_STATE ;Switch target 1 state.
+	JMP EXIT_RESTORE_PALETTE ;Leave.
 HIT_TARGET_2: ; 0x001256
-	STX TRGT2_STATE ;target 2 hit.
-TEST_TARGETS_CONTINUE: ; 0x001259
-	LDA GAME_MODE_IN
-	CMP #$02
-	BEQ GAME_MODE_PIGEONS
-	LDY #$01 ;palette ducks.
+	STX TRGT2_STATE ;Switch target 2 state.
+EXIT_RESTORE_PALETTE: ; 0x001259
+	LDA GAME_MODE_IN ;Load game mode.
+	CMP #$02 ;If _ #$02, pigeons val.
+	BEQ EXIT_RESTORE_PIGEONS_PALETTE ;==, yes, pigeons.
+	LDY #$01 ;Ducks palette val.
 	STY DYNAMIC_PALETTE_UPLOAD_FLAG ;Set flag.
-	INY  ;Y = 2
-	BNE UPLOAD_PALETTE_ORIGINAL_FOR_MODE ;Put that palette in Y.
-GAME_MODE_PIGEONS: ; 0x001266
+	INY  ;Y = 2, pigeons palette.
+	BNE EXIT_RESTORE_PASSED_Y_PALETTE ;Put that palette in Y.
+EXIT_RESTORE_PIGEONS_PALETTE: ; 0x001266
 	LDY #$03 ;pallette pigeons.
-UPLOAD_PALETTE_ORIGINAL_FOR_MODE: ; 0x001268
+EXIT_RESTORE_PASSED_Y_PALETTE: ; 0x001268
 	STY PALETTE_UPLOAD_REQUEST ;store palette.
-DISP_WHITE_BOX: ; 0x00126A
+EXIT_SPRITES_CLEAR_ENABLE_GFX: ; 0x00126A
 	JSR CLEAR_SPRITES ;clear.
 	JMP PPU_ENABLE_SPRITES/BACKGROUND ;Show screen again. Abuse RTS.
-TARGET_NOT_HIT: ; 0x001270
-	LDA LIGHT_HIT_INDEX
-	BNE TESTING_TARGET_NOT_HIT
-	LDA TRGT2_TYPE
-	BEQ TEST_TARGETS_CONTINUE ;skip if not active.
-	LDA TRGT2_STATE
-	CMP #$03
-	BNE TEST_TARGETS_CONTINUE ;skip if not active.
+SECONDARY_TEST_NO_HIT: ; 0x001270
+	LDA TESTING_FOR_HIT_OBJ_INDEX ;Load testing.
+	BNE EXIT_ZAPPER_MISS ;Target 2 not hit, goto.
+	LDA TRGT2_STATUS ;Test if target 2 active.
+	BEQ EXIT_RESTORE_PALETTE ;Not active, leave.
+	LDA TRGT2_STATE ;Load state.
+	CMP #$03 ;If _ #$03, shootable.
+	BNE EXIT_RESTORE_PALETTE ;Not correct state, can't hit, leave.
 	LDA #$01
-	STA LIGHT_HIT_INDEX ;testing target 2
-	JSR CLEAR_NMIRAN/PPUSTUFFFLAG
-	JMP TEST_LIGHT_LOOP
-TESTING_TARGET_NOT_HIT: ; 0x00128A
-	CMP #$02 ;Test hit index in A.
-	BNE TEST_TARGETS_CONTINUE ;!= 2, continue.
-	LDA #$02 ;Miss value.
-	BNE WRITE_ZAPPER_RESULT_FROM_A ;Always taken.
+	STA TESTING_FOR_HIT_OBJ_INDEX ;Test target 2.
+	JSR CLEAR_NMI_RAN/BLOCK_PPU_UPDATE_FLAGS ;Clear flags.
+	JMP SECONDARY_LIGHT_TEST ;Goto.
+EXIT_ZAPPER_MISS: ; 0x00128A
+	CMP #$02 ;Test attempt menu?
+	BNE EXIT_RESTORE_PALETTE ;No, in game, no hit. Bad first light read takes this path, too.
+	LDA #$02 ;Export just a miss if the menu.
+	BNE ZAPPER_RESULT_COMMIT_FROM_A ;Always taken, result miss stored.
 OBJ_Y_SKELETON/POS_ZAPPER_HIT_BOX_CREATE: ; 0x001292
 	LDA TRGT1_Y_COORD,Y ;Move the target Y to ZP.
 	STA TARGET_Y_COORD_CPY
 	LDA TRGT1_X_COORD,Y ;Move target X to XP.
 	STA TARGET_X_COORD_CPY
-	LDA TRGT1_SKELETON_TO_USE?,Y ;is this the skeleton to use for the sprite?
+	LDA TRGT1_SKELETON_USING,Y ;Load skeleton.
 	STA TMP_0C ;Skeleton to use to TMP_0C.
 	JMP SPRITE_SKELETON_HIT_BOX_CREATE ;Put skeleton to screen.
 SETUP_PASSLINE/VOLLEY: ; 0x0012A4
@@ -3223,7 +3223,7 @@ END_ROUND_STATE_3_NEXT_ROUND: ; 0x0013C9
 	BNE END_ROUND_STATE_SWITCH ;always taken.
 RTS_18: ; 0x0013D1
 	RTS 
-UPDATE_ACTIVE_TARGET_STATUS: ; 0x0013D2
+DISP_TARGETS_STATUS: ; 0x0013D2
 	LDA DYNAMIC_PALETTE_UPLOAD_FLAG
 	BNE RTS_19 ;white box displayed, ret.
 	INC DISPLAY_BLINK_TIMER
@@ -3231,7 +3231,7 @@ UPDATE_ACTIVE_TARGET_STATUS: ; 0x0013D2
 	JSR PROCESS_TARGET
 	LDY #$50 ;target 2
 PROCESS_TARGET: ; 0x0013DF
-	LDA TRGT1_TYPE,Y
+	LDA TRGT1_STATUS,Y
 	BEQ RTS_19 ;no target
 	LDA TRGT1_STATE,Y
 	CMP #$03 ;state active?
@@ -3280,7 +3280,7 @@ DISP_WORD_SHOT_HANDLER: ; 0x001428
 	AND #$07
 	BNE INC_BLINK_COUNTER ;if bottom bits set.
 	LDA DYNAMIC_PALETTE_UPLOAD_FLAG
-	BNE RTS_19 ;if white box, rts
+	BNE RTS_19 ;if set, leave.
 	LDA SHOT_BLINK_COUNTER
 	AND #$08
 	BEQ DISP_SHOT_TEXT
@@ -3479,7 +3479,7 @@ STATE_0x09_PIGEON_SETUP_ROUND: ; 0x00156A
 	STA FLAG_UPDATE_BULLETS_DISPLAY ;disable shots.
 	LDA #$03
 	STA SHOTS_REMAINING ;set remaining.
-	JSR PPU_DISP_SHOTS_LEFT
+	JSR DISP_SHOTS_LEFT
 	JSR PPU_DISP_TARGET_STATUS
 	LDA #$06 ;Intro message index.
 	STA AUTOMESSAGE_DISPLAY_INDEX ;Set to intro message index.
@@ -3488,8 +3488,8 @@ STATE_0x09_PIGEON_SETUP_ROUND: ; 0x00156A
 	RTS 
 STATE_0x0A_PIGEON_VOLLEY: ; 0x001593
 	LDA #$01
-	STA TRGT1_TYPE ;target type.
-	STA TRGT2_TYPE
+	STA TRGT1_STATUS ;target type.
+	STA TRGT2_STATUS
 	STA TRGT1_STATE ;target state. pigeons always 1 targets.
 	STA TRGT2_STATE
 	LDA #$30 ;max value from array.
@@ -3509,20 +3509,20 @@ LEVEL_MAXED: ; 0x0015AD
 	LDA #$02
 	STA NUM_TARGETS_PER_ATTEMPT ;set # trgts
 	LDA #$00
-	STA ZAPPER_TRIG_RELEASED_FLAG ;disable trigger.
+	STA FLAG_ZAPPER_TRIGGER_RELEASED ;disable trigger.
 	STA ZAP_SHOOTING_ENABLED_FLAG ;disable shots.
 	STA TRGTS_SHOT_DURING_ATTEMPT ;clear any hit. unused in pigeons?
-	JSR PPU_DISP_SHOTS_LEFT ;show shots.
+	JSR DISP_SHOTS_LEFT ;show shots.
 	JSR PPU_DISP_TARGET_STATUS ;show targets.
 	LDA #$0B
 	STA SWITCH_MAIN_GAME_STATE ;next state.
 	RTS 
 STATE_0x0B_PIGEON_VOLLEY_CONTINUE: ; 0x0015D2
-	JSR ZAP_PROC_TRIGGER
-	JSR PROCESS_ZAPPER_0
+	JSR PROCESS_ZAPPER_TRIGGER
+	JSR PROCESS_ZAPPER_READING
 	JSR PROCESS_TARGETS_PIGEONS
-	JSR PPU_DISP_SHOTS_LEFT
-	JSR UPDATE_ACTIVE_TARGET_STATUS
+	JSR DISP_SHOTS_LEFT
+	JSR DISP_TARGETS_STATUS
 	JSR DISP_TARGETS_HIT
 	JSR DISP_SCORE_SPRITES
 	JSR DISP_WORD_SHOT_HANDLER
@@ -3531,7 +3531,7 @@ STATE_0x0B_PIGEON_VOLLEY_CONTINUE: ; 0x0015D2
 	NOP 
 	RTS 
 PROCESS_TARGETS_PIGEONS: ; 0x0015EE
-	LDA TRGT1_TYPE
+	LDA TRGT1_STATUS
 	BEQ PROCESS_TARGET_2
 	LDY #$00 ;origin $300
 	STY ORIGIN_SLOT_OF_ZP_OBJ_COPY ;save where obj info came from.
@@ -3539,7 +3539,7 @@ PROCESS_TARGETS_PIGEONS: ; 0x0015EE
 	JSR PIGEON_TARGET_STATE_SWITCH ;handle target.
 	JSR COPY_OBJ_ZP_BACK_TO_ORIGIN ;move to $500.
 PROCESS_TARGET_2: ; 0x001600
-	LDA TRGT2_TYPE
+	LDA TRGT2_STATUS
 	BEQ PROCESS_OTHER
 	LDY #$50 ;origin $350
 	INC ORIGIN_SLOT_OF_ZP_OBJ_COPY ;to 1.
@@ -3585,8 +3585,8 @@ RTS_20: ; 0x001651
 PIGEON_TARGET_STATE_SWITCH: ; 0x001652
 	LDA OBJ_ZP_STATE ;target states.
 	JSR SWITCH_TO_CODE_PTRS
-	.LOW RTS_3 ;Uninit'd state.
-	.HIGH RTS_3
+	.LOW STATE_0x01_IDLE ;Uninit'd state.
+	.HIGH STATE_0x01_IDLE
 	.LOW TARGET_STATE_1_INIT_BASE
 	.HIGH TARGET_STATE_1_INIT_BASE
 	.LOW TARGET_STATE_2_INIT_SPECIFIC_INFO
@@ -3597,10 +3597,10 @@ PIGEON_TARGET_STATE_SWITCH: ; 0x001652
 	.HIGH TARGET_STATE_4_HIT_EXPLOSION_SETUP
 	.LOW TARGET_STATE_5_EXPLOSION_ANIMATION
 	.HIGH TARGET_STATE_5_EXPLOSION_ANIMATION
-	.LOW RTS_3
-	.HIGH RTS_3
-	.LOW RTS_3
-	.HIGH RTS_3
+	.LOW STATE_0x01_IDLE
+	.HIGH STATE_0x01_IDLE
+	.LOW STATE_0x01_IDLE
+	.HIGH STATE_0x01_IDLE
 	.LOW TARGET_STATE_8_REMOVE_OBJ_0
 	.HIGH TARGET_STATE_8_REMOVE_OBJ_0
 TARGET_STATE_1_INIT_BASE: ; 0x001669
@@ -4147,8 +4147,8 @@ PROCESS_PIGEON_BLOWUP_SWITCH: ; 0x0019F6
 	LDA TMP_0E ;Value used in switch.
 PIGEON_BREAKUP_SWITCH: ; 0x0019FE
 	JSR SWITCH_TO_CODE_PTRS ;moves the particles.
-	.LOW RTS_3
-	.HIGH RTS_3
+	.LOW STATE_0x01_IDLE
+	.HIGH STATE_0x01_IDLE
 	.LOW PARTICLE_MOVE_+X,-Y_F>X,C>Y
 	.HIGH PARTICLE_MOVE_+X,-Y_F>X,C>Y
 	.LOW PARTICLE_MOVE_+X,-Y,C>XY_DEPENDENT
@@ -4163,8 +4163,8 @@ PIGEON_BREAKUP_SWITCH: ; 0x0019FE
 	.HIGH PARTICLE_MOVE_+Y,+X_?>Y,C>X_DEPENDENT
 	.LOW PARTICLE_MOVE_+X,+Y_F>X,C>Y
 	.HIGH PARTICLE_MOVE_+X,+Y_F>X,C>Y
-	.LOW RTS_3
-	.HIGH RTS_3
+	.LOW STATE_0x01_IDLE
+	.HIGH STATE_0x01_IDLE
 	.LOW PARTICLE_MOVE_-X,+Y_F>X,C>Y
 	.HIGH PARTICLE_MOVE_-X,+Y_F>X,C>Y
 	.LOW PARTICLE_MOVE_-X,+Y_?>Y,C>X
@@ -8641,35 +8641,35 @@ PIGEON_PARTICLE_SWITCH_DATA_2: ; 0x002B28
 	.db #$0B
 	.db #$0D
 	.db #$0F
-SPRITE_X_Y_OFFSETS_LOW: ; 0x002B30
-	.LOW SPRITE_X_Y_OFFSETS_00 ;I call these "skeletons"
-SPRITE_X_Y_OFFSETS_HIGH: ; 0x002B31
-	.HIGH SPRITE_X_Y_OFFSETS_00
-	.LOW SPRITE_X_Y_OFFSETS_01
-	.HIGH SPRITE_X_Y_OFFSETS_01
-	.LOW SPRITE_X_Y_OFFSETS_02
-	.HIGH SPRITE_X_Y_OFFSETS_02
-	.LOW SPRITE_X_Y_OFFSETS_03
-	.HIGH SPRITE_X_Y_OFFSETS_03
-	.LOW SPRITE_X_Y_OFFSETS_04
-	.HIGH SPRITE_X_Y_OFFSETS_04
-	.LOW SPRITE_X_Y_OFFSETS_05
-	.HIGH SPRITE_X_Y_OFFSETS_05
-	.LOW SPRITE_X_Y_OFFSETS_08
-	.HIGH SPRITE_X_Y_OFFSETS_08
-	.LOW SPRITE_X_Y_OFFSETS_08
-	.HIGH SPRITE_X_Y_OFFSETS_08
-	.LOW SPRITE_X_Y_OFFSETS_08
-	.HIGH SPRITE_X_Y_OFFSETS_08
-	.LOW SPRITE_X_Y_OFFSETS_09
-	.HIGH SPRITE_X_Y_OFFSETS_09
-	.LOW SPRITE_X_Y_OFFSETS_0A
-	.HIGH SPRITE_X_Y_OFFSETS_0A
-	.LOW SPRITE_X_Y_OFFSETS_0B
-	.HIGH SPRITE_X_Y_OFFSETS_0B
-	.LOW SPRITE_X_Y_OFFSETS_0C
-	.HIGH SPRITE_X_Y_OFFSETS_0C
-SPRITE_X_Y_OFFSETS_00: ; 0x002B4A
+SKELETON_DATA_PTR_L: ; 0x002B30
+	.LOW SKELETON_0x0 ;I call these "skeletons"
+SKELETON_DATA_PTR_H: ; 0x002B31
+	.HIGH SKELETON_0x0 ;0x0
+	.LOW SKELETON_0x1
+	.HIGH SKELETON_0x1 ;0x1
+	.LOW SKELETON_0x2
+	.HIGH SKELETON_0x2 ;0x2
+	.LOW SKELETON_0x3
+	.HIGH SKELETON_0x3 ;0x3
+	.LOW SKELETON_0x4
+	.HIGH SKELETON_0x4 ;0x4
+	.LOW SKELETON_0x5
+	.HIGH SKELETON_0x5 ;0x5
+	.LOW SKELETON_0x6_MULTIUSE
+	.HIGH SKELETON_0x6_MULTIUSE ;0x6
+	.LOW SKELETON_0x6_MULTIUSE
+	.HIGH SKELETON_0x6_MULTIUSE ;0x7
+	.LOW SKELETON_0x6_MULTIUSE
+	.HIGH SKELETON_0x6_MULTIUSE ;0x8
+	.LOW SKELETON_0x9
+	.HIGH SKELETON_0x9 ;0x9
+	.LOW SKELETON_0xA
+	.HIGH SKELETON_0xA ;0xA
+	.LOW SKELETON_0xB
+	.HIGH SKELETON_0xB ;0xB
+	.LOW SKELETON_0xC
+	.HIGH SKELETON_0xC ;0xC
+SKELETON_0x0: ; 0x002B4A
 	.db #$F4 ;X coord.
 	.db #$F4 ;Y coord.
 	.db #$F4
@@ -8689,7 +8689,7 @@ SPRITE_X_Y_OFFSETS_00: ; 0x002B4A
 	.db #$04
 	.db #$04
 	.db #$AA ;End of file.
-SPRITE_X_Y_OFFSETS_01: ; 0x002B5D
+SKELETON_0x1: ; 0x002B5D
 	.db #$F7
 	.db #$F5
 	.db #$F7
@@ -8709,7 +8709,7 @@ SPRITE_X_Y_OFFSETS_01: ; 0x002B5D
 	.db #$01
 	.db #$03
 	.db #$AA
-SPRITE_X_Y_OFFSETS_02: ; 0x002B70
+SKELETON_0x2: ; 0x002B70
 	.db #$F9
 	.db #$F7
 	.db #$F9
@@ -8723,7 +8723,7 @@ SPRITE_X_Y_OFFSETS_02: ; 0x002B70
 	.db #$FF
 	.db #$01
 	.db #$AA
-SPRITE_X_Y_OFFSETS_03: ; 0x002B7D
+SKELETON_0x3: ; 0x002B7D
 	.db #$FA
 	.db #$F8
 	.db #$FA
@@ -8733,7 +8733,7 @@ SPRITE_X_Y_OFFSETS_03: ; 0x002B7D
 	.db #$FE
 	.db #$00
 	.db #$AA
-SPRITE_X_Y_OFFSETS_04: ; 0x002B86
+SKELETON_0x4: ; 0x002B86
 	.db #$FA
 	.db #$FA
 	.db #$FA
@@ -8743,15 +8743,15 @@ SPRITE_X_Y_OFFSETS_04: ; 0x002B86
 	.db #$FE
 	.db #$FE
 	.db #$AA
-SPRITE_X_Y_OFFSETS_05: ; 0x002B8F
+SKELETON_0x5: ; 0x002B8F
 	.db #$FC
 	.db #$FC
 	.db #$AA
-SPRITE_X_Y_OFFSETS_08: ; 0x002B92
+SKELETON_0x6_MULTIUSE: ; 0x002B92
 	.db #$FC
 	.db #$FC
 	.db #$AA
-SPRITE_X_Y_OFFSETS_09: ; 0x002B95
+SKELETON_0x9: ; 0x002B95
 	.db #$F0
 	.db #$F0
 	.db #$F0
@@ -8785,7 +8785,7 @@ SPRITE_X_Y_OFFSETS_09: ; 0x002B95
 	.db #$08
 	.db #$08
 	.db #$AA
-SPRITE_X_Y_OFFSETS_0A: ; 0x002BB6
+SKELETON_0xA: ; 0x002BB6
 	.db #$F4
 	.db #$F5
 	.db #$F4
@@ -8805,7 +8805,7 @@ SPRITE_X_Y_OFFSETS_0A: ; 0x002BB6
 	.db #$04
 	.db #$03
 	.db #$AA
-SPRITE_X_Y_OFFSETS_0B: ; 0x002BC9
+SKELETON_0xB: ; 0x002BC9
 	.db #$F5
 	.db #$F7
 	.db #$F5
@@ -8825,7 +8825,7 @@ SPRITE_X_Y_OFFSETS_0B: ; 0x002BC9
 	.db #$03
 	.db #$01
 	.db #$AA
-SPRITE_X_Y_OFFSETS_0C: ; 0x002BDC
+SKELETON_0xC: ; 0x002BDC
 	.db #$F6
 	.db #$F8
 	.db #$F6

@@ -24,29 +24,29 @@ TMP_12:                                  .rs 0x01 ;0x0012
 TMP_13:                                  .rs 0x01 ;0x0013
 TMP_INDIR_JMP_L:                         .rs 0x01 ;0x0014
 TMP_INDIR_JMP_H:                         .rs 0x01 ;0x0015
-CTRL_HELD:                               .rs 0x02 ;0x0016 to 0x0017
+CONTROLLER_BUTTONS_HELD:                 .rs 0x02 ;0x0016 to 0x0017
 
 	.rsset 0x001A
 FRAME_PTR_INDEX:                         .rs 0x01 ;0x001A
-SPRITE_UPDATE_BASE:                      .rs 0x01 ;0x001B
-TIMER_UNPAUSE_HOLD:                      .rs 0x01 ;0x001C
-RESTORE_GAME_STATE:                      .rs 0x01 ;0x001D
-IN_GAME_FUTURE_STATE:                    .rs 0x01 ;0x001E
-GAME_MODE_IN:                            .rs 0x01 ;0x001F
-FLAG_NMI_RAN:                            .rs 0x01 ;0x0020
+SPRITE_UPDATE_BASE/MESSAGE_VAL/PARTICLE_MOD: .rs 0x01 ;0x001B
+SCRIPT_HOLD_UNPAUSE_SOUND_TIMER:         .rs 0x01 ;0x001C
+ENGINE_MAIN_PAUSED_STATE_RESTORE:        .rs 0x01 ;0x001D
+SCRIPT_FUTURE_GAME_STATE:                .rs 0x01 ;0x001E
+SCRIPT_MENU_CURSOR_SELECTED:             .rs 0x01 ;0x001F
+ENGINE_SCRIPT_ITERATE_FLAG:              .rs 0x01 ;0x0020
 PPU_UPDATE_BUF_FLAG:                     .rs 0x01 ;0x0021
-FLAG_BLOCK_PPU_UPDATE:                   .rs 0x01 ;0x0022
-PALETTE_UPLOAD_REQUEST:                  .rs 0x01 ;0x0023
-IN_MENU_FLAG:                            .rs 0x01 ;0x0024
-SWITCH_MAIN_GAME_STATE:                  .rs 0x01 ;0x0025
+NMI_BLOCK_PPU_UPDATE_FLAG:               .rs 0x01 ;0x0022
+ENGINE_PALETTE_UPLOAD_REQUEST_FLAG:      .rs 0x01 ;0x0023
+ENGINE_FLAG_IN_MENU:                     .rs 0x01 ;0x0024
+ENGINE_MAIN_GAME_STATE_SWITCH:           .rs 0x01 ;0x0025
 SWITCH_MENU:                             .rs 0x01 ;0x0026
-DYNAMIC_PALETTE_UPLOAD_FLAG:             .rs 0x01 ;0x0027
+ENGINE_UPLOAD_DYNAMIC_PALETTE_FLAG:      .rs 0x01 ;0x0027
 SAVE_STATE_X:                            .rs 0x01 ;0x0028
 SAVE_STATE_Y:                            .rs 0x01 ;0x0029
 TIMER_LARGE_COUNT:                       .rs 0x01 ;0x002A
 FAST_TIMERS:                             .rs 0x02 ;0x002B to 0x002C
 TIMER_SLOW:                              .rs 0x02 ;0x002D to 0x002E
-FRAME_COUNTER:                           .rs 0x01 ;0x002F
+SCRIPT_FRAME_COUNTER:                    .rs 0x01 ;0x002F
 OBJ_ZP_COPY:                             .rs 0x50 ;0x0030 to 0x007F
 
 	.rsset 0x0031
@@ -55,7 +55,7 @@ OBJ_ZP_Y_COORD:                          .rs 0x01 ;0x0032
 OBJ_ZP_X_COORD:                          .rs 0x01 ;0x0033
 OBJ_ZP_DIRECTION:                        .rs 0x01 ;0x0034
 OBJ_ZP_FRAME:                            .rs 0x01 ;0x0035
-OBJ_ZP_SPRITE_SLOT_START:                .rs 0x01 ;0x0036
+OBJ_ZP_SPRITE_PAGE_SLOT_PRIMARY_INDEX:   .rs 0x01 ;0x0036
 OBJ_ZP_SPRITE_SLOT_END:                  .rs 0x01 ;0x0037
 OBJ_ZP_BEHIND_BG_FLAG:                   .rs 0x01 ;0x0038
 OBJ_ZP_POINTS:                           .rs 0x01 ;0x0039
@@ -70,7 +70,7 @@ OBJ_ZP_ANIM_PTR_H:                       .rs 0x01 ;0x0041
 OBJ_ZP_ANIM_TIMER:                       .rs 0x01 ;0x0042
 OBJ_ZP_ANIM_PTR_INDEX:                   .rs 0x01 ;0x0043
 OBJ_ZP_EXTRA_PTR/DATA_STEP:              .rs 0x02 ;0x0044 to 0x0045
-OBJ_ZP_TIMER_MISC?:                      .rs 0x01 ;0x0046
+OBJ_ZP_TIMER_EXTRA:                      .rs 0x01 ;0x0046
 OBJ_ZP_EXTRA_PTR/DATA_INDEX_STORAGE:     .rs 0x01 ;0x0047
 OBJ_ZP_DATA_DIRECTION:                   .rs 0x01 ;0x0048
 OBJ_ZP_COPY_MOVESETS_INDEX:              .rs 0x01 ;0x0049
@@ -91,7 +91,7 @@ OBJ_ZP_ADD'L_STATE:                      .rs 0x01 ;0x0057
 OBJ_COPY_PIGEON_SOUND_COUNTDOWN:         .rs 0x01 ;0x0058
 
 	.rsset 0x005E
-OBJ_ZP_DUCK_DIFF:                        .rs 0x01 ;0x005E
+OBJ_ZP_DUCK_DIFFICULTY:                  .rs 0x01 ;0x005E
 OBJ_ZP_$47_PIGEON_UNK:                   .rs 0x01 ;0x005F
 OBJ_ZP_COPY_PARTICLES_Y_BASE:            .rs 0x0E ;0x0060 to 0x006D
 
@@ -116,29 +116,29 @@ PIGEON_MOVE_94:                          .rs 0x01 ;0x0094
 PIGEON_MOVE_GROUPED_95_SEED+SHIFT:       .rs 0x01 ;0x0095
 PIGEON_MOVE_GROUPED_96_CLEARED:          .rs 0x01 ;0x0096
 PIGEON_MOVE_GROUPED_97_CLEARED:          .rs 0x01 ;0x0097
-DUCK_COLOR_COMBO_INDEX:                  .rs 0x01 ;0x0098
+SCRIPT_DUCK_COLOR_COMBO:                 .rs 0x01 ;0x0098
 TARGETS_ACTIVATED_COUNT?:                .rs 0x01 ;0x0099
 SHOT_BLINK_COUNTER:                      .rs 0x01 ;0x009A
 DISPLAY_BLINK_TIMER:                     .rs 0x01 ;0x009B
-DUCK_MOVEMENT_CHANGE?:                   .rs 0x01 ;0x009C
+SCRIPT_DUCK_MOVEMENT_CHANGE:             .rs 0x01 ;0x009C
 AUTOMESSAGE_DISPLAY_INDEX:               .rs 0x01 ;0x009D
 OBJ3_SOUND_COUNT_DOWN:                   .rs 0x01 ;0x009E
-ACTIVATE_SHOOTING_COUNTDOWN?:            .rs 0x01 ;0x009F
+SCRIPT_ACTIVATE_SHOT_COUNTDOWN:          .rs 0x01 ;0x009F
 
 	.rsset 0x00A1
-ORIGIN_SLOT_OF_ZP_OBJ_COPY:              .rs 0x01 ;0x00A1
+ENGINE_OBJ_ZP_SLOT_INDEX:                .rs 0x01 ;0x00A1
 OBJ_ZP_ORIGIN_OFFSET:                    .rs 0x01 ;0x00A2
 
 	.rsset 0x00A6
-COUNTDOWN_TO_ENABLE_TARGETS:             .rs 0x01 ;0x00A6
+SCRIPT_COUNTDOWN_TO_ENABLE_TARGETS:      .rs 0x01 ;0x00A6
 PIGEON_FLAG_NEEDS_CLEARED?:              .rs 0x01 ;0x00A7
 PIGEON_DIFFICULTY:                       .rs 0x01 ;0x00A8
-SWITCH_END_OF_ROUND:                     .rs 0x01 ;0x00A9
-TARGETS_HIT_IN_ROUND:                    .rs 0x01 ;0x00AA
-HITS_REQUIRED_RAM:                       .rs 0x01 ;0x00AB
+SCRIPT_END_OF_ROUND_SWITCH:              .rs 0x01 ;0x00A9
+SCRIPT_ROUND_TARGETS_HIT_COUNT:          .rs 0x01 ;0x00AA
+SCRIPT_HITS_REQUIRED_TO_PASS_LEVEL:      .rs 0x01 ;0x00AB
 
 	.rsset 0x00AD
-FLAG_UPDATE_TARGETS_HIT:                 .rs 0x01 ;0x00AD
+ENGINE_FLAG_UPDATE_TARGETS_HIT:          .rs 0x01 ;0x00AD
 FLYAWAY_CHANGES_ENABLED:                 .rs 0x01 ;0x00AE
 DUCK_MOVEMENT_LAST_HELD_CONTROLLER:      .rs 0x01 ;0x00AF
 TESTING_FOR_HIT_OBJ_INDEX:               .rs 0x01 ;0x00B0
@@ -146,20 +146,20 @@ TARGET_Y_COORD_CPY:                      .rs 0x01 ;0x00B1
 TARGET_X_COORD_CPY:                      .rs 0x01 ;0x00B2
 SPRITE_ATTR_COPY?:                       .rs 0x01 ;0x00B3
 SPRITE_INDEX_VAL:                        .rs 0x01 ;0x00B4
-FLAG_ZAPPER_TRIGGER_RELEASED:            .rs 0x01 ;0x00B5
-FLAG_ZAPPER_TRIGGER_PULLED:              .rs 0x01 ;0x00B6
-ZAP_TIGGER_PREVIOUS_STATE:               .rs 0x01 ;0x00B7
-ZAP_STATES_MATCHED_COUNT:                .rs 0x01 ;0x00B8
-ZAP_SHOOTING_ENABLED_FLAG:               .rs 0x01 ;0x00B9
-SHOTS_REMAINING:                         .rs 0x01 ;0x00BA
-ROUND_TARGETS_SHOWN:                     .rs 0x01 ;0x00BB
-NUM_TARGETS_PER_ATTEMPT:                 .rs 0x01 ;0x00BC
-TRGTS_SHOT_DURING_ATTEMPT:               .rs 0x01 ;0x00BD
-FLAG_UPDATE_BULLETS_DISPLAY:             .rs 0x01 ;0x00BE
+ZAP_TRIGGER_RELEASED:                    .rs 0x01 ;0x00B5
+ZAP_FLAG_TRIGGER_PULLED:                 .rs 0x01 ;0x00B6
+ZAP_TRIG_PREVIOUS:                       .rs 0x01 ;0x00B7
+ZAP_TRIGGER_STATE_MATCH_COUNT:           .rs 0x01 ;0x00B8
+SCRIPT_ZAP_SHOOTING_ENABLED_FLAG:        .rs 0x01 ;0x00B9
+SCRIPT_SHOTS_REMAINING:                  .rs 0x01 ;0x00BA
+SCRIPT_ROUND_TARGETS_SHOWN_COUNT:        .rs 0x01 ;0x00BB
+SCRIPT_TARGETS_PER_ATTEMPT:              .rs 0x01 ;0x00BC
+SCRIPT_FLAG_HIT_DURING_VOLLEY:           .rs 0x01 ;0x00BD
+ENGINE_FLAG_UPDATE_BULLETS_DISPLAY/TARGET_FLASH_HELP: .rs 0x01 ;0x00BE
 
 	.rsset 0x00C1
-LEVEL:                                   .rs 0x01 ;0x00C1
-HITS_REQUIRED_RAM_INDEX:                 .rs 0x01 ;0x00C2
+GAME_LEVEL:                              .rs 0x01 ;0x00C1
+SCRIPT_HITS_REQUIRED_DATA_INDEX:         .rs 0x01 ;0x00C2
 SCORE_INVERT_REQUEST_FLAG:               .rs 0x01 ;0x00C3
 SCORE_XX0000:                            .rs 0x01 ;0x00C4
 SCORE_00XX00:                            .rs 0x01 ;0x00C5
@@ -223,7 +223,7 @@ TRGT1_Y_COORD:                           .rs 0x01 ;0x0302
 TRGT1_X_COORD:                           .rs 0x01 ;0x0303
 
 	.rsset 0x030A
-TRGT1_SKELETON_USING:                    .rs 0x01 ;0x030A
+TRGT1_SKELETON_ID:                       .rs 0x01 ;0x030A
 TARGET_0_ID_NUMBER:                      .rs 0x01 ;0x030B
 
 	.rsset 0x0350
@@ -249,11 +249,11 @@ RAM_PALETTE_DYNAMIC_ADDR_L:              .rs 0x01 ;0x0401
 RAM_PALETTE_DYNAMIC_LENGTH:              .rs 0x01 ;0x0402
 
 	.rsset 0x0430
-TIMERS_PAUSED_STORAGE:                   .rs 0x05 ;0x0430 to 0x0434
+PAUSED_STORAGE_TIMERS:                   .rs 0x05 ;0x0430 to 0x0434
 
 	.rsset 0x0440
-CTRL_PREV_BUTTONS:                       .rs 0x02 ;0x0440 to 0x0441
-CTRL_BUTTONS_SAME_COUNTER:               .rs 0x02 ;0x0442 to 0x0443
+CONTROLLER_BUTTONS_PREVIOUS:             .rs 0x02 ;0x0440 to 0x0441
+CONTROLLER_BUTTONS_MATCHED_COUNTER:      .rs 0x02 ;0x0442 to 0x0443
 
 	.rsset 0x0500
 PPU_BLOCK_BUF_SETTING:                   .rs 0x01 ;0x0500
@@ -268,9 +268,9 @@ RNG_ARRAY:                               .rs 0x04 ;0x05EC to 0x05EF
 HIGH_SCORES_ARRAY:                       .rs 0x01 ;0x05F0
 
 	.rsset 0x05FC
-FLAG_PAUSE_HELD_AFTER_PAUSE:             .rs 0x01 ;0x05FC
+FLAG_PAUSE_CHANGE_WAITING_UNPRESS:       .rs 0x01 ;0x05FC
 FLAG_CURSOR_UPDATED:                     .rs 0x01 ;0x05FD
-MENU_OPTION_ON:                          .rs 0x01 ;0x05FE
+SCRIPT_MENU_CURSOR_OPTION:               .rs 0x01 ;0x05FE
 ZAPPER_RESULT:                           .rs 0x01 ;0x05FF
 
 	.rsset 0x0610
@@ -281,12 +281,12 @@ SND_PTR_RUN_CODE_0612:                   .rs 0x02 ;0x0612 to 0x0613
 ;SOURCE CODE STARTS HERE
 
 VECTOR_ENTRY_RESET: ; 0x000000
-	CLD  ;starts here.
+	CLD  ;Game starts here.
 	SEI 
 WAIT_VBL: ; 0x000002
 	LDA PPU_Status ;waits for vbl
 	BPL WAIT_VBL
-	LDX #$00 ;disable graphics and whatnot.
+	LDX #$00 ;disable rendering.
 	STX PPU_Ctrl
 	STX PPU_Mask
 	DEX  ;X=#$FF
@@ -308,47 +308,47 @@ CLR_RAM_LOOP: ; 0x00001E
 	LDX #$5F ;Otherwise seed with #$5F
 SKIP_SEED_RNG: ; 0x00002C
 	STX RNG_ARRAY ;Seed RNG array.
-	JSR CLEAR_BOTH_SCREENS ;Clear screens.
-	JSR CLEAR_SPRITES ;Clear sprites.
+	JSR SCRIPT_HELP_CLEAR_BOTH_SCREENS ;Clear screens.
+	JSR ENGINE_CLEAR_SPRITES_OFFSCREEN ;Clear sprites.
 	LDY #$00
 	STA PPU_Scroll ;latch was reset in screen clearing
 	STA PPU_Scroll
 	LDY #$01
-	STY IN_MENU_FLAG ;Set in-menu true.
+	STY ENGINE_FLAG_IN_MENU ;Set in-menu true.
 	LDA #$0F
 	STA APU_STATUS ;enable all except DMC
-	JSR INIT_SOUND_PTR_TO_CODE_VARS_HIGH_ADDR_BYTE
+	JSR ENGINE_SOUND_INIT_INDIRECT_CODE_PTR_HIGH_BYTE ;Enable sound code ptr high bytes.
 	LDA #$90
 	STA PPU_Ctrl ;sprites from 0x1000, enable NMI.
 	STA PPU_CTRL_RAM ;I personally would reverse these writes.
 	LDA #$02
 	STA PPU_MASK_RAM
 	LDX #$0B
-LOOP_MOVE_DAT: ; 0x000056
-	LDA DEFAULT_HIGH_SCORES,X ;Move default high score in to place.
+LOOP_MOVE_SCORES: ; 0x000056
+	LDA ROM_DATA_DEFAULT_HIGH_SCORES_ARR,X ;Move default high score in to place.
 	STA HIGH_SCORES_ARRAY,X ;Store to arr.
 	DEX  ;Index--
-	BPL LOOP_MOVE_DAT ;Positive, goto.
-	BMI LOOP_FOREVER ;Always taken.
-SCRIPT_RUN_START: ; 0x000061
-	LDA IN_MENU_FLAG ;Load flag.
+	BPL LOOP_MOVE_SCORES ;Positive, goto.
+	BMI ENGINE_WAIT_ITERATE_RNG_ADVANCE ;Always taken.
+SCRIPT_ITERATE_GAME: ; 0x000061
+	LDA ENGINE_FLAG_IN_MENU ;Load flag.
 	BEQ SOUND_STUFF ;Not in menu, goto.
-	LDA SWITCH_MENU
+	LDA SWITCH_MENU ;Load switch.
 	CMP #$01 ;If MENU_STATE _ 1
 	BNE DONT_PLAY_SOUNDS ;!=, goto. Skip sound rtn.
 SOUND_STUFF: ; 0x00006B
-	JSR PLAY_SOUNDS ;Play sound.
+	JSR ENGINE_PLAY_SOUNDS ;Play sound.
 DONT_PLAY_SOUNDS: ; 0x00006E
-	JSR DEC_MAIN_TIMERS ;Mod timers.
-	JSR READ_CONTROLLERS ;Read controllers.
-	JSR GAMEPLAY_SCRIPTS ;Do scripts.
-	INC FRAME_COUNTER ;Counter++
-	JSR CLEAR_NMI_RAN/BLOCK_PPU_UPDATE_FLAGS ;Clear flags.
-LOOP_FOREVER: ; 0x00007C
-	LDA FLAG_NMI_RAN ;Load flag.
-	BNE SCRIPT_RUN_START ;Run script.
-	JSR RNG_ADVANCE ;Randomize.
-	JMP LOOP_FOREVER ;Loop until ready.
+	JSR ENGINE_HELP_SCRIPT_TIMERS ;Mod timers.
+	JSR ENGINE_READ_CONTROLLERS ;Read controllers.
+	JSR SCRIPT_EXECUTE ;Do scripts for objects, forwarding game scripts.
+	INC SCRIPT_FRAME_COUNTER ;Counter++
+	JSR ENGINE_UPDATE_ITERATION_FLAGS ;Clear flags.
+ENGINE_WAIT_ITERATE_RNG_ADVANCE: ; 0x00007C
+	LDA ENGINE_SCRIPT_ITERATE_FLAG ;Load flag.
+	BNE SCRIPT_ITERATE_GAME ;Run script.
+	JSR ENGINE_RNG_ADVANCE ;Randomize in free time.
+	JMP ENGINE_WAIT_ITERATE_RNG_ADVANCE ;Loop until ready.
 VECTOR_ENTRY_NMI: ; 0x000086
 	PHP  ;Save registers. This not needed.
 	PHA 
@@ -360,16 +360,16 @@ VECTOR_ENTRY_NMI: ; 0x000086
 	STA PPU_OAM_Addr
 	LDA #$02
 	STA PPU_DMA ;write sprites to screen.
-	LDA FLAG_BLOCK_PPU_UPDATE ;Load flag
+	LDA NMI_BLOCK_PPU_UPDATE_FLAG ;Load flag
 	BNE NO_PPU_UPDATE_BUF_UPLOAD ;needs to be 0 to run PPU stuff.
-	JSR PPU_UPLOAD_UPDATE_BUF ;Upload PPU buffer.
-	JSR UPLOAD_PALETTE_REQUESTED ;Upload palette if wanted.
-	JSR UPDATE_RAM_PALETTE_FOR_SPRITES ;Update RAM palette.
-	JSR SET_PPU_SCROLL ;Set scroll. Because of PPU_ADDR writings above setting scroll.
+	JSR NMI_UPLOAD_PPU_UPDATE_BUF ;Upload PPU buffer.
+	JSR NMI_UPLOAD_PALETTE_STATIC ;Upload palette if wanted.
+	JSR NMI_UPDATE_SPRITES_PALETTE_FROM_RAM ;Update RAM palette.
+	JSR NMI_COMMIT_SCROLL_TO_PPU_REGISTERS ;Set scroll. Because of PPU_ADDR writings above setting scroll.
 NO_PPU_UPDATE_BUF_UPLOAD: ; 0x0000A6
 	LDY #$01
-	STY FLAG_BLOCK_PPU_UPDATE ;Block again.
-	STY FLAG_NMI_RAN ;Store to.
+	STY NMI_BLOCK_PPU_UPDATE_FLAG ;Block again.
+	STY ENGINE_SCRIPT_ITERATE_FLAG ;Store to.
 	PLA  ;Restore regs, exiting NMI.
 	TAY 
 	PLA 
@@ -377,79 +377,79 @@ NO_PPU_UPDATE_BUF_UPLOAD: ; 0x0000A6
 	PLA 
 	PLP  ;Not needed.
 	RTI  ;Leave NMI.
-GAMEPLAY_SCRIPTS: ; 0x0000B3
-	LDA IN_MENU_FLAG ;Load flag.
+SCRIPT_EXECUTE: ; 0x0000B3
+	LDA ENGINE_FLAG_IN_MENU ;Load flag.
 	BEQ GAMEPLAY_SCRIPTS_HANDLER ;Not in menu, goto.
 	JMP MENU_SCRIPTS_HANDLER ;Menu, goto.
 GAMEPLAY_SCRIPTS_HANDLER: ; 0x0000BA
-	LDA CTRL_HELD
-	AND #$10 ;button start
-	BEQ CLEAR_PAUSE_HELD ;Not held, can unpause after.
-	LDY FLAG_PAUSE_HELD_AFTER_PAUSE ;Load flag
-	BNE GAMEPLAY_SWITCH ;skip unpausing.
+	LDA CONTROLLER_BUTTONS_HELD ;Load held.
+	AND #$10 ;Start held?
+	BEQ CLEAR_PAUSE_HELD ;No, goto.
+	LDY FLAG_PAUSE_CHANGE_WAITING_UNPRESS ;Load flag
+	BNE GAMEPLAY_SWITCH ;Is set, go to switch.
 	INY  ;Y = 1
-	STY FLAG_PAUSE_HELD_AFTER_PAUSE ;Set flag to force pause not pressed to unpause.
-	LDY SWITCH_MAIN_GAME_STATE ;pausable states?
-	CPY #$10 ;paused state value
-	BEQ UNPAUSE_GAME ;Unpause this state.
-	CPY #$03 ;these are all the possible pause states.
+	STY FLAG_PAUSE_CHANGE_WAITING_UNPRESS ;Set flag to force unpress for next change.
+	LDY ENGINE_MAIN_GAME_STATE_SWITCH ;pausable states?
+	CPY #$10 ;Paused state.
+	BEQ UNPAUSE_GAME ;Is that state, unpause.
+	CPY #$03 ;Pause game on these.
 	BEQ PAUSE_GAME_INITIATE
 	CPY #$04
 	BEQ PAUSE_GAME_INITIATE
 	CPY #$0B
 	BEQ PAUSE_GAME_INITIATE
 	CPY #$0C
-	BNE GAMEPLAY_SWITCH ;state cant be paused continue on.
+	BNE GAMEPLAY_SWITCH ;Not pausible, goto gameplay switch.
 PAUSE_GAME_INITIATE: ; 0x0000DF
 	LDX #$05 ;Saves frame counter too with 5 index.
 SAVE_GAMEPLAY_TIMERS: ; 0x0000E1
 	LDA TIMER_LARGE_COUNT,X ;Load timer from array.
-	STA TIMERS_PAUSED_STORAGE,X ;Save timers here.
+	STA PAUSED_STORAGE_TIMERS,X ;Save timers here.
 	DEX  ;Index--
 	BPL SAVE_GAMEPLAY_TIMERS ;Positive, loop all.
 	LDA PPU_MASK_RAM
 	AND #$0E ;Enable BG/SPR in left 8, BG, no SPR.
 	STA PPU_Mask
 	STA PPU_MASK_RAM
-	LDA SWITCH_MAIN_GAME_STATE ;Load state.
-	STA RESTORE_GAME_STATE ;Save to.
+	LDA ENGINE_MAIN_GAME_STATE_SWITCH ;Save state in.
+	STA ENGINE_MAIN_PAUSED_STATE_RESTORE
 	LDA #$10 ;Pause state
-	STA SWITCH_MAIN_GAME_STATE ;Store to current state.
+	STA ENGINE_MAIN_GAME_STATE_SWITCH ;Store to current state.
 	LDA #$07 ;PPU update file.
-	JMP DONT_CHANGE_STATE ;could have used bne, tsk tsk, 1 byte lost.
+	JMP PAUSE_MESSAGE_AND_SOUND_HELPER ;could have used bne, tsk tsk, 1 byte lost.
 UNPAUSE_GAME: ; 0x0000FF
 	LDA PPU_MASK_RAM
 	ORA #$10 ;enable sprites.
 	STA PPU_Mask
 	STA PPU_MASK_RAM
 	LDA #$11
-	STA SWITCH_MAIN_GAME_STATE ;Switch state to unpausing state.
+	STA ENGINE_MAIN_GAME_STATE_SWITCH ;Switch state to unpausing state.
 	LDA #$30
-	STA TIMER_UNPAUSE_HOLD ;Store timer to block unpause, letting sound play before state/timer swap.
+	STA SCRIPT_HOLD_UNPAUSE_SOUND_TIMER ;Store timer to block unpause, letting sound play before state/timer swap.
 	LDA #$00
-DONT_CHANGE_STATE: ; 0x000112
+PAUSE_MESSAGE_AND_SOUND_HELPER: ; 0x000112
 	JSR DISP_GAME_MESSAGE ;Show graphics needed.
-	JSR SND_HALT ;Do sound.
-	JSR WAIT_FOR_NMI ;Wait for NMI.
-	JMP SND_PAUSE ;Play other sound. Abuse RTS.
+	JSR ENGINE_SOUND_HALT_CURRENT ;Do sound.
+	JSR ENGINE_WAIT_FOR_NMI ;Wait for NMI.
+	JMP SCRIPT_PLAY_SOUND_PAUSE ;Play other sound. Abuse RTS.
 CLEAR_PAUSE_HELD: ; 0x00011E
 	LDA #$00
-	STA FLAG_PAUSE_HELD_AFTER_PAUSE ;Clear flag, can unpause now.
+	STA FLAG_PAUSE_CHANGE_WAITING_UNPRESS ;Clear flag, can unpause now if needed.
 GAMEPLAY_SWITCH: ; 0x000123
-	LDA SWITCH_MAIN_GAME_STATE ;Load state.
+	LDA ENGINE_MAIN_GAME_STATE_SWITCH ;Load state.
 	JSR SWITCH_TO_CODE_PTRS
 	.LOW STATE_0x00_INIT_RAM/SCREEN ;Setup system, moves to menu selection setup after.
 	.HIGH STATE_0x00_INIT_RAM/SCREEN ;0x00
 	.LOW STATE_0x01_DUCKS_SCREEN_SETUP ;Ducks screen setup.
 	.HIGH STATE_0x01_DUCKS_SCREEN_SETUP ;0x01
-	.LOW STATE_0x02_DUCKS_SETUP_ROUND ;Ducks info setup.
-	.HIGH STATE_0x02_DUCKS_SETUP_ROUND ;0x02
+	.LOW STATE_0x02_DUCKS_INIT_ROUND ;Ducks info setup.
+	.HIGH STATE_0x02_DUCKS_INIT_ROUND ;0x02
 	.LOW STATE_0x03_DUCKS_VOLLEY ;Main duck loop.
 	.HIGH STATE_0x03_DUCKS_VOLLEY ;0x03
-	.LOW STATE_0x04_ROUND_END_SWITCH ;End round routines.
-	.HIGH STATE_0x04_ROUND_END_SWITCH ;0x04
-	.LOW STATE_0x01_IDLE ;RTS's
-	.HIGH STATE_0x01_IDLE ;0x05
+	.LOW MULTISTATE_END_OF_ROUND_SWITCH ;End round routines.
+	.HIGH MULTISTATE_END_OF_ROUND_SWITCH ;0x04
+	.LOW STATE_GENERAL_IDLE ;RTS's
+	.HIGH STATE_GENERAL_IDLE ;0x05
 	.LOW STATE_0x06_GAME_OVER_PREP ;Prep game over.
 	.HIGH STATE_0x06_GAME_OVER_PREP ;0x06
 	.LOW STATE_0x07_GAME_OVER ;Game over.
@@ -462,16 +462,16 @@ GAMEPLAY_SWITCH: ; 0x000123
 	.HIGH STATE_0x0A_PIGEON_VOLLEY ;0x0A
 	.LOW STATE_0x0B_PIGEON_VOLLEY_CONTINUE ;Main loop.
 	.HIGH STATE_0x0B_PIGEON_VOLLEY_CONTINUE ;0x0B
-	.LOW STATE_0x04_ROUND_END_SWITCH ;End round.
-	.HIGH STATE_0x04_ROUND_END_SWITCH ;0x0C
+	.LOW MULTISTATE_END_OF_ROUND_SWITCH ;End round.
+	.HIGH MULTISTATE_END_OF_ROUND_SWITCH ;0x0C
 	.LOW STATE_0x0D_PIGEON_MESSAGE_SCRIPT ;Message script intro.
 	.HIGH STATE_0x0D_PIGEON_MESSAGE_SCRIPT ;0x0D
-	.LOW STATE_0x01_IDLE ;removed?
-	.HIGH STATE_0x01_IDLE ;0x0E
-	.LOW STATE_0x01_IDLE ;removed?
-	.HIGH STATE_0x01_IDLE ;0x0F
-	.LOW STATE_0x01_IDLE ;Pause state actual, does nothing. Processing before gameplay switch.
-	.HIGH STATE_0x01_IDLE ;0x10
+	.LOW STATE_GENERAL_IDLE ;removed?
+	.HIGH STATE_GENERAL_IDLE ;0x0E
+	.LOW STATE_GENERAL_IDLE ;removed?
+	.HIGH STATE_GENERAL_IDLE ;0x0F
+	.LOW STATE_GENERAL_IDLE ;Pause state actual, does nothing. Processing before gameplay switch.
+	.HIGH STATE_GENERAL_IDLE ;0x10
 	.LOW STATE_0x11_UNPAUSE ;Unpause routine.
 	.HIGH STATE_0x11_UNPAUSE ;0x11
 	.LOW STATE_0x12_FORWARD_FUTURE_HANDLER ;Back to game state.
@@ -480,27 +480,27 @@ MENU_SCRIPTS_HANDLER: ; 0x00014E
 	LDA #$00
 	STA ZAPPER_RESULT ;Init result.
 	LDA #$01
-	STA ZAP_SHOOTING_ENABLED_FLAG ;Menu always has enabled.
-	STA SHOTS_REMAINING ;Give it one bullet.
+	STA SCRIPT_ZAP_SHOOTING_ENABLED_FLAG ;Menu always has enabled.
+	STA SCRIPT_SHOTS_REMAINING ;Give it one bullet.
 	LDA SWITCH_MENU ;Load state.
 	BEQ JMP_TO_SKIP_TO_MENU_HANDLER ;Zero, goto. No zapper stuff until set up.
-	JSR PROCESS_ZAPPER_TRIGGER ;Menu in idle, do zapper stuff. Process the trigger.
+	JSR SCRIPT_PROCESS_ZAPPER_TRIGGER_STATE ;Menu in idle, do zapper stuff. Process the trigger.
 	JSR PROCESS_ZAPPER_READING ;changes result
 	LDA ZAPPER_RESULT ;Load result.
 	CMP #$01 ;Screen hit, goto.
 	BEQ GAME_SELECTED_FROM_MENU ;==, screen hit, goto.
 	CMP #$02 ;Screen missed, goto.
 	BEQ NEXT_MENU_OPTION ;==, missed screen, goto next object.
-	LDA CTRL_HELD ;Get buttons held.
+	LDA CONTROLLER_BUTTONS_HELD ;Get buttons held.
 	AND #$30 ;Get select and start.
 	CMP #$10 ;Only start pressed.
 	BNE START_NOT_PRESSED ;Only start not pressed.
 GAME_SELECTED_FROM_MENU: ; 0x000176
 	LDA #$00 ;go to game here. Start works, too.
-	STA IN_MENU_FLAG ;Clear flag.
-	STA SWITCH_MAIN_GAME_STATE ;Initial in-game state.
-	JSR SND_HALT ;Init sounds.
-	JSR PPU_DISABLE_SPRITES/BACKGROUND ;Turn off rendering.
+	STA ENGINE_FLAG_IN_MENU ;Clear flag.
+	STA ENGINE_MAIN_GAME_STATE_SWITCH ;Initial in-game state.
+	JSR ENGINE_SOUND_HALT_CURRENT ;Init sounds.
+	JSR ENGINE_DISABLE_RENDERING ;Turn off rendering.
 	LDA #$02
 	STA TIMER_LARGE_COUNT ;Play music when back on title screen.
 	STA TIMER_SLOW ;Set to low value.
@@ -516,13 +516,13 @@ START_NOT_PRESSED/ALONE: ; 0x000190
 	LDA FLAG_CURSOR_UPDATED
 	BNE RESET_COUNTDOWN ;no update without full release
 NEXT_MENU_OPTION: ; 0x000199
-	LDY MENU_OPTION_ON ;Load option.
+	LDY SCRIPT_MENU_CURSOR_OPTION ;Load option.
 	INY  ;++
 	CPY #$03 ;only 0-2 options available
 	BNE WRITE_MENU_OPTION ;Not overflowed, use as-is.
 	LDY #$00 ;wrap back.
 WRITE_MENU_OPTION: ; 0x0001A3
-	STY MENU_OPTION_ON ;Store menu option.
+	STY SCRIPT_MENU_CURSOR_OPTION ;Store menu option.
 	JMP MENU_SELECTION_UPDATE_CREATOR ;Create update.
 SELECT_NOT_PRESSED/ALONE: ; 0x0001A9
 	CMP #$00 ;Anything pressed?
@@ -546,7 +546,7 @@ WRITE_DATA_LOOP: ; 0x0001C8
 	STA PPU_BLOCK_BUF,X ;store 505-501
 	DEX 
 	BPL WRITE_DATA_LOOP
-	LDA MENU_OPTION_ON ;0-2
+	LDA SCRIPT_MENU_CURSOR_OPTION ;0-2
 	ASL A ;*=2, make index.
 	TAX 
 	LDA #$26 ;Cursor tile ID.
@@ -554,7 +554,7 @@ WRITE_DATA_LOOP: ; 0x0001C8
 	LDX #$26 ;nametable addr starting 2622
 	LDY #$22
 	JSR MAKE_SETUP_PPU_BLOCK ;write blanks
-	LDA MENU_OPTION_ON ;0-2
+	LDA SCRIPT_MENU_CURSOR_OPTION ;0-2
 	ASL A
 	ASL A ;mul by 4
 	CLC 
@@ -594,21 +594,21 @@ SKIP_TO_MENU_HANDLER: ; 0x000217
 SWITCH_MENU: ; 0x000222
 	LDA SWITCH_MENU ;Load state.
 	JSR SWITCH_TO_CODE_PTRS
-	.LOW STATE_0x00_INIT_TITLE_SCREEN ;Set up screen.
-	.HIGH STATE_0x00_INIT_TITLE_SCREEN
-	.LOW STATE_0x01_IDLE ;RTS, idle state.
-	.HIGH STATE_0x01_IDLE
-CLEAR_BOTH_SCREENS: ; 0x00022B
+	.LOW STATE_0x0_TITLE_SCREEN_INIT ;Set up screen.
+	.HIGH STATE_0x0_TITLE_SCREEN_INIT
+	.LOW STATE_GENERAL_IDLE ;RTS, idle state.
+	.HIGH STATE_GENERAL_IDLE
+SCRIPT_HELP_CLEAR_BOTH_SCREENS: ; 0x00022B
 	LDA #$02 ;clear screen $2400
-	JSR SETUP_CLEAR_SCREEN ;screen cleared here
+	JSR SETUP_CLEAR_SCREEN_A_PASSED ;screen cleared here
 CLEAR_SCREEN_1: ; 0x000230
 	LDA #$01 ;clear screen $2000
-SETUP_CLEAR_SCREEN: ; 0x000232
+SETUP_CLEAR_SCREEN_A_PASSED: ; 0x000232
 	STA TMP_01 ;screen updating
 	LDA #$24
 	STA TMP_00 ;tile to clear with.
 	JMP CLEAR_SCREEN_WITH_SINGLE_TILE ;Clear screen.
-CLEAR_SPRITES: ; 0x00023B
+ENGINE_CLEAR_SPRITES_OFFSCREEN: ; 0x00023B
 	LDY #$00
 	LDA #$F4 ;Clear value.
 CLR_LOOP: ; 0x00023F
@@ -619,8 +619,8 @@ CLR_LOOP: ; 0x00023F
 	INY 
 	BNE CLR_LOOP ;Index != 0, loop.
 	RTS  ;Leave.
-UPLOAD_PALETTE_REQUESTED: ; 0x000249
-	LDY PALETTE_UPLOAD_REQUEST
+NMI_UPLOAD_PALETTE_STATIC: ; 0x000249
+	LDY ENGINE_PALETTE_UPLOAD_REQUEST_FLAG
 	BEQ RTS ;none to upload
 	DEY  ;Turn 0 index.
 	TYA 
@@ -629,35 +629,35 @@ UPLOAD_PALETTE_REQUESTED: ; 0x000249
 	LDA PALETTE_PTR_L,Y ;low
 	LDX PALETTE_PTR_H,Y ;high
 	LDY #$00
-	STY PALETTE_UPLOAD_REQUEST ;Clear flag.
-PREP_PPU_FILE_PTR: ; 0x00025B
+	STY ENGINE_PALETTE_UPLOAD_REQUEST_FLAG ;Clear flag.
+EXIT_HELPER_PPU_UPLOAD_PTR_SETUP_AND_RUN: ; 0x00025B
 	STA TMP_00 ;set up pointers to data
 	STX TMP_01
-	JSR PPU_DATA_FILE_TEST_STREAM
+	JSR PPU_DATA_FILE_CONSUME_STREAM_COMMAND ;Enter stream consume.
 RTS: ; 0x000262
 	RTS  ;Leave.
-UPDATE_RAM_PALETTE_FOR_SPRITES: ; 0x000263
-	LDY DYNAMIC_PALETTE_UPLOAD_FLAG
-	BEQ RTS ;no white box displayed
-	LDY #$00 ;could be optim by removing LDY using A
-	STY DYNAMIC_PALETTE_UPLOAD_FLAG ;clear flag.
+NMI_UPDATE_SPRITES_PALETTE_FROM_RAM: ; 0x000263
+	LDY ENGINE_UPLOAD_DYNAMIC_PALETTE_FLAG ;Load flag.
+	BEQ RTS ;Not set, leave.
+	LDY #$00 ;Could be optimized. Clear val.
+	STY ENGINE_UPLOAD_DYNAMIC_PALETTE_FLAG ;clear flag.
 	LDA #$00
 	LDX #$04 ;get data from 0x400
-	BNE PREP_PPU_FILE_PTR ;file from RAM.
+	BNE EXIT_HELPER_PPU_UPLOAD_PTR_SETUP_AND_RUN ;file from RAM.
 STATE_0x11_UNPAUSE: ; 0x000271
-	DEC TIMER_UNPAUSE_HOLD ;has to do with unpausing?
-	BNE RTS_0 ;leave if still counting. for sound to play?
-	LDX #$05 ;move 6 bytes
+	DEC SCRIPT_HOLD_UNPAUSE_SOUND_TIMER ;has to do with unpausing?
+	BNE RTS_0 ;leave if still counting. For player to reset/sound to play.
+	LDX #$05 ;Timer data index.
 MOVE_LOOP: ; 0x000277
-	LDA TIMERS_PAUSED_STORAGE,X ;load saved timers.
+	LDA PAUSED_STORAGE_TIMERS,X ;load saved timers.
 	STA TIMER_LARGE_COUNT,X ;store back at main timers.
 	DEX  ;Index--
 	BPL MOVE_LOOP ;If positive, move more.
-	LDA RESTORE_GAME_STATE ;Get restore state.
-	STA SWITCH_MAIN_GAME_STATE ;Replace ourselves.
+	LDA ENGINE_MAIN_PAUSED_STATE_RESTORE ;Move saved state back into place.
+	STA ENGINE_MAIN_GAME_STATE_SWITCH
 RTS_0: ; 0x000283
 	RTS  ;Leave.
-READ_CONTROLLERS: ; 0x000284
+ENGINE_READ_CONTROLLERS: ; 0x000284
 	LDX #$01
 	STX NES_CONTROLLER1
 	DEX 
@@ -677,22 +677,22 @@ READ_CTRL_LOOP: ; 0x000293
 	ROL A ;rotate into a
 	DEY 
 	BNE READ_CTRL_LOOP
-	CMP CTRL_PREV_BUTTONS,X
+	CMP CONTROLLER_BUTTONS_PREVIOUS,X
 	BNE READ_CTRL_STORE_PREV ;didn't match prev
-	INC CTRL_BUTTONS_SAME_COUNTER,X ;times matched
-	LDY CTRL_BUTTONS_SAME_COUNTER,X ;Load times in Y
+	INC CONTROLLER_BUTTONS_MATCHED_COUNTER,X ;times matched
+	LDY CONTROLLER_BUTTONS_MATCHED_COUNTER,X ;Load times in Y
 	CPY #$05 ;If Y _ 5
 	BCC READ_CTRL_RTS ;<, RTS
-	STA CTRL_HELD,X ;Store held buttons.
+	STA CONTROLLER_BUTTONS_HELD,X ;Store held buttons once threshold reached.
 	JMP READ_CTRL_CLEAR_SAME ;Set match times to 0.
 READ_CTRL_STORE_PREV: ; 0x0002B6
-	STA CTRL_PREV_BUTTONS,X ;Update new previous.
+	STA CONTROLLER_BUTTONS_PREVIOUS,X ;Update new previous.
 READ_CTRL_CLEAR_SAME: ; 0x0002B9
 	LDA #$00
-	STA CTRL_BUTTONS_SAME_COUNTER,X ;reset counter for held.
+	STA CONTROLLER_BUTTONS_MATCHED_COUNTER,X ;reset counter for held.
 READ_CTRL_RTS: ; 0x0002BE
 	RTS 
-PPU_UPLOAD_UPDATE_BUF: ; 0x0002BF
+NMI_UPLOAD_PPU_UPDATE_BUF: ; 0x0002BF
 	LDA PPU_UPDATE_BUF_FLAG ;see if updates
 	BEQ RTS_1 ;RTS if not set.
 	LDA #$61 ;PTR setup, 0x0561, to $00
@@ -708,13 +708,13 @@ PPU_UPLOAD_UPDATE_BUF: ; 0x0002BF
 	BEQ TEST_PPU_DATA_BUFFER ;always taken
 WRITE_PPU_ADDR: ; 0x0002DB
 	STA PPU_Addr ;Store PPU_ADDR high.
-	INY 
-	LDA (TMP_00),Y
+	INY  ;Stream++
+	LDA (TMP_00),Y ;Load from stream.
 	STA PPU_Addr ;Store low addr.
 	INY 
 	LDA (TMP_00),Y ;Payload length.
-	AND #$3F ;Make max? Safety.
-	TAX 
+	AND #$3F ;Mask size.
+	TAX  ;To X index.
 PPU_DATA_WRITE_LOOP: ; 0x0002EA
 	INY  ;Ptr++
 	LDA (TMP_00),Y ;Get stream.
@@ -762,27 +762,27 @@ WRITE_NAMETABLE_LOOP: ; 0x000328
 	LDA #$C0
 	STA PPU_Addr
 	LDY #$40 ;bytes in attr table.
-	LDA #$00
+	LDA #$00 ;Value, clear.
 WRITE_ATTR_LOOP: ; 0x000341
 	STA PPU_Data ;clear
 	DEY 
 	BNE WRITE_ATTR_LOOP ;loop
 	RTS  ;leave
-DEC_MAIN_TIMERS: ; 0x000348
-	LDX #$01 ;index
-	DEC TIMER_LARGE_COUNT
-	BPL DEC_TIMER_INDEXED_LOOP ;Only B+C
+ENGINE_HELP_SCRIPT_TIMERS: ; 0x000348
+	LDX #$01 ;Timer dec range.
+	DEC TIMER_LARGE_COUNT ;--
+	BPL DEC_TIMER_INDEXED_LOOP ;No undeerflow, only index fast timer mod.
 	LDA #$0A ;Timers[2+] only dec every 10 frames.
-	STA TIMER_LARGE_COUNT
+	STA TIMER_LARGE_COUNT ;Reset count.
 	LDX #$03 ;Index to 0x2E now, dec whole range.
 DEC_TIMER_INDEXED_LOOP: ; 0x000354
-	LDA FAST_TIMERS,X
-	BEQ ALREADY_0 ;dont dec if 0.
-	DEC FAST_TIMERS,X ;dec if not already 0
+	LDA FAST_TIMERS,X ;Load timer.
+	BEQ ALREADY_0 ;== 0, skip it.
+	DEC FAST_TIMERS,X ;Down.
 ALREADY_0: ; 0x00035A
 	DEX  ;next timer
-	BPL DEC_TIMER_INDEXED_LOOP
-	RTS 
+	BPL DEC_TIMER_INDEXED_LOOP ;Positive, do all indexes.
+	RTS  ;Leave, timers done.
 SWITCH_TO_CODE_PTRS: ; 0x00035E
 	STX SAVE_STATE_X ;Save X and Y.
 	STY SAVE_STATE_Y ;(This routine goes to the A index prt as code.)
@@ -842,19 +842,19 @@ SINGLE_BLOCK_SKIP_STREAM_ADVANCE: ; 0x0003A4
 	LDA #$00 ;Handle overflow to upper value.
 	ADC TMP_01
 	STA TMP_01
-PPU_DATA_FILE_TEST_STREAM: ; 0x0003B8
+PPU_DATA_FILE_CONSUME_STREAM_COMMAND: ; 0x0003B8
 	LDX PPU_Status ;reset latch.
 	LDY #$00 ;start at beginning
 	LDA (TMP_00),Y ;get data at ptr
-	BNE PPU_WRITE_SCREEN_FILE ;0 = EOF, the universal truth. Always taken?
-SET_PPU_SCROLL: ; 0x0003C1
-	PHA  ;set scroll at end of PPU_ADDR access.
+	BNE PPU_WRITE_SCREEN_FILE ;If 0, re-write scroll as exit.
+NMI_COMMIT_SCROLL_TO_PPU_REGISTERS: ; 0x0003C1
+	PHA  ;At end of upload also write scroll for bug avoidance with scroll changing.
 	LDA PPU_SCROLL_X_RAM
 	STA PPU_Scroll
 	LDA PPU_SCROLL_Y_RAM
 	STA PPU_Scroll
-	PLA  ;good for avoiding bugs. :D
-	RTS 
+	PLA 
+	RTS  ;Leave.
 PPU_UPDATE_BUF_CONCAT: ; 0x0003CE
 	LDA #$01 ;this creates the update block. FMT: [PPU_ADDR,BYTES,DATA]
 	STA PPU_UPDATE_BUF_FLAG ;set update flag
@@ -912,86 +912,86 @@ INCREASE_PPU_UPD8_INDEX: ; 0x000426
 	PLA 
 NO_TERM: ; 0x000436
 	RTS 
-SCORE_ADD/SUB: ; 0x000437
-	CLC  ;Set up for add.
-	ADC #$01 ;+= 1
+SCORE_ADD/SUB_A_GROUP_FROM_TMP: ; 0x000437
+	CLC  ;Prep add.
+	ADC #$01 ;Add index.
 	AND #$0F ;Get bottom bits.
-	ASL A ;<< 2, *4
+	ASL A ;<< 2, *4.
 	ASL A
-	TAX  ;To X, Score index selecting.
+	TAX  ;Offset to index reg.
 	LDA TMP_04 ;SCORE_ADD_FLAG here.
-	BEQ SUBTRACT_DEFAULT ;Sub force.
-	LDA SCORE_INVERT_REQUEST_FLAG,X
+	BEQ SUBTRACT_DEFAULT ;Subtract do on clear.
+	LDA SCORE_INVERT_REQUEST_FLAG,X ;Load flag from score group.
 	BEQ SCORE_GROUP_SUBTRACT ;If zero, do opposite?
 SCORE_GROUP_ADD: ; 0x000447
 	CLC  ;Prep for add, setting expected initial carry.
-	LDA SCORE_0000XX,X
-	STA TMP_03 ;digits group scratch
-	LDA TMP_07 ;adding digits 0000XX
-	JSR BCD_ADD_A_TO_TMP_03
-	STA SCORE_0000XX,X ;store new score.
+	LDA SCORE_0000XX,X ;Get digits.
+	STA TMP_03 ;Adding to.
+	LDA TMP_07 ;Load adding digit.
+	JSR BCD_ADD_A_WITH_TMP_03 ;Add together.
+	STA SCORE_0000XX,X ;Store updated digits.
 	LDA SCORE_00XX00,X ;same as above
 	STA TMP_03 ;digits group scratch
 	LDA TMP_06 ;adding digits 00XX00
-	JSR BCD_ADD_A_TO_TMP_03
+	JSR BCD_ADD_A_WITH_TMP_03
 	STA SCORE_00XX00,X
 	LDA SCORE_XX0000,X ;same as above
 	STA TMP_03 ;digits group scratch
 	LDA TMP_05 ;adding digits 0000XX
-	JSR BCD_ADD_A_TO_TMP_03
+	JSR BCD_ADD_A_WITH_TMP_03
 	STA SCORE_XX0000,X
-	RTS 
+	RTS  ;Leave, added.
 SUBTRACT_DEFAULT: ; 0x00046A
-	LDA SCORE_INVERT_REQUEST_FLAG,X
-	BEQ SCORE_GROUP_ADD ;If zero, do opposite?
+	LDA SCORE_INVERT_REQUEST_FLAG,X ;Load invert.
+	BEQ SCORE_GROUP_ADD ;If zero/clear, add instead.
 SCORE_GROUP_SUBTRACT: ; 0x00046E
 	SEC  ;Prep for sub, setting expected initial carry.
 	LDA SCORE_0000XX,X
 	STA TMP_03 ;digit groups scratch
 	LDA TMP_07 ;digits subtracting 0000XX
-	JSR BCD_SUB_TMP_03_FROM_A
+	JSR BCD_SUB_A_FROM_TMP_03
 	STA SCORE_0000XX,X
 	LDA SCORE_00XX00,X
 	STA TMP_03 ;digit groups scratch
 	LDA TMP_06 ;digits subtracting 00XX00
-	JSR BCD_SUB_TMP_03_FROM_A
+	JSR BCD_SUB_A_FROM_TMP_03
 	STA SCORE_00XX00,X
 	LDA SCORE_XX0000,X
 	STA TMP_03 ;digit groups scratch
 	LDA TMP_05 ;digits subtracting XX0000
-	JSR BCD_SUB_TMP_03_FROM_A
+	JSR BCD_SUB_A_FROM_TMP_03
 	STA SCORE_XX0000,X
 	LDA SCORE_XX0000,X ;Useless load, it seems.
-	BNE SCORE_INDEXED_NOT_ZERO
+	BNE SUBTRACT_TOO_MUCH_POSSIBLE ;If nonzero, goto.
 	LDA SCORE_00XX00,X
-	BNE SCORE_INDEXED_NOT_ZERO
+	BNE SUBTRACT_TOO_MUCH_POSSIBLE ;If nonzero, goto.
 	LDA SCORE_0000XX,X
-	BEQ SCORE_INDEXED_IS_ZERO ;if zero skip
-SCORE_INDEXED_NOT_ZERO: ; 0x00049C
-	BCS RTS_28 ;If carry set, RTS. No underflow?
-	LDA SCORE_INVERT_REQUEST_FLAG,X ;Load
-	EOR #$FF ;Invert flag.
+	BEQ SCORE_INDEXED_IS_ZERO ;If zero, goto.
+SUBTRACT_TOO_MUCH_POSSIBLE: ; 0x00049C
+	BCS RTS_28 ;If carry set, RTS. Not done because no underflow.
+	LDA SCORE_INVERT_REQUEST_FLAG,X ;Load invert.
+	EOR #$FF ;Invert flag, set/do opposite as we sub'd too much.
 SCORE_INDEXED_IS_ZERO: ; 0x0004A2
-	STA SCORE_INVERT_REQUEST_FLAG,X ;Store. Always 0 if direct.
+	STA SCORE_INVERT_REQUEST_FLAG,X ;Store. Always 0 if direct, inverted otherwise.
 	SEC  ;Prep subtract.
-	LDA #$00
+	LDA #$00 ;Init.
 	STA TMP_03 ;Clear score digits.
-	LDA SCORE_0000XX,X ;Adjust value taken.
-	JSR BCD_SUB_TMP_03_FROM_A
+	LDA SCORE_0000XX,X ;Add back subtraction overshoot from what other score had.
+	JSR BCD_SUB_A_FROM_TMP_03
 	STA SCORE_0000XX,X
 	LDA SCORE_00XX00,X
-	JSR BCD_SUB_TMP_03_FROM_A
+	JSR BCD_SUB_A_FROM_TMP_03
 	STA SCORE_00XX00,X
 	LDA SCORE_XX0000,X
-	JSR BCD_SUB_TMP_03_FROM_A
+	JSR BCD_SUB_A_FROM_TMP_03
 	STA SCORE_XX0000,X
 RTS_28: ; 0x0004BE
-	RTS  ;Done.
-BCD_ADD_A_TO_TMP_03: ; 0x0004BF
-	JSR BCD_PREP_TO_TEMPS ;A=value to add to base.
+	RTS  ;Done, leave.
+BCD_ADD_A_WITH_TMP_03: ; 0x0004BF
+	JSR BCD_PREP_TO_TEMPS_RET_LOW_DIGIT ;A=value to add to base.
 	ADC TMP_01 ;Add low digit.
 	CMP #$0A ;BCD check.
-	BCC NO_BCD_ADD_REQD
+	BCC NO_BCD_ADD_REQD ;<, in range, goto.
 	ADC #$05 ;Roll digit to higher.
 NO_BCD_ADD_REQD: ; 0x0004CA
 	CLC  ;Adding again
@@ -1000,37 +1000,37 @@ NO_BCD_ADD_REQD: ; 0x0004CA
 	LDA TMP_03 ;Load adding.
 	AND #$F0 ;Get high only.
 	ADC TMP_02 ;Add with calc'd value.
-	BCC NO_OVERFLOW_GROUP ;No overflow, goto. Always taken?
-BCD_FINAL_MANIP: ; 0x0004D7
+	BCC NO_OVERFLOW_GROUP ;No overflow, goto.
+EXIT_CARRY_SET_ADJUSTMENT: ; 0x0004D7
 	ADC #$5F ;Adjust for overflow BCD on final add.
 	SEC  ;Adjustment for next group.
 	RTS  ;Leave.
 NO_OVERFLOW_GROUP: ; 0x0004DB
-	CMP #$A0
-	BCS BCD_FINAL_MANIP ;If out of range, goto.
+	CMP #$A0 ;If _ #$A0, out of range value.
+	BCS EXIT_CARRY_SET_ADJUSTMENT ;>=, out of range, goto.
 	RTS  ;No group roll, is good, leave.
-BCD_SUB_TMP_03_FROM_A: ; 0x0004E0
-	JSR BCD_PREP_TO_TEMPS
-	SBC TMP_01 ;Subtract low digit.
-	STA TMP_01 ;Store
+BCD_SUB_A_FROM_TMP_03: ; 0x0004E0
+	JSR BCD_PREP_TO_TEMPS_RET_LOW_DIGIT ;Prep rtn.
+	SBC TMP_01 ;Subtract low digit with TMP.
+	STA TMP_01 ;Store result.
 	BCS SCORE_SUB_NO_UNDERFLOW ;No underflow.
 	ADC #$0A ;Roll digit.
 	STA TMP_01 ;Store corrected digit.
 	LDA TMP_02 ;Load high digit.
-	ADC #$0F ;Set lower bits for extra value taken on sub.
+	ADC #$0F ;Set low bits for extra value during subtract. Pretty neato.
 	STA TMP_02 ;Store back.
 SCORE_SUB_NO_UNDERFLOW: ; 0x0004F3
-	LDA TMP_03 ;Load high digit.
+	LDA TMP_03 ;Load high sub.
 	AND #$F0 ;Get only the high digit.
 	SEC  ;Prep for sub.
-	SBC TMP_02 ;Subtract high digit. 0x0F on bottom for extra digit taking.
-	BCS NO_UNDERFLOW ;If no underflow...
-	ADC #$A0 ;BCD roll.
+	SBC TMP_02 ;Subtract high digit. Note extra bits if SCORE_SUB_NO_UNDERFLOW not taken.
+	BCS EXIT_COMBINE ;If no underflow, goto.
+	ADC #$A0 ;BCD roll top digit.
 	CLC  ;Carry next SBC in next call.
-NO_UNDERFLOW: ; 0x0004FF
-	ORA TMP_01 ;Combine digits.
+EXIT_COMBINE: ; 0x0004FF
+	ORA TMP_01 ;Combine digits result.
 	RTS  ;Done, leave.
-BCD_PREP_TO_TEMPS: ; 0x000502
+BCD_PREP_TO_TEMPS_RET_LOW_DIGIT: ; 0x000502
 	PHA  ;A=add/sub value.
 	AND #$0F
 	STA TMP_01 ;Store lower digit adding/subbing.
@@ -1045,12 +1045,12 @@ FIGURE_HIGHER_TO_SCORE_ARCADE: ; 0x000511
 	STA TMP_04 ;Clear
 	CLC  ;Add prep.
 	LDA TMP_00 ;Load value, offset.
-	ADC #$10 ;Add, unk val/why.
+	ADC #$10 ;Add. Offset will be at least 1 set different?
 	AND #$F0 ;Mask top bits, although always 0x00.
+	LSR A ;>> 2, /4.
 	LSR A
-	LSR A ;>> 2, /2.
 	TAY  ;As Y index. Always 0x00 for us.
-	LDA TMP_00 ;Load  offset.
+	LDA TMP_00 ;Load offset.
 	AND #$07 ;Get bottom bits, score index select.
 	ASL A
 	ASL A ;<< 2, *2. Score focus index. Always 0x00 for us.
@@ -1065,17 +1065,17 @@ SUBTRACT_SCORE_FROM_COPY: ; 0x00052F
 	LDA SCORE_0000XX,Y ;Score from Y to TMP. Wrong Addrmode.
 	STA TMP_03
 	LDA SCORE_COPY_0000XX,X ;Sub from X
-	JSR BCD_SUB_TMP_03_FROM_A
+	JSR BCD_SUB_A_FROM_TMP_03
 	LDA SCORE_00XX00,Y ;Y. Wrong Addrmode.
 	STA TMP_03
 	LDA SCORE_COPY_00XX00,X ;Sub X
-	JSR BCD_SUB_TMP_03_FROM_A
+	JSR BCD_SUB_A_FROM_TMP_03
 	LDA SCORE_XX0000,Y ;Y. Wrong Addrmode.
 	STA TMP_03
 	LDA SCORE_COPY_XX0000,X ;Sub X
-	JSR BCD_SUB_TMP_03_FROM_A
+	JSR BCD_SUB_A_FROM_TMP_03
 	BCS SCORE_SUBBED_LOWER ;Score was higher, subbed lower if taken.
-	LDA SCORE_INVERT_REQUEST_FLAG,Y ;Load val
+	LDA SCORE_INVERT_REQUEST_FLAG,Y ;Load val. Wrong Addrmode.
 	BNE SCORE_HIGHER_CODE ;If not 0, goto.
 X_FLAG_ZERO: ; 0x000555
 	LDA #$FF
@@ -1083,8 +1083,8 @@ X_FLAG_ZERO: ; 0x000555
 	SEC  ;Set
 ACTION_IN_CARRY: ; 0x00055A
 	TYA 
-	BNE RTS_2 ;If Y not 0, don't do?
-	BCC NEXT_X_GROUP_CHECK ;skip on no carry
+	BNE RTS_2 ;If Y not 0, leave.
+	BCC NEXT_X_GROUP_CHECK ;Next check on carry clear.
 	LDA SCORE_INVERT_REQUEST_FLAG_COPY,X ;Move copy...
 	STA SCORE_INVERT_REQUEST_FLAG ;...to score.
 	LDA SCORE_COPY_XX0000,X
@@ -1113,7 +1113,7 @@ SCORE_SUBBED_LOWER: ; 0x000580
 SCORE_HIGHER_CODE: ; 0x000585
 	CLC  ;Used to tell not to move copy to score.
 	BCC ACTION_IN_CARRY ;Always taken.
-RNG_ADVANCE: ; 0x000588
+ENGINE_RNG_ADVANCE: ; 0x000588
 	LDA RNG_ARRAY ;LFSR between 0-2,1-2
 	AND #$02
 	STA TMP_07 ;either #$02 or #$00
@@ -1130,47 +1130,47 @@ RNG_ROTATE: ; 0x00059A
 	ROR RNG_ARRAY+3
 	LDA RNG_ARRAY
 	RTS 
-STATE_0x00_INIT_TITLE_SCREEN: ; 0x0005AA
-	JSR PPU_DISABLE_SPRITES/BACKGROUND ;Disable.
+STATE_0x0_TITLE_SCREEN_INIT: ; 0x0005AA
+	JSR ENGINE_DISABLE_RENDERING ;Disable.
 	JSR CLEAR_SCREEN_1 ;clears nametable
-	JSR WAIT_FOR_NMI ;Wait for NMI
+	JSR ENGINE_WAIT_FOR_NMI ;Wait for NMI
 	LDA #$02
 	STA TMP_01 ;nametable $2400 to clear
 	LDA #$50
 	STA TMP_00 ;Tile to use to clear.
 	JSR CLEAR_SCREEN_WITH_SINGLE_TILE ;Clear with tile.
-	JSR CLEAR_SPRITES ;No sprites.
-	JSR WAIT_FOR_NMI ;Wait for frame.
+	JSR ENGINE_CLEAR_SPRITES_OFFSCREEN ;No sprites.
+	JSR ENGINE_WAIT_FOR_NMI ;Wait for frame.
 	LDX #$04
 	LDY #$E4 ;upload file from E404
-	JSR UPLOAD_PPU_FILE ;Upload file, title screen.
+	JSR ENGINE_UPLOAD_PPU_FILE_XY ;Upload file, title screen.
 	LDA #$01
-	STA PALETTE_UPLOAD_REQUEST ;Palette.
+	STA ENGINE_PALETTE_UPLOAD_REQUEST_FLAG ;Palette.
 	LDA #$01
 	STA FLAG_CURSOR_UPDATED ;Update cursor.
 	INC SWITCH_MENU ;Idle state.
-	JMP PPU_ENABLE_SPRITES/BACKGROUND ;Enable GFX output.
-WAIT_FOR_NMI: ; 0x0005D9
-	JSR CLEAR_NMI_RAN/BLOCK_PPU_UPDATE_FLAGS ;waited always clears current.
+	JMP ENGINE_ENABLE_RENDERING ;Enable GFX output.
+ENGINE_WAIT_FOR_NMI: ; 0x0005D9
+	JSR ENGINE_UPDATE_ITERATION_FLAGS ;waited always clears current.
 WAIT_FOR_NMI_LOOP: ; 0x0005DC
-	LDA FLAG_NMI_RAN
-	BEQ WAIT_FOR_NMI_LOOP
-STATE_0x01_IDLE: ; 0x0005E0
+	LDA ENGINE_SCRIPT_ITERATE_FLAG ;Load flag.
+	BEQ WAIT_FOR_NMI_LOOP ;== 0, wait more for to be triggered.
+STATE_GENERAL_IDLE: ; 0x0005E0
 	RTS  ;Jumped to from somewhere else.
-PPU_DISABLE_SPRITES/BACKGROUND: ; 0x0005E1
-	JSR WAIT_FOR_NMI ;Wait for NMI.
+ENGINE_DISABLE_RENDERING: ; 0x0005E1
+	JSR ENGINE_WAIT_FOR_NMI ;Wait for NMI.
 	LDA PPU_MASK_RAM ;Mod mask.
 	AND #$E7
-PPU_MASK_FROM_A: ; 0x0005E8
+ENGINE_WRITE_MASK_FROM_A_REG: ; 0x0005E8
 	STA PPU_MASK_RAM ;Store mask modded.
 	STA PPU_Mask
 	RTS 
-PPU_ENABLE_SPRITES/BACKGROUND: ; 0x0005EE
-	JSR WAIT_FOR_NMI ;Wait for NMI.
+ENGINE_ENABLE_RENDERING: ; 0x0005EE
+	JSR ENGINE_WAIT_FOR_NMI ;Wait for NMI.
 	LDA PPU_MASK_RAM ;Load mask.
 	ORA #$18 ;set sprits/bg enabled.
-	BNE PPU_MASK_FROM_A ;Always taken.
-COPY_OBJ_$3YY_TO_OBJ_ZP: ; 0x0005F7
+	BNE ENGINE_WRITE_MASK_FROM_A_REG ;Always taken.
+ENGINE_COPY_OBJ_TO_ZP_COPY: ; 0x0005F7
 	STY OBJ_ZP_ORIGIN_OFFSET ;save for move back later
 	LDX #$00 ;these bytes are the object data.
 LOOP_OBJ_TO_ZP_OBJ: ; 0x0005FB
@@ -1181,7 +1181,7 @@ LOOP_OBJ_TO_ZP_OBJ: ; 0x0005FB
 	CPX #$50
 	BNE LOOP_OBJ_TO_ZP_OBJ
 	RTS 
-COPY_OBJ_ZP_BACK_TO_ORIGIN: ; 0x000607
+ENGINE_COPY_OBJ_TO_RAM: ; 0x000607
 	LDY OBJ_ZP_ORIGIN_OFFSET ;get original location.
 	LDX #$00
 LOOP_MOVE_BACK: ; 0x00060B
@@ -1192,29 +1192,29 @@ LOOP_MOVE_BACK: ; 0x00060B
 	CPX #$50
 	BNE LOOP_MOVE_BACK ;not done.
 	RTS  ;done.
-UPLOAD_PPU_FILE: ; 0x000617
+ENGINE_UPLOAD_PPU_FILE_XY: ; 0x000617
 	STX TMP_00
 	STY TMP_01
-	JMP PPU_DATA_FILE_TEST_STREAM
-CLEAR_NMI_RAN/BLOCK_PPU_UPDATE_FLAGS: ; 0x00061E
+	JMP PPU_DATA_FILE_CONSUME_STREAM_COMMAND ;Upload.
+ENGINE_UPDATE_ITERATION_FLAGS: ; 0x00061E
 	LDA #$00
-	STA FLAG_NMI_RAN ;NMI not ran.
-	STA FLAG_BLOCK_PPU_UPDATE ;dont block ppu stuff.
+	STA ENGINE_SCRIPT_ITERATE_FLAG ;Clear flag to trigger wait.
+	STA NMI_BLOCK_PPU_UPDATE_FLAG ;Don't block PPU updates.
 	RTS  ;return.
 STATE_0x12_FORWARD_FUTURE_HANDLER: ; 0x000625
 	LDA TIMER_SLOW ;timer slow is handled by NMI.
 	BNE RTS_4 ;wait to move state.
-	LDA IN_GAME_FUTURE_STATE ;future is now...
-	STA SWITCH_MAIN_GAME_STATE
+	LDA SCRIPT_FUTURE_GAME_STATE ;future is now...
+	STA ENGINE_MAIN_GAME_STATE_SWITCH
 RTS_4: ; 0x00062D
 	RTS  ;leave.
-SET_GAME_STATE_X_AFTER_TIMER_A_STATE: ; 0x00062E
-	STX IN_GAME_FUTURE_STATE ;X = state to go to.
+SCRIPT_SETUP_FUTURE_STATE_HELPER: ; 0x00062E
+	STX SCRIPT_FUTURE_GAME_STATE ;Store state to.
 	STA TIMER_SLOW ;A = time until switch.
-	LDA #$12 ;wait game state.
-	STA SWITCH_MAIN_GAME_STATE ;move to state now.
+	LDA #$12 ;Main state for handling this future state.
+	STA ENGINE_MAIN_GAME_STATE_SWITCH ;Write it now.
 	RTS 
-CLEAR_0300-03FF_OBJ_DATA_INIT: ; 0x000637
+ENGINE_CLEAR_$300_PAGE: ; 0x000637
 	LDY #$00
 	TYA  ;A = 0
 MORE_CLEARED: ; 0x00063A
@@ -1222,7 +1222,7 @@ MORE_CLEARED: ; 0x00063A
 	INY 
 	BNE MORE_CLEARED
 	RTS 
-CLEAR_RAM_$30-$FF: ; 0x000641
+ENGINE_CLEAR_ZP_$30-$FF: ; 0x000641
 	LDA #$00
 	LDX #$30 ;start
 LOOPX: ; 0x000645
@@ -1230,7 +1230,7 @@ LOOPX: ; 0x000645
 	INX 
 	BNE LOOPX ;end when we write $FF
 	RTS 
-CLEAR_RAM_$40-$BF: ; 0x00064B
+ENGINE_CLEAR_ZP_$40-$BF: ; 0x00064B
 	LDA #$00 ;half of obj data? and other vars?
 	LDX #$7F
 MORE_CLEAR: ; 0x00064F
@@ -1259,9 +1259,9 @@ DIGITS_TO_UPDATE_BUF: ; 0x000659
 	STA PPU_BLOCK_BUF_SETTING ;1 group 6 bytes.
 	LDX BONUS_ADDR_LOW ;get location on screen.
 	LDY BONUS_ADDR_HIGH
-	JMP MAKE_SETUP_PPU_BLOCK ;commit data.
+	JMP MAKE_SETUP_PPU_BLOCK ;Commit to PPU.
 SPRITE_SKELETON_HIT_BOX_CREATE: ; 0x00067C
-	LDA TMP_0C ;Get temp data byte. Skeleton?
+	LDA TMP_0C ;Get temp data byte, skeleton ID.
 	ASL A ;make index.
 	TAY  ;to index reg.
 	LDA SKELETON_DATA_PTR_L,Y
@@ -1304,13 +1304,13 @@ LESS_THAN_A8: ; 0x00069E
 	INX  ;Next sprite area.
 	JMP LOOP_SPRITE_X_Y
 DISP_TARGETS_HIT: ; 0x0006C4
-	LDA FLAG_UPDATE_TARGETS_HIT
+	LDA ENGINE_FLAG_UPDATE_TARGETS_HIT
 	BEQ RTS_5 ;not set
 	LDA #$00 ;Clear.
-	STA FLAG_UPDATE_TARGETS_HIT ;Clear.
+	STA ENGINE_FLAG_UPDATE_TARGETS_HIT ;Clear.
 PPU_DISP_TARGET_STATUS: ; 0x0006CC
 	LDA #$D6 ;Duck tile.
-	LDY GAME_MODE_IN ;Load flag.
+	LDY SCRIPT_MENU_CURSOR_SELECTED ;Load flag.
 	CPY #$02 ;If _ Pigeon
 	BNE DUCKS_GAME ;Is ducks, use A as-is.
 	LDA #$D4 ;Alt val for pigeons.
@@ -1334,11 +1334,11 @@ PPU_SHOW_TARGETS_BUFFER: ; 0x0006E9
 	LDY #$23
 	JMP MAKE_SETUP_PPU_BLOCK ;put to screen.
 DISP_SHOTS_LEFT: ; 0x0006F5
-	LDA FLAG_UPDATE_BULLETS_DISPLAY ;Bullets need updated?
+	LDA ENGINE_FLAG_UPDATE_BULLETS_DISPLAY/TARGET_FLASH_HELP ;Bullets need updated?
 	BEQ RTS_5 ;No, leave.
 	LDA #$00
-	STA FLAG_UPDATE_BULLETS_DISPLAY ;clear flag.
-	LDX SHOTS_REMAINING ;Get remaining.
+	STA ENGINE_FLAG_UPDATE_BULLETS_DISPLAY/TARGET_FLASH_HELP ;clear flag.
+	LDX SCRIPT_SHOTS_REMAINING ;Get remaining.
 	LDY #$00 ;setup index.
 MOVE_MORE_TILES: ; 0x000701
 	CPX #$00
@@ -1368,7 +1368,7 @@ MAKE_SETUP_PPU_BLOCK: ; 0x00071D
 STATE_0x07_GAME_OVER: ; 0x00072C
 	LDA TIMER_SLOW
 	BEQ SCORE_TO_COPY ;wait until 0 to score.
-	LDA GAME_MODE_IN
+	LDA SCRIPT_MENU_CURSOR_SELECTED
 	CMP #$02
 	BEQ RTS_6 ;if pigeons, no dog advance.
 	JMP FORWARD_DOG_OBJECT ;Forward only for ducks.
@@ -1381,7 +1381,7 @@ SCORE_TO_COPY_LOOP: ; 0x00073C
 	STA SCORE_INVERT_REQUEST_FLAG_COPY,X ;To copy.
 	DEX 
 	BPL SCORE_TO_COPY_LOOP
-	LDA GAME_MODE_IN ;Get mode
+	LDA SCRIPT_MENU_CURSOR_SELECTED ;Get mode
 	ASL A
 	ASL A ;Mul by 4 for proper index for high score.
 	TAY  ;To index register.
@@ -1404,63 +1404,63 @@ WRITE_HIGHER_SCORE_LOOP: ; 0x000762
 	STA HIGH_SCORES_ARRAY,Y ;Store to high score array.
 	INY 
 	INX 
-	CPX #$04 ;smh, terrible code here.
-	BNE WRITE_HIGHER_SCORE_LOOP
+	CPX #$04 ;If _ DIGIT_GROUPS
+	BNE WRITE_HIGHER_SCORE_LOOP ;!=, loop more.
 	LDY #$00
-	STY FLAG_ZAPPER_TRIGGER_RELEASED ;Make have to be released.
+	STY ZAP_TRIGGER_RELEASED ;Make have to be released.
 	STY SWITCH_MENU ;Menu state 0.
 	INY  ;Y=1
-	STY IN_MENU_FLAG ;Is in menu now.
-	JMP PPU_DISABLE_SPRITES/BACKGROUND ;Disable extras, abuse RTS.
+	STY ENGINE_FLAG_IN_MENU ;Is in menu now.
+	JMP ENGINE_DISABLE_RENDERING ;Disable extras, abuse RTS.
 STATE_0x06_GAME_OVER_PREP: ; 0x000779
 	JSR SND_GAME_OVER_MUSIC ;clear sound.
-	JSR WAIT_FOR_NMI ;wait for frame.
+	JSR ENGINE_WAIT_FOR_NMI ;wait for frame.
 	JSR SND_DOG_LAUGHING ;set sound now.
 	LDA #$01
 	STA TRGT3_TYPE ;Set up dog.
 	STA TRGT3_STATE ;Enabled state.
 	LDA #$07
-	STA SWITCH_MAIN_GAME_STATE ;go to state 7, does score and stuff.
-	LDA #$15 ;set timer.
-	STA TIMER_SLOW ;timer for score counting? unused maybe?
+	STA ENGINE_MAIN_GAME_STATE_SWITCH ;go to state 7, does score and stuff.
+	LDA #$15 ;Set timer.
+	STA TIMER_SLOW
 	RTS 
 MAKE_DISP_BUF_PASS_LINE: ; 0x000793
-	LDX #$0A
+	LDX #$0A ;Seed pass buf position.
 WRITE_NEEDED_LINE: ; 0x000795
-	CPX HITS_REQUIRED_RAM
-	BCC REQUIRED_BLOCK ;X >= HITS_REQD
-	BEQ REQUIRED_BLOCK ;whoops. can be taken. still bad, could LDA #$0B, BCS
+	CPX SCRIPT_HITS_REQUIRED_TO_PASS_LEVEL ;If _ var
+	BCC REQUIRED_BLOCK ;X < SCRIPT_REQD
+	BEQ REQUIRED_BLOCK ;| ==
 	LDA #$B7 ;Display blank.
 	BNE WRITE_SETTING
 REQUIRED_BLOCK: ; 0x00079F
 	LDA #$D7 ;Display required lines.
 WRITE_SETTING: ; 0x0007A1
 	STA PPU_BLOCK_BUF_SETTING,X ;store blank/lines
-	DEX 
-	BNE WRITE_NEEDED_LINE
+	DEX  ;X--
+	BNE WRITE_NEEDED_LINE ;!= 0, loop more.
 	LDA #$1A ;1 group, 10 chars
 	STA PPU_BLOCK_BUF_SETTING
 	LDX #$6C
 	LDY #$23 ;PPU ADDR
 	JMP MAKE_SETUP_PPU_BLOCK ;make update block
 MAKE_DISP_BUF_LEVEL: ; 0x0007B3
-	LDA LEVEL ;Load level
+	LDA GAME_LEVEL ;Load level
 	STA TMP_03 ;To temp.
 	LDA #$01
 	CLC 
-	JSR BCD_ADD_A_TO_TMP_03 ;inc level
-	STA LEVEL
+	JSR BCD_ADD_A_WITH_TMP_03 ;inc level
+	STA GAME_LEVEL
 	LDA #$12 ;1 group of 2 bytes
 	STA PPU_BLOCK_BUF_SETTING
 	LDX #$DD ;PIGEONS DEFAULT ROUND CHR
-	LDA GAME_MODE_IN
-	CMP #$02
-	BEQ WRITE_TILE
+	LDA SCRIPT_MENU_CURSOR_SELECTED ;Check cursor.
+	CMP #$02 ;If _ #$02
+	BEQ WRITE_TILE ;==, use pigeon.
 	LDX #$50 ;DUCK DEFAULT ROUND CHR
 WRITE_TILE: ; 0x0007CE
 	STX PPU_BLOCK_BUF+1 ;Always blank just in case.
 	LDX #$00 ;set chr writing
-	LDA LEVEL
+	LDA GAME_LEVEL
 	AND #$F0
 	BEQ WRITE_DIGIT ;Write only 1 digit if taken.
 	LSR A
@@ -1470,20 +1470,20 @@ WRITE_TILE: ; 0x0007CE
 	STA PPU_BLOCK_BUF,X ;store high digit
 	INX  ;next digit
 WRITE_DIGIT: ; 0x0007E1
-	LDA LEVEL
-	AND #$0F
+	LDA GAME_LEVEL ;Load level.
+	AND #$0F ;Keep low.
 	STA PPU_BLOCK_BUF,X ;store low digit
 	LDX #$05
 	LDY #$23 ;PPU ADDR for update
 	JMP MAKE_SETUP_PPU_BLOCK ;make buffer.
 STATE_0x0D_PIGEON_MESSAGE_SCRIPT: ; 0x0007EF
-	LDA AUTOMESSAGE_DISPLAY_INDEX
+	LDA AUTOMESSAGE_DISPLAY_INDEX ;Load automessage.
 	BEQ INDEX_ZERO ;if not done updating the BG.
 	JMP DISP_AUTO_MESSAGE ;handle timer if not 0, abuse RTS.
 INDEX_ZERO: ; 0x0007F6
 	LDA #$0A ;Move to state when timer 0, pigeon round init.
-	STA SWITCH_MAIN_GAME_STATE
-	RTS 
+	STA ENGINE_MAIN_GAME_STATE_SWITCH
+	RTS  ;Leave.
 DISP_AUTO_MESSAGE: ; 0x0007FB
 	LDA FAST_TIMERS
 	BNE RTS_7 ;Not done, no message.
@@ -1491,7 +1491,7 @@ DISP_AUTO_MESSAGE: ; 0x0007FB
 	BEQ RTS_7 ;No message, leave.
 	LDA BEGINNING_ROUND_MESSAGE_SCRIPT,Y
 	CMP #$AA ;If _ #$AA, EOF val.
-	BEQ EOF ;Is, goto, done.
+	BEQ END_AUTO_MESSAGE ;Is, goto, done.
 	PHA  ;save otherwise.
 	INY 
 	LDA BEGINNING_ROUND_MESSAGE_SCRIPT,Y ;get next byte.
@@ -1500,53 +1500,53 @@ DISP_AUTO_MESSAGE: ; 0x0007FB
 	STY AUTOMESSAGE_DISPLAY_INDEX ;save next value.
 	PLA  ;pull first value.
 	JMP DISP_MESSAGE_FROM_A ;use it to...
-EOF: ; 0x000818
+END_AUTO_MESSAGE: ; 0x000818
 	LDA #$00
-	STA AUTOMESSAGE_DISPLAY_INDEX ;No 9D index when reset.
+	STA AUTOMESSAGE_DISPLAY_INDEX ;Finished, clear.
 RTS_7: ; 0x00081C
 	RTS 
 STATE_0x00_INIT_RAM/SCREEN: ; 0x00081D
-	JSR CLEAR_RAM_$30-$FF ;Init RAM.
-	JSR WAIT_FOR_NMI ;Wait for screen.
-	JSR CLEAR_BOTH_SCREENS ;Clear screens.
-	JSR CLEAR_MEMORIES ;Clear sprites, $3XX, and $40-BF.
+	JSR ENGINE_CLEAR_ZP_$30-$FF ;Init RAM.
+	JSR ENGINE_WAIT_FOR_NMI ;Wait for screen.
+	JSR SCRIPT_HELP_CLEAR_BOTH_SCREENS ;Clear screens.
+	JSR ENGINE_CLEAR_MEMORIES ;Clear sprites, $3XX, and $40-BF.
 	LDX #$01 ;Ducks val.
-	LDA MENU_OPTION_ON ;Load option on.
-	STA GAME_MODE_IN ;0-1 = ducks, 2 = pigeons
+	LDA SCRIPT_MENU_CURSOR_OPTION ;Load option on.
+	STA SCRIPT_MENU_CURSOR_SELECTED ;0-1 = ducks, 2 = pigeons
 	CMP #$02 ;If _ #$02
-	BCC DUCKS_GAME_0 ;<, ducks game.
-	LDX #$08 ;Swap to pigeon initial state.
-DUCKS_GAME_0: ; 0x000836
-	STX SWITCH_MAIN_GAME_STATE ;Store X as main state.
+	BCC EXIT_STORE_GAME_MODE ;<, ducks game.
+	LDX #$08 ;Swap to pigeon initial state instead.
+EXIT_STORE_GAME_MODE: ; 0x000836
+	STX ENGINE_MAIN_GAME_STATE_SWITCH ;Store X as main state.
 	RTS  ;Leave.
 STATE_0x01_DUCKS_SCREEN_SETUP: ; 0x000839
-	JSR WAIT_FOR_NMI ;set up game for ducks here.
+	JSR ENGINE_WAIT_FOR_NMI ;set up game for ducks here.
 	LDX #$42
 	LDY #$E0
-	JSR UPLOAD_PPU_FILE ;upload file for screen.
+	JSR ENGINE_UPLOAD_PPU_FILE_XY ;Upload screen file $2042
 	LDA #$02
-	STA PALETTE_UPLOAD_REQUEST ;Upload palette.
+	STA ENGINE_PALETTE_UPLOAD_REQUEST_FLAG ;Upload palette.
 	LDA #$02
-	STA SWITCH_MAIN_GAME_STATE ;Switch game state.
-	JSR SET_PPU_SCROLL ;Set scroll.
-	JSR PPU_ENABLE_SPRITES/BACKGROUND ;turn on screeen
+	STA ENGINE_MAIN_GAME_STATE_SWITCH ;Switch game state.
+	JSR NMI_COMMIT_SCROLL_TO_PPU_REGISTERS ;Set scroll.
+	JSR ENGINE_ENABLE_RENDERING ;turn on screeen
 	JMP SND_START_DUCK_GAME ;Play sound.
-STATE_0x02_DUCKS_SETUP_ROUND: ; 0x000854
-	JSR CLEAR_MEMORIES ;Clear RAM.
-	JSR SETUP_PASSLINE/VOLLEY ;Set up level hits, targets, etc.
+STATE_0x02_DUCKS_INIT_ROUND: ; 0x000854
+	JSR ENGINE_CLEAR_MEMORIES ;Clear RAM.
+	JSR GAME_INIT_PASSLINE_FOR_ROUND ;Set up level hits, targets, etc.
 	JSR MAKE_DISP_BUF_PASS_LINE ;Show required bar.
 	JSR MAKE_DISP_BUF_LEVEL ;Show level.
 	NOP  ;removed feature?
 	NOP 
 	NOP 
 	LDA #$00
-	STA FLAG_ZAPPER_TRIGGER_RELEASED ;not true.
+	STA ZAP_TRIGGER_RELEASED ;not true.
 	STA AUTOMESSAGE_DISPLAY_INDEX ;(cleared with above jsr's)
 	LDA #$03
-	STA SWITCH_MAIN_GAME_STATE ;switch state
+	STA ENGINE_MAIN_GAME_STATE_SWITCH ;switch state
 	RTS 
 STATE_0x03_DUCKS_VOLLEY: ; 0x00086E
-	JSR PROCESS_ZAPPER_TRIGGER ;Trigger process.
+	JSR SCRIPT_PROCESS_ZAPPER_TRIGGER_STATE ;Trigger process.
 	JSR PROCESS_ZAPPER_READING ;Process zapper.
 	JSR FORWARD_DOG_OBJECT ;Dog object switch.
 	JSR FORWARD_DUCK_TARGETS ;Duck objs switch.
@@ -1562,34 +1562,34 @@ STATE_0x03_DUCKS_VOLLEY: ; 0x00086E
 	RTS  ;return.
 FORWARD_DUCK_TARGETS: ; 0x000890
 	LDA TRGT1_STATUS ;get if is target.
-	BEQ FORWARD_OTHER_TARGET ;not active
+	BEQ TARGET_0_NO_FORWARDING ;not active
 	LDY #$00
-	STY ORIGIN_SLOT_OF_ZP_OBJ_COPY ;where obj came from
-	JSR COPY_OBJ_$3YY_TO_OBJ_ZP ;move obj data.
+	STY ENGINE_OBJ_ZP_SLOT_INDEX ;Set origin.
+	JSR ENGINE_COPY_OBJ_TO_ZP_COPY ;move obj data.
 	JSR PROCESS_OBJ_DUCK_TARGET ;do obj stuff.
-	JSR COPY_OBJ_ZP_BACK_TO_ORIGIN
-FORWARD_OTHER_TARGET: ; 0x0008A2
-	LDA TRGT2_STATUS
-	BEQ PROCESS_ZAPPER ;not active, next step.
+	JSR ENGINE_COPY_OBJ_TO_RAM ;Back to RAM.
+TARGET_0_NO_FORWARDING: ; 0x0008A2
+	LDA TRGT2_STATUS ;Load target status.
+	BEQ PROCESS_ZAPPER ;Not active, to next.
 	LDY #$50
-	INC ORIGIN_SLOT_OF_ZP_OBJ_COPY ;Not sure where this is reset to 0, INC seems dangerous.
-	JSR COPY_OBJ_$3YY_TO_OBJ_ZP
+	INC ENGINE_OBJ_ZP_SLOT_INDEX ;Not sure where this is reset to 0, INC seems dangerous.
+	JSR ENGINE_COPY_OBJ_TO_ZP_COPY
 	JSR PROCESS_OBJ_DUCK_TARGET
-	JSR COPY_OBJ_ZP_BACK_TO_ORIGIN
+	JSR ENGINE_COPY_OBJ_TO_RAM
 PROCESS_ZAPPER: ; 0x0008B4
-	LDA ZAP_SHOOTING_ENABLED_FLAG
-	BEQ RTS_8 ;Zapper shot disabled, leave.
-	LDY ACTIVATE_SHOOTING_COUNTDOWN? ;if 
+	LDA SCRIPT_ZAP_SHOOTING_ENABLED_FLAG
+	BEQ RTS_8 ;Not enabled, goto.
+	LDY SCRIPT_ACTIVATE_SHOT_COUNTDOWN ;Load countdown.
 	BNE WRITE_COUNTDOWN ;count down
-	LDY #$41 ;set value, unk.
-	LDA SHOTS_REMAINING ;see if shots remaining.
-	BNE WRITE_COUNTDOWN ;if has shots, go here.
-	LDY #$15 ;otherwise, this value if no shots.
+	LDY #$41 ;Countdown timer.
+	LDA SCRIPT_SHOTS_REMAINING ;see if shots remaining.
+	BNE WRITE_COUNTDOWN ;If has shots left, goto.
+	LDY #$15 ;Countdown for shots because none.
 WRITE_COUNTDOWN: ; 0x0008C4
 	DEY  ;dec countdown.
-	STY ACTIVATE_SHOOTING_COUNTDOWN? ;store back to now.
-	LDA NUM_TARGETS_PER_ATTEMPT
-	BNE DEC_TARGET_ENABLE_COUNTDOWN ;If targets in mode, dec A6.
+	STY SCRIPT_ACTIVATE_SHOT_COUNTDOWN ;store back to now.
+	LDA SCRIPT_TARGETS_PER_ATTEMPT ;Load value TODO.
+	BNE DEC_TARGET_ENABLE_COUNTDOWN ;Nonzero, do timer.
 	LDA TRGT1_STATE
 	BNE RTS_8 ;in state, rts.
 	LDA TRGT2_STATE
@@ -1598,40 +1598,40 @@ WRITE_COUNTDOWN: ; 0x0008C4
 	BNE RTS_8 ;has time, rts
 	LDA #$0A ;Laugh state.
 	LDY #$07 ;palette
-	LDX TRGTS_SHOT_DURING_ATTEMPT ;Load target hit.
+	LDX SCRIPT_FLAG_HIT_DURING_VOLLEY ;Load target hit.
 	BEQ TARGET_3_STATE_DECIDED ;None hit, goto.
 	LDA #$0C ;Dog has duck state.
 	LDY #$02 ;Palette.
 TARGET_3_STATE_DECIDED: ; 0x0008E5
 	STA TRGT3_STATE ;Set dog state.
-	STY PALETTE_UPLOAD_REQUEST ;Update palette.
-	JSR WAIT_FOR_NMI ;Wait for screen.
+	STY ENGINE_PALETTE_UPLOAD_REQUEST_FLAG ;Update palette.
+	JSR ENGINE_WAIT_FOR_NMI ;Wait for screen.
 	JSR DISP_SHOT_TEXT ;Disp shot text.
 	LDA #$40
 	STA FAST_TIMERS ;Set timer.
 	LDA #$00
-	STA ZAP_SHOOTING_ENABLED_FLAG ;Disable shots.
+	STA SCRIPT_ZAP_SHOOTING_ENABLED_FLAG ;Disable shots.
 	JMP DISP_GAME_MESSAGE ;Display message.
 DEC_TARGET_ENABLE_COUNTDOWN: ; 0x0008FB
-	LDA COUNTDOWN_TO_ENABLE_TARGETS ;Get value
+	LDA SCRIPT_COUNTDOWN_TO_ENABLE_TARGETS ;Get value
 	BEQ RTS_8 ;If 0, don't dec.
-	DEC COUNTDOWN_TO_ENABLE_TARGETS ;Dec otherwise.
+	DEC SCRIPT_COUNTDOWN_TO_ENABLE_TARGETS ;Dec otherwise.
 RTS_8: ; 0x000901
 	RTS  ;Leave.
 PROCESS_OBJ_DUCK_TARGET: ; 0x000902
 	LDA OBJ_ZP_STATE
 	JSR SWITCH_TO_CODE_PTRS
-	.LOW STATE_0x01_IDLE ;NULL state, does nothing.
-	.HIGH STATE_0x01_IDLE
+	.LOW STATE_GENERAL_IDLE ;NULL state, does nothing.
+	.HIGH STATE_GENERAL_IDLE
 	.LOW TRGT_STATE_1_INIT_OBJ ;Init data in $30 area.
 	.HIGH TRGT_STATE_1_INIT_OBJ
 	.LOW TARGET_STATE_2_SPAWN ;Spawn state.
 	.HIGH TARGET_STATE_2_SPAWN
-	.LOW TARGET_STATE_3_FLY+BOX+STATE4 ;Main state.
-	.HIGH TARGET_STATE_3_FLY+BOX+STATE4
+	.LOW TARGET_STATE_3_FLYING ;Main state.
+	.HIGH TARGET_STATE_3_FLYING
 	.LOW TARGET_STATE_4_HIT_SHOCKED ;Target hit, shocked.
 	.HIGH TARGET_STATE_4_HIT_SHOCKED
-	.LOW TARGET_STATE_5_ANIMATE/SOUND ;Continuation it seems. Animation forwards?
+	.LOW TARGET_STATE_5_ANIMATE/SOUND ;Quack and animate?
 	.HIGH TARGET_STATE_5_ANIMATE/SOUND
 	.LOW TARGET_STATE_6_FALLING ;Falling stuff.
 	.HIGH TARGET_STATE_6_FALLING
@@ -1646,10 +1646,10 @@ LOOP: ; 0x00091B
 	STA OBJ_ZP_COPY,X ;store to in-ram buffer.
 	DEX 
 	BPL LOOP ;move 1F to 0
-	LDA ORIGIN_SLOT_OF_ZP_OBJ_COPY ;if obj slot 0
+	LDA ENGINE_OBJ_ZP_SLOT_INDEX ;if obj slot 0
 	BEQ TARGET_INIT'D ;loaded data is correct.
 	LDA #$40 ;fix the values for sprites instead here.
-	STA OBJ_ZP_SPRITE_SLOT_START ;different spr area for target 2
+	STA OBJ_ZP_SPRITE_PAGE_SLOT_PRIMARY_INDEX ;different spr area for target 2
 	LDA #$7F
 	STA OBJ_ZP_SPRITE_SLOT_END ;ending for spr area for target 2.
 TARGET_INIT'D: ; 0x00092F
@@ -1657,18 +1657,18 @@ TARGET_INIT'D: ; 0x00092F
 RTS_9: ; 0x000931
 	RTS 
 TARGET_STATE_2_SPAWN: ; 0x000932
-	LDA ZAP_SHOOTING_ENABLED_FLAG ;is zapper enabled?
+	LDA SCRIPT_ZAP_SHOOTING_ENABLED_FLAG ;is zapper enabled?
 	BEQ RTS_9 ;leave if not enabled
-	LDA COUNTDOWN_TO_ENABLE_TARGETS
+	LDA SCRIPT_COUNTDOWN_TO_ENABLE_TARGETS
 	BNE RTS_9 ;if not 0 leave.
-	JSR RNG_ADVANCE ;get random number.
+	JSR ENGINE_RNG_ADVANCE ;get random number.
 	AND #$0F ;Range
-	LDY GAME_MODE_IN ;Load mode.
+	LDY SCRIPT_MENU_CURSOR_SELECTED ;Load mode.
 	BNE TWO_TARGETS ;If not 0 (1 duck game), goto.
 	CLC 
 	ADC #$10 ;Add value for two ducks. Half often changing?
 TWO_TARGETS: ; 0x000946
-	CMP DUCK_MOVEMENT_CHANGE? ;Compare to value.
+	CMP SCRIPT_DUCK_MOVEMENT_CHANGE ;Compare to value.
 	BNE WRITE_A_TO_MOVEMENT_CHANGE? ;If not the same, write and leave.
 	CLC 
 	ADC #$01 ;up to #$20 now.
@@ -1680,18 +1680,18 @@ A_SUB_10_THEN_OUTPUT: ; 0x000955
 	SEC 
 	SBC #$10 ;A -= 0x10
 WRITE_A_TO_MOVEMENT_CHANGE?: ; 0x000958
-	STA DUCK_MOVEMENT_CHANGE? ;Store value.
+	STA SCRIPT_DUCK_MOVEMENT_CHANGE ;Store value.
 	ASL A ;Make the value an index.
 	TAX 
 	LDA OBJ_DATA_UNK_HIGH,X ;Move pointer loaded to object.
 	STA OBJ_ZP_EXTRA_PTR/DATA_STEP
 	LDA OBJ_DATA_UNK_LOW,X
 	STA OBJ_ZP_EXTRA_PTR/DATA_STEP+1
-	JSR RNG_ADVANCE ;get new rand number.
+	JSR ENGINE_RNG_ADVANCE ;get new rand number.
 	AND #$3F ;Time between targets, 100%.
 	TAY 
 	INY  ;1 to 40, 0 is done so can't be 0.
-	STY COUNTDOWN_TO_ENABLE_TARGETS ;store next target time.
+	STY SCRIPT_COUNTDOWN_TO_ENABLE_TARGETS ;store next target time.
 	LDY #$00 ;reset index
 	LDA (OBJ_ZP_EXTRA_PTR/DATA_STEP),Y ;Load data from pointer made above.
 	INY  ;Stream++
@@ -1704,7 +1704,7 @@ WRITE_A_TO_MOVEMENT_CHANGE?: ; 0x000958
 KEEP_Y_0x00: ; 0x000980
 	STY OBJ_ZP_DISP_ATTR? ;Store palette to use.
 	INC TARGETS_ACTIVATED_COUNT? ;Activated++
-	LDX DUCK_COLOR_COMBO_INDEX
+	LDX SCRIPT_DUCK_COLOR_COMBO
 	LDA DUCK_COLOR_COMBO_LUT,X ;Get duck data.
 	CPY #$00 ;If attr stored was 0...
 	BEQ SHIFT_DATA ;Shift, as this uses the top nibble.
@@ -1717,8 +1717,8 @@ SHIFT_DATA: ; 0x000992
 	LSR A
 DUCK_COLOR_DATA_IN_PLACE: ; 0x000996
 	STA OBJ_ZP_DUCK_COLOR ;Store color.
-	LDX LEVEL ;Get level.
-	LDA GAME_MODE_IN ;Get mode.
+	LDX GAME_LEVEL ;Get level.
+	LDA SCRIPT_MENU_CURSOR_SELECTED ;Get mode.
 	BNE TWO_TARGET_GAME ;If 2 target mode, goto.
 	LDA #$0B ;index for...
 	CPX #$12 ;level #
@@ -1737,7 +1737,7 @@ IS_MORE_EQUAL_THAN_LEVEL: ; 0x0009B2
 	JMP OUTPUT_DIFFICULTY ;output difficulty.
 TWO_TARGET_GAME: ; 0x0009B9
 	LDA #$1B ;Max index.
-	LDX LEVEL ;Load level.
+	LDX GAME_LEVEL ;Load level.
 	CPX #$10 ;If X _ 0x10
 	BCS LEVEL_>=10 ;>= 0x10, goto.
 	DEX  ;X -= 1
@@ -1752,8 +1752,8 @@ LEVEL_>=10: ; 0x0009C9
 	TAX  ;get index into array.
 	LDA DIFFICULTY_2ND_TARGET,X ;Load data.
 OUTPUT_DIFFICULTY: ; 0x0009D0
-	STA OBJ_ZP_DUCK_DIFF ;Difficulty from arrays and sometimes duck types.
-	LDX LEVEL ;Load level again.
+	STA OBJ_ZP_DUCK_DIFFICULTY ;Difficulty from arrays and sometimes duck types.
+	LDX GAME_LEVEL ;Load level again.
 	LDA #$0B ;Value used.
 	CPX #$27 ;If X _ 0x27
 	BCS OUTPUT_VALUE_HIGH_LEVELS ;>=, use.
@@ -1764,16 +1764,16 @@ OUTPUT_DIFFICULTY: ; 0x0009D0
 OUTPUT_VALUE_HIGH_LEVELS: ; 0x0009E2
 	STA OBJ_ZP_COPY_PIGEON_SPEED?UNUSED? ;Unk use here, probably leftover/unused.
 	LDA #$00 ;Init all below.
-	STA OBJ_ZP_TIMER_MISC?
+	STA OBJ_ZP_TIMER_EXTRA
 	STA OBJ_ZP_ANIM_TIMER
 	STA OBJ_ZP_COPY_TIMER_MULTIUSE ;unk
 	STA OBJ_ZP_COPY_UNUSED_4F ;unk
 	LDA #$01
 	STA OBJ_ZP_COPY_FLAG_ALLOW_OFFSCREEN? ;unk
 	STA FLYAWAY_CHANGES_ENABLED
-	LDA GAME_MODE_IN ;Load mode
+	LDA SCRIPT_MENU_CURSOR_SELECTED ;Load mode
 	BNE TWO_TARGET_SKIP ;If 1 or 2, goto.
-	LDX LEVEL ;Get level.
+	LDX GAME_LEVEL ;Get level.
 	LDA #$7D ;Countdown init.
 	CPX #$11 ;If X _ 0x11
 	BCC SET_COUNTDOWN ;<, goto.
@@ -1786,35 +1786,35 @@ SET_COUNTDOWN: ; 0x000A08
 	LDA #$00
 	STA DUCK_MOVEMENT_LAST_HELD_CONTROLLER ;Clear held.
 TWO_TARGET_SKIP: ; 0x000A0E
-	INC ROUND_TARGETS_SHOWN ;Init'd objects += 1
-	LDA ROUND_TARGETS_SHOWN ;Get value.
+	INC SCRIPT_ROUND_TARGETS_SHOWN_COUNT ;Init'd objects += 1
+	LDA SCRIPT_ROUND_TARGETS_SHOWN_COUNT ;Get value.
 	STA OBJ_ZP_TARGET_NUMBER ;1 or 2, which slot this is in.
-	DEC NUM_TARGETS_PER_ATTEMPT ;one less target remaining overall.
+	DEC SCRIPT_TARGETS_PER_ATTEMPT ;one less target remaining overall.
 	INC OBJ_ZP_STATE ;Init'd, next state.
 	RTS 
-TARGET_STATE_3_FLY+BOX+STATE4: ; 0x000A19
-	LDA FRAME_COUNTER
-	AND #$07
+TARGET_STATE_3_FLYING: ; 0x000A19
+	LDA SCRIPT_FRAME_COUNTER ;Load.
+	AND #$07 ;Keep 0x7.
 	BNE SKIP_SET_SOUND ;not sure why 7
-	JSR SND_DUCK_WING_FLAP ;set idk.
+	JSR SND_DUCK_WING_FLAP ;Wing flap.
 SKIP_SET_SOUND: ; 0x000A22
-	LDA ACTIVATE_SHOOTING_COUNTDOWN?
-	BNE DON'T_SET_SOUND ;if counting down, skip quack.
+	LDA SCRIPT_ACTIVATE_SHOT_COUNTDOWN ;Load.
+	BNE DONT_SET_SOUND ;if counting down, skip quack.
 	JSR SND_DUCK_QUACK ;set quack.
-DON'T_SET_SOUND: ; 0x000A29
-	LDA SHOTS_REMAINING
+DONT_SET_SOUND: ; 0x000A29
+	LDA SCRIPT_SHOTS_REMAINING ;Load shots.
 	BNE HAS_SHOTS/SETUP ;if shots, valid.
 	LDA OBJ_ZP_COPY_TIMER_MULTIUSE ;get value
 	BNE HAS_SHOTS/SETUP ;If timing, goto.
 	LDA #$01 ;if was 0, set to 1.
 	STA OBJ_ZP_COPY_TIMER_MULTIUSE ;set to 1 if 0.
 	LDA #$F0
-	STA OBJ_ZP_TIMER_MISC? ;set timer for...
+	STA OBJ_ZP_TIMER_EXTRA ;set timer for...
 	LDA #$00 ;clear...
 	JMP OBJ_ANIM+MOVEMENT ;anim+move.
 HAS_SHOTS/SETUP: ; 0x000A3E
-	LDA GAME_MODE_IN
-	BEQ GAME_MODE_1_TRGT
+	LDA SCRIPT_MENU_CURSOR_SELECTED ;Load mode.
+	BEQ GAME_MODE_1_TRGT ;If 1 duck,goto.
 JMP_DUCK_ANIMATION_CODE_HELPER: ; 0x000A42
 	JMP DUCK_ANIMATION_CODE_HELPER
 GAME_MODE_1_TRGT: ; 0x000A45
@@ -1829,97 +1829,97 @@ DONT_ALLOW_OFFSCREEN: ; 0x000A53
 	LDX #$01 ;unk why
 	LDA OBJ_ZP_COPY_FLYAWAY_COUNTDOWN
 	BEQ FLYAWAY_COUNTDOWN_ALREADY_ENDED ;if countdown ended, go here.
-	LDA SHOTS_REMAINING
+	LDA SCRIPT_SHOTS_REMAINING
 	BNE HAS_SHOTS_REMAINING ;shots remaining.
 	STA OBJ_ZP_COPY_FLYAWAY_COUNTDOWN ;if no shots, set flyaway to 0. duck flies up.
-COUNTDOWN_NOW_ZERO: ; 0x000A5F
-	JSR DISP_FLY_AWAY ;change screen.
+DISPLAY_FLY_AWAY_PORTION: ; 0x000A5F
+	JSR DISP_FLY_AWAY ;Mod screen.
 	LDX #$01 ;set flag.
 	BNE FLYAWAY_COUNTDOWN_ALREADY_ENDED ;freshly ended.
 HAS_SHOTS_REMAINING: ; 0x000A66
 	DEX  ;sets flyaway to false?
-	LDA FRAME_COUNTER
+	LDA SCRIPT_FRAME_COUNTER
 	LSR A
 	BCC FLYAWAY_COUNTDOWN_ALREADY_ENDED ;decrease on odd frames.
 	DEC OBJ_ZP_COPY_FLYAWAY_COUNTDOWN ;decrease.
-	BEQ COUNTDOWN_NOW_ZERO ;now counted down.
+	BEQ DISPLAY_FLY_AWAY_PORTION ;now counted down.
 FLYAWAY_COUNTDOWN_ALREADY_ENDED: ; 0x000A70
 	STX FLYAWAY_CHANGES_ENABLED ;store if we are flying away.
 	CPX #$01
 	BEQ FLYAWAY_ENABLED ;dont let controller move now?
-	LDA CTRL_HELD ;first controller. makes sense.
-	AND #$0F
-	BNE MOVEMENT_BUTTONS_PRESSED
-	LDA CTRL_HELD+1 ;2nd controller. doesn't. zapper is here, like, wtf.
-	AND #$0F
-	BNE MOVEMENT_BUTTONS_PRESSED
+	LDA CONTROLLER_BUTTONS_HELD ;first controller. makes sense.
+	AND #$0F ;Keep direction.
+	BNE MOVEMENT_BUTTONS_PRESSED ;!= 0, goto.
+	LDA CONTROLLER_BUTTONS_HELD+1 ;2nd controller. doesn't. zapper is here, like, wtf.
+	AND #$0F ;Keep 0xF.
+	BNE MOVEMENT_BUTTONS_PRESSED ;!= 0, goto.
 	LDA #$00
-	STA DUCK_MOVEMENT_LAST_HELD_CONTROLLER
+	STA DUCK_MOVEMENT_LAST_HELD_CONTROLLER ;Clear var, no pressed.
 	LDA FLYAWAY_CHANGES_ENABLED ;get if flying away?
-	BEQ NOT_FLYING_AWAY
+	BEQ NOT_FLYING_AWAY ;== 0, goto.
 FLYAWAY_ENABLED: ; 0x000A8A
-	JMP DUCK_FLY_AWAY_CHECK
+	JMP DUCK_FLY_AWAY_CHECK ;Goto.
 NOT_FLYING_AWAY: ; 0x000A8D
-	LDA OBJ_ZP_Y_COORD
-	CMP #$20
-	BCC Y_COORD_<20
-	CMP #$90
-	BCS Y_COORD_>=90
+	LDA OBJ_ZP_Y_COORD ;Load ??
+	CMP #$20 ;If _ #$20
+	BCC FORCE_Y_DOWN ;<, goto.
+	CMP #$90 ;If _ #$90
+	BCS FORCE_Y_UP ;>=, goto.
 	LDX #$00 ;value used in direction X changing.
 	LDA OBJ_ZP_X_COORD
-	CMP #$10
-	BCC X_COORD_<10
+	CMP #$10 ;If _ #$10
+	BCC FORCE_X_TO_RIGHT ;<, goto.
 	LDX #$08 ;now this one for these.
-	CMP #$F0
-	BCS X_COORD_>=F0
+	CMP #$F0 ;If _ #$F0
+	BCS FORCE_X_TO_LEFT ;>=, goto.
 MOVE_DUCKS_AUTOMATICALLY: ; 0x000AA5
-	JMP GET_DUCK_DIFFICULTY+MOVE
+	JMP GET_DUCK_DIFFICULTY+MOVE ;Goto.
 MOVEMENT_BUTTONS_PRESSED: ; 0x000AA8
-	CMP DUCK_MOVEMENT_LAST_HELD_CONTROLLER
+	CMP DUCK_MOVEMENT_LAST_HELD_CONTROLLER ;If _ CTRL
 	BEQ FLYAWAY_ENABLED ;no new buttons pressed.
 	STA DUCK_MOVEMENT_LAST_HELD_CONTROLLER ;update buttons pressed.
-	LDX #$35 ;two possible
-	LSR A ;right
+	LDX #$35 ;0x3/0x5, to right.
+	LSR A ;Test right.
+	BCS FOUND_DIRECTION ;Pressed, use seed.
+	LDX #$DB ;0xD/0xB, to left.
+	LSR A ;Test left.
 	BCS FOUND_DIRECTION
-	LDX #$DB ;two possible.
-	LSR A ;left
+	LDX #$79 ;0x7/0x9, down.
+	LSR A ;Test down.
 	BCS FOUND_DIRECTION
-	LDX #$79 ;two possible.
-	LSR A ;down
-	BCS FOUND_DIRECTION
-	LDX #$1F ;up, two possible.
+	LDX #$1F ;0x1/0xF, up.
 FOUND_DIRECTION: ; 0x000ABF
-	LDA FRAME_COUNTER ;has 2 options each time?
+	LDA SCRIPT_FRAME_COUNTER ;Load to decide which.
 	LSR A ;randomly get which
-	TXA  ;get up values.
-	BCC RANDOMLY_SHIFT
+	TXA  ;Values passed to A.
+	BCC RANDOMLY_SHIFT ;CC, down.
 	AND #$0F ;use bottom.
-	JMP WRITE_DIRECTION_FROM_CONTROLLER
+	JMP WRITE_DIRECTION_FROM_CONTROLLER ;Goto.
 RANDOMLY_SHIFT: ; 0x000ACA
 	LSR A ;use top bit value.
 	LSR A
 	LSR A
 	LSR A
-	JMP WRITE_DIRECTION_FROM_CONTROLLER
-Y_COORD_<20: ; 0x000AD1
-	INC OBJ_ZP_Y_COORD ;move right one pixel.
+	JMP WRITE_DIRECTION_FROM_CONTROLLER ;Goto.
+FORCE_Y_DOWN: ; 0x000AD1
+	INC OBJ_ZP_Y_COORD ;Move down, YPos++
 	LDY #$00 ;direction down?
 	BEQ CHANGE_DIRECTION_Y
-Y_COORD_>=90: ; 0x000AD7
-	DEC OBJ_ZP_Y_COORD ;move left one pixel.
+FORCE_Y_UP: ; 0x000AD7
+	DEC OBJ_ZP_Y_COORD ;YPos--, move up.
 	LDY #$02 ;direction up?
 CHANGE_DIRECTION_Y: ; 0x000ADB
-	LDA OBJ_ZP_DATA_DIRECTION
-	AND #$08 ;keep animation set?
+	LDA OBJ_ZP_DATA_DIRECTION ;Load direction.
+	AND #$08 ;Keep button 
 	TAX  ;get value passed.
 	JMP CHANGE_DIRECTION_X ;make direction?
-X_COORD_<10: ; 0x000AE3
+FORCE_X_TO_RIGHT: ; 0x000AE3
 	INC OBJ_ZP_X_COORD ;move right one pixel.
 	LDY #$04 ;direction right?
-	BNE CHANGE_DIRECTION_X
-X_COORD_>=F0: ; 0x000AE9
+	BNE CHANGE_DIRECTION_X ;Goto.
+FORCE_X_TO_LEFT: ; 0x000AE9
 	DEC OBJ_ZP_X_COORD ;move one pixel left.
-	LDY #$02 ;direction left?
+	LDY #$02 ;Left?
 CHANGE_DIRECTION_X: ; 0x000AED
 	STX TMP_0C ;animation set?
 	STY TMP_0F ;direction?
@@ -1928,41 +1928,41 @@ CHANGE_DIRECTION_X: ; 0x000AED
 	EOR #$07 ;invert the bits.
 	ORA TMP_0C ;set the animation set bits?
 	STA TMP_0C ;store value.
-	JSR RNG_ADVANCE ;get random number...
+	JSR ENGINE_RNG_ADVANCE ;Random.
 	AND #$03 ;get bits.
-	CMP #$03
-	BNE ALL_NOT_SET
+	CMP #$03 ;If _ #$03
+	BNE ALL_NOT_SET ;!=, goto.
 	LDA #$02 ;use this if not 3.
 ALL_NOT_SET: ; 0x000B06
-	CLC  ;either 3 or 2.
-	ADC TMP_0C ;add bit #3.
-	STA TMP_0E ;store to temp.
+	CLC  ;Offset 0x2/0x3.
+	ADC TMP_0C
+	STA TMP_0E ;Store to.
 	LDY TMP_0F ;get direction?
-	CMP #$00
-	BNE A_NOT_0
-	CPY #$01
+	CMP #$00 ;If _ #$00
+	BNE A_NOT_0 ;!= 0, goto.
+	CPY #$01 ;If _ #$01
 	BEQ DEC_0E+OUTPUT ;-1, output.
 	CPY #$02
 	BEQ +/-_0E_RANDOMLY ;+/- output.
 	BNE INC_OE+OUTPUT ;inc output.
 A_NOT_0: ; 0x000B1B
-	CMP #$04
-	BNE A_NOT_4
+	CMP #$04 ;If _ #$04
+	BNE A_NOT_4 ;!=, goto.
 	CPY #$00 ;direction?
 	BEQ INC_OE+OUTPUT ;+1
 	CPY #$02 ;direction?
 	BEQ DEC_0E+OUTPUT ;-1
 	BNE +/-_0E_RANDOMLY ;randomly choose otherwise.
 A_NOT_4: ; 0x000B29
-	CMP #$08
-	BNE A_NOT_8
+	CMP #$08 ;If _ #$08
+	BNE A_NOT_8 ;!=, goto.
 	CPY #$00 ;direction?
 	BEQ +/-_0E_RANDOMLY ;change randomly.
 	CPY #$01 ;direction?
 	BEQ INC_OE+OUTPUT ;+1
 	BNE DEC_0E+OUTPUT ;-1 otherwise.
 A_NOT_8: ; 0x000B37
-	CMP #$0C
+	CMP #$0C ;If _ #$0C
 	BNE OUTPUT_E ;don't change if not C.
 	CPY #$00 ;direction?
 	BEQ DEC_0E+OUTPUT ;-1
@@ -1970,11 +1970,11 @@ A_NOT_8: ; 0x000B37
 	BEQ +/-_0E_RANDOMLY ;randomly change.
 	BNE INC_OE+OUTPUT ;otherwise increase.
 +/-_0E_RANDOMLY: ; 0x000B45
-	JSR RNG_ADVANCE ;GET RANDOM NUMBER.
+	JSR ENGINE_RNG_ADVANCE ;GET RANDOM NUMBER.
 	ASL A ;GET BIT.
 	BCS INC_OE+OUTPUT ;inc or dec. this selects the frame used, randomly.
 DEC_0E+OUTPUT: ; 0x000B4B
-	DEC TMP_0E ;dec 0E instead.
+	DEC TMP_0E ;TMP--
 	JMP OUTPUT_E ;output.
 INC_OE+OUTPUT: ; 0x000B50
 	INC TMP_0E ;inc 0E
@@ -1982,9 +1982,9 @@ OUTPUT_E: ; 0x000B52
 	LDA TMP_0E ;get 0E
 	AND #$0F ;set bottom bits only.
 WRITE_DIRECTION_FROM_CONTROLLER: ; 0x000B56
-	JMP OBJ_ANIM+MOVEMENT ;animate with it.
+	JMP OBJ_ANIM+MOVEMENT ;Exit using A as direction.
 DUCK_ANIMATION_CODE_HELPER: ; 0x000B59
-	LDA OBJ_ZP_TIMER_MISC? ;Load timer.
+	LDA OBJ_ZP_TIMER_EXTRA ;Load timer.
 	BNE GET_DUCK_DIFFICULTY+MOVE ;If not zero, skip.
 	LDY OBJ_ZP_EXTRA_PTR/DATA_INDEX_STORAGE ;Get index.
 	LDA (OBJ_ZP_EXTRA_PTR/DATA_STEP),Y ;Get data.
@@ -1998,14 +1998,14 @@ DUCK_ANIMATION_CODE_HELPER: ; 0x000B59
 	STA OBJ_ZP_ANIM_TIMER ;Store to animation timer.
 	RTS  ;Leave
 NOT_EXTRA_PTR_EOF: ; 0x000B70
-	STA OBJ_ZP_TIMER_MISC? ;Store timer.
+	STA OBJ_ZP_TIMER_EXTRA ;Store timer.
 	LDA (OBJ_ZP_EXTRA_PTR/DATA_STEP),Y ;Get next data.
 	INY  ;Stream++
 	STY OBJ_ZP_EXTRA_PTR/DATA_INDEX_STORAGE ;Store index.
 OBJ_ANIM+MOVEMENT: ; 0x000B77
 	STA OBJ_ZP_DATA_DIRECTION ;store data.
 	TAX  ;value to index.
-	LDA MOVESETS_INITIAL_INDEX_LUT,X ;Load set index
+	LDA MOVESETS_FILE_INDEX_SEED,X ;Load set index
 	STA OBJ_ZP_COPY_MOVESETS_INDEX ;Store index.
 	STA OBJ_ZP_COPY_MOVESETS_INDEX_RELOAD
 	LDA #$00 ;Clear
@@ -2045,78 +2045,78 @@ POINTER_THREE_DECIDED: ; 0x000BBC
 	LDX #$1D ;if A=3,4,5,11,15 use
 	LDY #$E7 ;pointer to $E71D
 COMMIT_ANIM_PTR: ; 0x000BC0
-	JSR SETUP_OBJ_ANIM_[PTR,INDEX,TIMER] ;set up ptr decided.
+	JSR ENGINE_INIT_ANIMATION_POINT_AND_RESET ;set up ptr decided.
 GET_DUCK_DIFFICULTY+MOVE: ; 0x000BC3
-	JSR GET_DUCK_DIFFICULTY
+	JSR GET_DUCK_DIFFICULTY ;Get difficulty.
 MOVE_OBJ_LOOP: ; 0x000BC6
 	PHA  ;save difficulty loaded.
-	LDA OBJ_ZP_Y_COORD
-	CMP #$F0
+	LDA OBJ_ZP_Y_COORD ;Load Y coord.
+	CMP #$F0 ;If _ #$F0
 	BCC OBJ_Y_<#$F0 ;if Y < #$F0.
 	PLA  ;fix stack, ignore data.
 	JMP OBJ_STATE_8_ANIM_TIMER_0
 OBJ_Y_<#$F0: ; 0x000BD1
-	LDA OBJ_ZP_TIMER_MISC?
-	BEQ TIMER_ZERO
-	DEC OBJ_ZP_TIMER_MISC? ;dec timer if not 0.
+	LDA OBJ_ZP_TIMER_EXTRA ;Load timer.
+	BEQ TIMER_ZERO ;== 0, goto.
+	DEC OBJ_ZP_TIMER_EXTRA ;dec timer if not 0.
 TIMER_ZERO: ; 0x000BD7
 	LDY OBJ_ZP_COPY_MOVESETS_INDEX ;get index
 LOAD_TARGET_DATA_AGAIN: ; 0x000BD9
 	LDA DUCK_MOVESETS?,Y ;get data at index.
 	INY  ;next index.
-	CMP #$AA
+	CMP #$AA ;If _ #$AA
 	BNE NOT_MARKER ;if not marker byte.
-	LDY OBJ_ZP_COPY_MOVESETS_INDEX_RELOAD ;User this instead for index.
+	LDY OBJ_ZP_COPY_MOVESETS_INDEX_RELOAD ;Use this for index.
 	JMP LOAD_TARGET_DATA_AGAIN ;load with this index.
 NOT_MARKER: ; 0x000BE6
 	CLC 
-	ADC OBJ_ZP_Y_COORD ;add data to y coord...
-	LDX OBJ_ZP_COPY_FLAG_ALLOW_OFFSCREEN?
-	BNE FLAG_WAS_SET_STORE_Y_COORD ;if !0, store.
-	LDX FLYAWAY_CHANGES_ENABLED
-	BNE FLAG_WAS_SET_STORE_Y_COORD ;if !0, store.
-	CMP #$1E
-	BCC SKIP_WRITE_Y_COORD ;<1E, don't store.
+	ADC OBJ_ZP_Y_COORD ;Delta Y coord with.
+	LDX OBJ_ZP_COPY_FLAG_ALLOW_OFFSCREEN? ;Load flag.
+	BNE STORE_DELTA_Y_COORD ;If set, store.
+	LDX FLYAWAY_CHANGES_ENABLED ;Load ??
+	BNE STORE_DELTA_Y_COORD ;If set, go store.
+	CMP #$1E ;If _ #$1E
+	BCC SKIP_WRITE_Y_COORD ;<, don't do.
 	CMP #$92
-	BCS SKIP_WRITE_Y_COORD ;>=92, don't store.
-FLAG_WAS_SET_STORE_Y_COORD: ; 0x000BF9
-	STA OBJ_ZP_Y_COORD ;over write Y coord.
+	BCS SKIP_WRITE_Y_COORD ;>=, don't store.
+STORE_DELTA_Y_COORD: ; 0x000BF9
+	STA OBJ_ZP_Y_COORD ;Store Y coord.
 SKIP_WRITE_Y_COORD: ; 0x000BFB
 	LDA DUCK_MOVESETS?,Y ;get next data.
 	INY  ;next index.
-	STY OBJ_ZP_COPY_MOVESETS_INDEX ;store index.
+	STY OBJ_ZP_COPY_MOVESETS_INDEX ;store index at.
 	CLC 
-	ADC OBJ_ZP_X_COORD ;add to X coord.
-	LDX OBJ_ZP_COPY_FLAG_ALLOW_OFFSCREEN?
-	BNE FLAG_SET_WRITE_X_COORD ;if !0, store.
-	LDX FLYAWAY_CHANGES_ENABLED
-	BNE FLAG_SET_WRITE_X_COORD ;if !0, store.
-	CMP #$0E
-	BCC SKIP_WRITE_X_COORD ;if <0E, don't store.
-	CMP #$F2
-	BCS SKIP_WRITE_X_COORD ;if >= F2, don't store.
-FLAG_SET_WRITE_X_COORD: ; 0x000C14
+	ADC OBJ_ZP_X_COORD ;Delta X coord.
+	LDX OBJ_ZP_COPY_FLAG_ALLOW_OFFSCREEN? ;Load flag.
+	BNE STORE_DELTA_X_COORD ;Set, just store.
+	LDX FLYAWAY_CHANGES_ENABLED ;Load flag.
+	BNE STORE_DELTA_X_COORD ;Set, just store.
+	CMP #$0E ;If _ #$0E
+	BCC SKIP_WRITE_X_COORD ;<, don't store.
+	CMP #$F2 ;If _ #$F2
+	BCS SKIP_WRITE_X_COORD ;>=, don't store.
+STORE_DELTA_X_COORD: ; 0x000C14
 	STA OBJ_ZP_X_COORD ;save obj X.
 SKIP_WRITE_X_COORD: ; 0x000C16
 	PLA  ;Pull difficulty loaded.
 	SEC 
 	SBC #$01
-	BNE MOVE_OBJ_LOOP ;ddifficulty is number of loops.
+	BNE MOVE_OBJ_LOOP ;If not done with difficulty, do more.
 	JMP MULTISTATE_ANIMATION_RUNNER ;put obj/disp
 TARGET_STATE_4_HIT_SHOCKED: ; 0x000C1F
 	LDX OBJ_ZP_TARGET_NUMBER ;get which hit.
 	LDA #$01
 	STA DUCKS_HIT_ARRAY-1,X ;set hit in status array -1 because of +1.
 	LDA #$01
-	STA FLAG_UPDATE_TARGETS_HIT ;enable update for status bar.
-	STA OBJ_ZP_DUCK_DIFF ;reset difficulty....
+	STA ENGINE_FLAG_UPDATE_TARGETS_HIT ;enable update for status bar.
+	STA OBJ_ZP_DUCK_DIFFICULTY ;Reset difficulty.
 	LDA #$12
 	STA OBJ_ZP_TIMER_FALLING/EXTRA ;Timer to move states.
-	JSR ADD_TO_SCORE_TARGET
+	JSR ADD_TARGET_VALUE_TO_SCORE ;Add score to.
 	LDX #$13
 	LDY #$E7 ;Animation
 SETUP_ANIMATION_SCRIPT+INC_OBJ_STATE: ; 0x000C37
-	JSR SETUP_OBJ_ANIM_[PTR,INDEX,TIMER] ;set it up.
+	JSR ENGINE_INIT_ANIMATION_POINT_AND_RESET ;set it up.
 	INC OBJ_ZP_STATE ;next state.
 	RTS 
 TARGET_STATE_5_ANIMATE/SOUND: ; 0x000C3D
@@ -2139,51 +2139,51 @@ TARGET_STATE_6_FALLING: ; 0x000C4F
 	LDX #$A0 ;Ranged value.
 	CMP #$A0
 	BCS DOG_POPUP_POS_RANGED ;>A0
-	TAX 
+	TAX  ;Use in-range value.
 DOG_POPUP_POS_RANGED: ; 0x000C64
 	STX DOG_OBJ_POPUP_LOCATION ;Range dog sprite on screen for pop up.
 	LDA #$01
-	STA OBJ_ZP_COPY_FLAG_ALLOW_OFFSCREEN? ;set, unk
+	STA OBJ_ZP_COPY_FLAG_ALLOW_OFFSCREEN? ;Set flag.
 	LDX #$10
-	STX OBJ_ZP_DATA_DIRECTION ;Set falling down.
-	LDA MOVESETS_INITIAL_INDEX_LUT,X ;always+#$10?
+	STX OBJ_ZP_DATA_DIRECTION ;Set ??
+	LDA MOVESETS_FILE_INDEX_SEED,X ;Load move set index.
 	STA OBJ_ZP_COPY_MOVESETS_INDEX ;Store to obj.
-	STA OBJ_ZP_COPY_MOVESETS_INDEX_RELOAD
+	STA OBJ_ZP_COPY_MOVESETS_INDEX_RELOAD ;And as reload.
 	LDX #$18
 	LDY #$E7 ;script $E718
 	BNE SETUP_ANIMATION_SCRIPT+INC_OBJ_STATE ;setup script+state, always taken.
 TARGET_STATE_7_WAIT_THUMP: ; 0x000C7C
 	LDA OBJ_ZP_Y_COORD ;Y-coord?
-	CMP #$B0
-	BCS GREATER_THAN_#$B0 ;>=
+	CMP #$B0 ;If _ #$B0
+	BCS GREATER_THAN_#$B0 ;>=, goto, next state.
 	JMP GET_DUCK_DIFFICULTY+MOVE ;move duck if not fell to ground.
 GREATER_THAN_#$B0: ; 0x000C85
 	JSR SND_DUCK_HIT_GROUND ;thump sound?
-	INC OBJ_ZP_STATE ;next state, removed from screen.
-	RTS 
+	INC OBJ_ZP_STATE ;Next state, removed from screen.
+	RTS  ;Leave.
 TARGET_STATE_8_REMOVE_OBJ: ; 0x000C8B
 	LDA #$00
 	STA OBJ_ZP_STATE ;disable object.
-	LDX OBJ_ZP_SPRITE_SLOT_START ;get its start.
+	LDX OBJ_ZP_SPRITE_PAGE_SLOT_PRIMARY_INDEX ;get its start.
 	JMP OBJ_ZP_SPRITE_OFF_SCREEN ;put off screen.
 FORWARD_DOG_OBJECT: ; 0x000C94
 	LDA TRGT3_TYPE
 	BEQ RTS_10 ;Not set, leave.
 	LDA #$02
-	STA ORIGIN_SLOT_OF_ZP_OBJ_COPY ;Set slot from.
+	STA ENGINE_OBJ_ZP_SLOT_INDEX ;Set slot from.
 	LDY #$A0 ;Index.
-	JSR COPY_OBJ_$3YY_TO_OBJ_ZP ;Move to ZP.
+	JSR ENGINE_COPY_OBJ_TO_ZP_COPY ;Move to ZP.
 	JSR OBJ_DOG_STATE_SWITCH ;Do switch.
-	JSR COPY_OBJ_ZP_BACK_TO_ORIGIN ;Put back to slot.
+	JSR ENGINE_COPY_OBJ_TO_RAM ;Put back to slot.
 RTS_10: ; 0x000CA8
 	RTS  ;Leave.
 OBJ_DOG_STATE_SWITCH: ; 0x000CA9
 	LDA OBJ_ZP_STATE
 	JSR SWITCH_TO_CODE_PTRS
-	.LOW STATE_0x01_IDLE ;RTS, default state?
-	.HIGH STATE_0x01_IDLE ;0x00
-	.LOW STATE_0x01_INIT ;Setup
-	.HIGH STATE_0x01_INIT ;0x01
+	.LOW STATE_GENERAL_IDLE ;Idle if not assigned to anything.
+	.HIGH STATE_GENERAL_IDLE ;0x00
+	.LOW STATE_0x01_INIT_DOGGO_APPEARANCE ;Setup
+	.HIGH STATE_0x01_INIT_DOGGO_APPEARANCE ;0x01
 	.LOW STATE_0x02_DOG_ANIMATED_INTRO ;setup obj anim ptr, display.
 	.HIGH STATE_0x02_DOG_ANIMATED_INTRO ;0x02
 	.LOW STATE_0x03_DOG_WATCHER ;Walking out watcher.
@@ -2198,17 +2198,17 @@ OBJ_DOG_STATE_SWITCH: ; 0x000CA9
 	.HIGH MULTISTATE_ANIMATION_RUNNER ;0x07
 	.LOW STATE_0x08_BARK_SETUP ;Setup next state.
 	.HIGH STATE_0x08_BARK_SETUP ;0x08
-	.LOW STATE_0x09_BARK_AND_ANIMATE ;Bark sound and jumping animation continue. To 0xE after.
+	.LOW STATE_0x09_BARK_AND_ANIMATE ;Bark sound and jumping animation continue. To 0xE after by anim runner.
 	.HIGH STATE_0x09_BARK_AND_ANIMATE ;0x09
-	.LOW STATE_0x0A_DOG_LAUGHING_SETUP ;as named, lots here.
+	.LOW STATE_0x0A_DOG_LAUGHING_SETUP ;Dog laugh init.
 	.HIGH STATE_0x0A_DOG_LAUGHING_SETUP ;0x0A
 	.LOW MULTISTATE_ANIMATION_RUNNER ;Animate laughing at you.
 	.HIGH MULTISTATE_ANIMATION_RUNNER ;0x0B
-	.LOW STATE_0x0C_DOG_HAS_DUCK_SETUP ;Duck succesfully shot popup setup.
-	.HIGH STATE_0x0C_DOG_HAS_DUCK_SETUP ;0x0C
+	.LOW STATE_0x0C_DOG_VOLLEY_HIT_SETUP ;Duck succesfully shot popup setup.
+	.HIGH STATE_0x0C_DOG_VOLLEY_HIT_SETUP ;0x0C
 	.LOW MULTISTATE_ANIMATION_RUNNER ;Animate
 	.HIGH MULTISTATE_ANIMATION_RUNNER ;0x0D
-	.LOW STATE_0x0E_INIT_DUCK_VOLLEY ;Init round volley.
+	.LOW STATE_0x0E_INIT_DUCK_VOLLEY ;Init round volley. To 0x12 after, seeded to trigger instantly.
 	.HIGH STATE_0x0E_INIT_DUCK_VOLLEY ;0x0E
 	.LOW STATE_0x0F_CHECK_END_OF_ROUND ;End of attempt checks.
 	.HIGH STATE_0x0F_CHECK_END_OF_ROUND ;0x0F
@@ -2218,47 +2218,47 @@ OBJ_DOG_STATE_SWITCH: ; 0x000CA9
 	.HIGH MULTISTATE_ANIMATION_RUNNER ;0x11
 	.LOW STATE_0x12_WAIT_DOG_ANIM_DONE ;Clear sprites when animation ends.
 	.HIGH STATE_0x12_WAIT_DOG_ANIM_DONE ;0x12
-STATE_0x01_INIT: ; 0x000CD4
+STATE_0x01_INIT_DOGGO_APPEARANCE: ; 0x000CD4
 	LDX #$1F ;index
-MOVE_DATA: ; 0x000CD6
+MOVE_INIT_DATA: ; 0x000CD6
 	LDA DOG_OBJ_INIT_DATA,X ;move initial data here to OBJ_ZP_COPY
 	STA OBJ_ZP_COPY,X ;Store to copy.
 	DEX  ;Index--
-	BPL MOVE_DATA ;Positive, continue.
+	BPL MOVE_INIT_DATA ;Positive, continue.
 	LDA #$03
-	STA SHOTS_REMAINING ;Set shots remaining.
+	STA SCRIPT_SHOTS_REMAINING ;Set shots remaining.
 	LDA #$01
-	STA FLAG_UPDATE_BULLETS_DISPLAY ;Set update flags.
-	STA FLAG_UPDATE_TARGETS_HIT
+	STA ENGINE_FLAG_UPDATE_BULLETS_DISPLAY/TARGET_FLASH_HELP ;Set update flags.
+	STA ENGINE_FLAG_UPDATE_TARGETS_HIT
 	LDA #$02
-	STA PALETTE_UPLOAD_REQUEST ;Palette.
-	LDA SWITCH_MAIN_GAME_STATE ;Load state.
+	STA ENGINE_PALETTE_UPLOAD_REQUEST_FLAG ;Palette.
+	LDA ENGINE_MAIN_GAME_STATE_SWITCH ;Load state.
 	CMP #$07 ;If state _ #$07, game over state.
 	BNE DOG_START_ROUND_JUMPING ;Not game over, goto.
 	LDA #$10
-	STA OBJ_ZP_STATE ;Switch to laughing state.
-	RTS  ;Leave.
+	STA OBJ_ZP_STATE ;Switch to laughing state instead.
+	RTS  ;Leave. Haha!
 DOG_START_ROUND_JUMPING: ; 0x000CF7
-	LDA LEVEL ;Load level.
+	LDA GAME_LEVEL ;Load level.
 	LDY #$18 ;X coord for dog in intro, very left.
 	LDX #$00 ;Frame C count.
 	CMP #$01 ;If _ Level 1
-	BEQ IS_LEVEL_1 ;==, skip putting dog middle.
+	BEQ LONG_INTRO_ANIMATION ;==, skip putting dog middle. We want the long intro.
 	LDY #$50 ;Put dog in middle of screen if not first level.
 	LDX #$18 ;Frame C count see higher. Switches to 4 faster.
-IS_LEVEL_1: ; 0x000D05
+LONG_INTRO_ANIMATION: ; 0x000D05
 	STY OBJ_ZP_X_COORD ;X coord.
 	STX OBJ_ZP_EXTRA_PTR/DATA_STEP ;Ptr index/step.
 	LDA #$01
 	STA AUTOMESSAGE_DISPLAY_INDEX ;Set index 1 for stepped updates.
-	JSR WAIT_FOR_NMI ;Wait for screen.
-	JSR PLAY_SOUNDS ;Init sounds.
-	INC OBJ_ZP_STATE ;inc object state to 2.
-	RTS 
+	JSR ENGINE_WAIT_FOR_NMI ;Wait for screen.
+	JSR ENGINE_PLAY_SOUNDS ;Init sounds.
+	INC OBJ_ZP_STATE ;Set to next state.
+	RTS  ;Leave.
 STATE_0x02_DOG_ANIMATED_INTRO: ; 0x000D16
 	LDX #$8E ;points to $E78E, animation script.
 	LDY #$E7 ;this is the dog walking across the screen.
-	JMP INC_TRGT_STATE_AND_ANIMATE
+	JMP EXIT_SET_ANIM_PTR_XY_AND_NEXT_STATE
 STATE_0x03_DOG_WATCHER: ; 0x000D1D
 	LDA OBJ_ZP_FRAME ;get frame showing.
 	CMP #$0C ;if is frame X.
@@ -2267,7 +2267,7 @@ STATE_0x03_DOG_WATCHER: ; 0x000D1D
 	LDA OBJ_ZP_EXTRA_PTR/DATA_STEP ;Load val
 	CMP #$20 ;If _ #$20
 	BCC FRAME_NOT_C ;<, just display.
-	INC OBJ_ZP_STATE ;Goto state 4 if A >= val
+	INC OBJ_ZP_STATE ;Goto state 4 if A >= val, giving a sniff.
 RTS_11: ; 0x000D2D
 	RTS  ;Leave
 FRAME_NOT_C: ; 0x000D2E
@@ -2283,20 +2283,20 @@ STATE_0x04_SNIFFING: ; 0x000D3C
 	STA OBJ_ZP_EXTRA_PTR/DATA_STEP ;Clear counter.
 	LDX #$98
 	LDY #$E7 ;script at E798
-INC_TRGT_STATE_AND_ANIMATE: ; 0x000D44
-	JSR SETUP_OBJ_ANIM_[PTR,INDEX,TIMER]
+EXIT_SET_ANIM_PTR_XY_AND_NEXT_STATE: ; 0x000D44
+	JSR ENGINE_INIT_ANIMATION_POINT_AND_RESET ;Init.
 	INC OBJ_ZP_STATE ;State++
 	JMP MULTISTATE_ANIMATION_RUNNER ;Display obj.
 STATE_0x06_EXCITED_ANIMATION: ; 0x000D4C
 	LDX #$A7 ;Animation ptr to script.
 	LDY #$E7
-	BNE INC_TRGT_STATE_AND_ANIMATE
+	BNE EXIT_SET_ANIM_PTR_XY_AND_NEXT_STATE ;Goto.
 STATE_0x08_BARK_SETUP: ; 0x000D52
 	LDA #$04
 	STA OBJ3_SOUND_COUNT_DOWN ;Sound countdown.
 	LDX #$AC ;Animation script.
 	LDY #$E7
-	BNE INC_TRGT_STATE_AND_ANIMATE ;Always taken.
+	BNE EXIT_SET_ANIM_PTR_XY_AND_NEXT_STATE ;Always taken.
 STATE_0x09_BARK_AND_ANIMATE: ; 0x000D5C
 	DEC OBJ3_SOUND_COUNT_DOWN ;Counter--
 	LDA OBJ3_SOUND_COUNT_DOWN ;Load
@@ -2312,95 +2312,95 @@ STATE_0x0A_DOG_LAUGHING_SETUP: ; 0x000D6C
 	JSR SND_DOG_LAUGHING ;play sound.
 	LDA #$80
 	STA OBJ_ZP_X_COORD ;move obj to near center screen.
-	JSR PREP_DOG_ANIMATION_FOR_POPUP ;Reset attrs.
+	JSR SCRIPT_PREP_DOG_POPUP ;Reset attrs.
 	LDX #$46 ;anim script ptr to E846
 	LDY #$E8
-	BNE INC_TRGT_STATE_AND_ANIMATE
-STATE_0x0C_DOG_HAS_DUCK_SETUP: ; 0x000D80
+	BNE EXIT_SET_ANIM_PTR_XY_AND_NEXT_STATE
+STATE_0x0C_DOG_VOLLEY_HIT_SETUP: ; 0x000D80
 	LDA FAST_TIMERS
 	BNE RTS_11 ;Wait for 0.
 	JSR DUCK_COLLECT_SOUND ;Set sound.
-	JSR PREP_DOG_ANIMATION_FOR_POPUP ;Clear.
+	JSR SCRIPT_PREP_DOG_POPUP ;Clear.
 	LDX #$94
-	LDY #$E8 ;Animation ptr, $E894.
-	LDA TRGTS_SHOT_DURING_ATTEMPT
-	CMP #$01
-	BEQ INC_TRGT_STATE_AND_ANIMATE ;use this animation script if BD=1
-	LDX #$A3 ;load this ptr instead, E8A3.
+	LDY #$E8 ;Animation ptr, $E894. Has duck.
+	LDA SCRIPT_FLAG_HIT_DURING_VOLLEY ;Load flag.
+	CMP #$01 ;Value if something was hit.
+	BEQ EXIT_SET_ANIM_PTR_XY_AND_NEXT_STATE ;Yes, use it.
+	LDX #$A3 ;load this ptr instead, E8A3. Two ducks.
 	LDY #$E8
-	BNE INC_TRGT_STATE_AND_ANIMATE ;Always taken.
+	BNE EXIT_SET_ANIM_PTR_XY_AND_NEXT_STATE ;Always taken.
 STATE_0x0E_INIT_DUCK_VOLLEY: ; 0x000D9A
 	LDA #$30 ;mostly self explainatory.
-	STA COUNTDOWN_TO_ENABLE_TARGETS ;Store countdown val.
+	STA SCRIPT_COUNTDOWN_TO_ENABLE_TARGETS ;Store countdown val.
 	LDA #$01
-	STA ZAP_SHOOTING_ENABLED_FLAG ;Enable shooting.
+	STA SCRIPT_ZAP_SHOOTING_ENABLED_FLAG ;Enable shooting.
 	LDA #$03
-	STA SHOTS_REMAINING ;Store remaining.
+	STA SCRIPT_SHOTS_REMAINING ;Store remaining.
 	LDA #$01
-	STA FLAG_UPDATE_BULLETS_DISPLAY ;Store fired, ez disable.
+	STA ENGINE_FLAG_UPDATE_BULLETS_DISPLAY/TARGET_FLASH_HELP ;Set flag, show bullets.
 	LDA #$00
-	STA TRGTS_SHOT_DURING_ATTEMPT ;Clear flag.
+	STA SCRIPT_FLAG_HIT_DURING_VOLLEY ;Clear flag, none hit this volley.
 	LDA #$02 ;targets in mode
 	LDY #$01 ;target 2 state+type
-	LDX GAME_MODE_IN
-	BNE TWO_TARGET_GAME_2
+	LDX SCRIPT_MENU_CURSOR_SELECTED ;Load cursor value.
+	BNE TWO_TARGET_GAME_2 ;If nonzero, two targets in game.
 	LDA #$01 ;one target
 	LDY #$00 ;disable target 2
 TWO_TARGET_GAME_2: ; 0x000DBA
-	STA NUM_TARGETS_PER_ATTEMPT
-	STY TRGT2_STATUS
+	STA SCRIPT_TARGETS_PER_ATTEMPT ;Store val to do.
+	STY TRGT2_STATUS ;Target 2 status.
 	STY TRGT2_STATE ;enabled for 2 target games, disabled for 1 target.
-	LDA #$01 ;always enabled, enable.
+	LDA #$01 ;Always enabled.
 	STA TRGT1_STATUS
 	STA TRGT1_STATE
-	JSR RNG_ADVANCE ;rng advance and get number in A.
+	JSR ENGINE_RNG_ADVANCE ;Advance here.
 	STA TMP_0C ;random number stored.
-	LDA #$03 ;blue and black ducks.
-	LDY LEVEL
+	LDA #$03 ;blue and black ducks enabled always.
+	LDY GAME_LEVEL
 	CPY #$01
 	BEQ FIRST_LEVEL ;if not the 2+ level, no red ducks!
-	LDA #$07 ;red ducks possible now.
+	LDA #$07 ;Add'l mask for red ducks, now can get after first level.
 FIRST_LEVEL: ; 0x000DD9
 	AND TMP_0C
-	STA DUCK_COLOR_COMBO_INDEX ;DUCK_TYPE
+	STA SCRIPT_DUCK_COLOR_COMBO ;Duck color/specs.
 	LDY #$00
 	STY TARGETS_ACTIVATED_COUNT? ;# targets activated.
 	TAX 
 	LDA DUCK_COLOR_COMBO_LUT,X ;get types from array
 	STA TMP_0C ;store
-	AND #$F0 ;get high group of 4 bits.
-	LSR A ;index mul by 8, basically.
-	LDY #$00 ;index
-	JSR DUCK_COLOR_DATA_TO_RAM_PALETTE ;Move data.
+	AND #$F0 ;Get high nibble.
+	LSR A ;Move to *8 pos.
+	LDY #$00 ;Color mod index.
+	JSR DUCK_COLOR_DATA_TO_RAM_PALETTE ;Upload colors.
 	LDA TMP_0C ;get target info again
-	AND #$0F ;get low byte
+	AND #$0F ;Isolate nibble.
 	ASL A
 	ASL A
 	ASL A ;shift mul by 8
-	JSR DUCK_COLOR_DATA_TO_RAM_PALETTE ;Again.
+	JSR DUCK_COLOR_DATA_TO_RAM_PALETTE ;Upload colors.
 	LDA #$3F
-	STA RAM_PALETTE_DYNAMIC_FILE ;Store white.
+	STA RAM_PALETTE_DYNAMIC_FILE ;Store palette addr.
 	LDA #$10
 	STA RAM_PALETTE_DYNAMIC_ADDR_L ;Addr low, 3F10.
-	STA RAM_PALETTE_DYNAMIC_LENGTH ;0x10 bytes.
+	STA RAM_PALETTE_DYNAMIC_LENGTH ;0x10 bytes for length.
 	LDA #$00
 	STA RAM_PALETTE_DYNAMIC_FILE+19 ;Store EOF.
 	LDA #$01
-	STA DYNAMIC_PALETTE_UPLOAD_FLAG ;Upload flag.
+	STA ENGINE_UPLOAD_DYNAMIC_PALETTE_FLAG ;Upload it.
 	LDA #$12
-	STA OBJ_ZP_STATE ;move state
+	STA OBJ_ZP_STATE ;Move state for game master doggo.
 	LDA #$00
-	STA OBJ_ZP_ANIM_TIMER ;init
-	RTS 
+	STA OBJ_ZP_ANIM_TIMER ;Init timer.
+	RTS  ;Leave.
 STATE_0x0F_CHECK_END_OF_ROUND: ; 0x000E18
-	LDA ROUND_TARGETS_SHOWN
+	LDA SCRIPT_ROUND_TARGETS_SHOWN_COUNT ;Load shown targets.
 	CMP #$0A ;All targets value.
 	BNE OBJ_GOTO_STATE_E ;Not complete, next attempt.
 	LDA #$00
-	STA SWITCH_END_OF_ROUND ;Clear end round state.
+	STA SCRIPT_END_OF_ROUND_SWITCH ;Clear end round state.
 	LDA #$04
-	STA SWITCH_MAIN_GAME_STATE ;In game state switch.
-	JMP CLEAR_SPRITES ;Clear sprites.
+	STA ENGINE_MAIN_GAME_STATE_SWITCH ;In game state switch, game master doggo is sniffing.
+	JMP ENGINE_CLEAR_SPRITES_OFFSCREEN ;Clear sprites.
 OBJ_GOTO_STATE_E: ; 0x000E29
 	LDA #$0E
 	STA OBJ_ZP_STATE ;Set up next round instead.
@@ -2410,16 +2410,16 @@ STATE_0x10_LAUGH_END_OF_GAME: ; 0x000E2E
 	STA OBJ_ZP_X_COORD ;Set to middle of screen.
 	LDA #$01
 	STA OBJ_ZP_BEHIND_BG_FLAG ;Put behind BG.
-	JSR PREP_DOG_ANIMATION_FOR_POPUP ;Init more.
+	JSR SCRIPT_PREP_DOG_POPUP ;Init popup.
 	LDX #$B2 ;Animation script.
 	LDY #$E8
-	JMP INC_TRGT_STATE_AND_ANIMATE ;Goto.
+	JMP EXIT_SET_ANIM_PTR_XY_AND_NEXT_STATE ;Goto.
 STATE_0x12_WAIT_DOG_ANIM_DONE: ; 0x000E40
 	LDA OBJ_ZP_ANIM_TIMER
 	BNE MULTISTATE_ANIMATION_RUNNER ;Do animation stuff if timer valid. Could have brached around load.
 	LDA #$00 ;Clearing...
-	STA OBJ_ZP_STATE ;State to 0.
-	LDX OBJ_ZP_SPRITE_SLOT_START ;Slot start.
+	STA OBJ_ZP_STATE ;State to 0, gone.
+	LDX OBJ_ZP_SPRITE_PAGE_SLOT_PRIMARY_INDEX ;Slot start.
 	JMP OBJ_ZP_SPRITE_OFF_SCREEN ;Goto, abuse RTS.
 MULTISTATE_ANIMATION_RUNNER: ; 0x000E4D
 	LDA OBJ_ZP_ANIM_TIMER ;Animation timer.
@@ -2436,10 +2436,10 @@ UPDATE_ANIMATION_TO_PTR: ; 0x000E56
 	SBC #$FA ;if >= #$FA, make index 0 to 5.
 ANIMATION_FLAGS_SWITCH: ; 0x000E63
 	JSR SWITCH_TO_CODE_PTRS ;ANIMATION COMMANDS BELOW.
-	.LOW STATE_0x01_IDLE ;0xFA, nothing/removed.
-	.HIGH STATE_0x01_IDLE
-	.LOW STATE_0x01_IDLE ;0xFB, nothing/removed.
-	.HIGH STATE_0x01_IDLE
+	.LOW STATE_GENERAL_IDLE ;0xFA, nothing/removed.
+	.HIGH STATE_GENERAL_IDLE
+	.LOW STATE_GENERAL_IDLE ;0xFB, nothing/removed.
+	.HIGH STATE_GENERAL_IDLE
 	.LOW STREAM_COMMAND_INDEX_0x1E ;0xFC
 	.HIGH STREAM_COMMAND_INDEX_0x1E
 	.LOW STREAM_COMMAND_PUT_OBJ_BEHIND_BG ;0xFD
@@ -2450,7 +2450,7 @@ ANIMATION_FLAGS_SWITCH: ; 0x000E63
 	.HIGH STREAM_COMMAND_SWITCH_STATE/SET_TIMER
 OBJ_ANIM_DATA_NOT_COMMAND: ; 0x000E72
 	LDY OBJ_ZP_ANIM_PTR_INDEX ;Get anim stream index and slot from.
-	LDX ORIGIN_SLOT_OF_ZP_OBJ_COPY
+	LDX ENGINE_OBJ_ZP_SLOT_INDEX
 	CPX #$02 ;If slot is eq to 2, the dog.
 	BNE GET_ANIM_TIMER_FROM_STREAM ;Not dog, do this instead.
 	LDX OBJ_ZP_STATE ;Load state.
@@ -2463,16 +2463,16 @@ OBJ_ANIM_DATA_NOT_COMMAND: ; 0x000E72
 	CPX #$11 ;State, end of game laughing at you.
 	BNE NOT_ANY_OBJ_STATE_WANTED ;Not any obj state we care for.
 OBJ_STATE_B/D/11_MOVE_Y: ; 0x000E8C
-	LDX OBJ_ZP_TIMER_MISC? ;Load timer.
+	LDX OBJ_ZP_TIMER_EXTRA ;Load timer.
 	BEQ OBJ_POPUP_ZERO ;If 0, goto.
-	DEC OBJ_ZP_TIMER_MISC? ;Dec otherwise.
+	DEC OBJ_ZP_TIMER_EXTRA ;Dec otherwise.
 	LDA OBJ_ZP_EXTRA_PTR/DATA_INDEX_STORAGE ;Popup direction.
 	CLC 
 	ADC OBJ_ZP_Y_COORD ;Add to Y.
 	STA OBJ_ZP_Y_COORD ;store changed.
 	JMP OBJ_ZP_TO_SCREEN_ROUTINE
 OBJ_POPUP_ZERO: ; 0x000E9C
-	STA OBJ_ZP_TIMER_MISC? ;Store data from ptr way back.
+	STA OBJ_ZP_TIMER_EXTRA ;Store data from ptr way back.
 	INY  ;next byte.
 	LDA (OBJ_ZP_ANIM_PTR_L),Y ;Load next byte from anim.
 	BPL UPDATE_Y_ADD_VAL ;Not negative. This code is because FF would be cmd, work around.
@@ -2541,13 +2541,13 @@ STREAM_COMMAND_PUT_OBJ_BEHIND_BG: ; 0x000F00
 STREAM_COMMAND_INDEX_0x1E: ; 0x000F07
 	LDA #$1E ;TODO: Exactly where/why. What obj uses.
 	BNE WRITE_OBJ_PTR_INDEX ;always taken.
-SETUP_OBJ_ANIM_[PTR,INDEX,TIMER]: ; 0x000F0B
+ENGINE_INIT_ANIMATION_POINT_AND_RESET: ; 0x000F0B
 	STX OBJ_ZP_ANIM_PTR_L ;Pointer from X+Y, animation to play.
 	STY OBJ_ZP_ANIM_PTR_H
 	LDA #$00
 	STA OBJ_ZP_ANIM_PTR_INDEX ;index to obj data of some type.
-	STA OBJ_ZP_ANIM_TIMER ;substate counter?
-	RTS 
+	STA OBJ_ZP_ANIM_TIMER ;Reset timer.
+	RTS  ;Leave.
 DUCK_FLY_AWAY_CHECK: ; 0x000F16
 	LDA OBJ_ZP_Y_COORD ;get y coord.
 	CMP #$08
@@ -2566,30 +2566,30 @@ OBJ_STATE_8_ANIM_TIMER_0: ; 0x000F2A
 	STA OBJ_ZP_ANIM_TIMER
 	RTS 
 CHANGE_DIRECTION_UP: ; 0x000F33
-	JMP Y_COORD_>=90 ;Move upwards?
+	JMP FORCE_Y_UP ;Move upwards?
 JMP_MOVE_DUCKS_AUTOMATICALLY: ; 0x000F36
 	JMP MOVE_DUCKS_AUTOMATICALLY ;moves wherever.
-PREP_DOG_ANIMATION_FOR_POPUP: ; 0x000F39
+SCRIPT_PREP_DOG_POPUP: ; 0x000F39
 	LDA #$00 ;Clear below.
-	STA OBJ_ZP_TIMER_MISC? ;Timer
+	STA OBJ_ZP_TIMER_EXTRA ;Timer
 	STA OBJ_ZP_EXTRA_PTR/DATA_INDEX_STORAGE ;Timer
 	LDA #$AC ;Y pos below grass.
 	STA OBJ_ZP_Y_COORD
-	RTS 
+	RTS  ;Leave.
 DUCK_COLOR_DATA_TO_RAM_PALETTE: ; 0x000F44
 	TAX  ;Index, either 0 or 8, or 10.
 	LDA #$08 ;A to index, loop counter.
 	STA TMP_0D ;counter
 LOOP_DATA_8_BYTES: ; 0x000F49
 	LDA DUCK_PALETTE_COLORS_LUT,X ;Load from table.
-	STA RAM_PALETTE_DYNAMIC_FILE+3,Y ;Store to 403+Y
+	STA RAM_PALETTE_DYNAMIC_FILE+3,Y ;RAM palette packet mod for colors.
 	INX  ;X++, Both indexes++
 	INY  ;Y++
 	DEC TMP_0D ;Dec loop count.
 	BNE LOOP_DATA_8_BYTES ;Loop until 0.
 	RTS 
 ADD_TO_SCORE_PIGEON: ; 0x000F56
-	LDA LEVEL ;get level.
+	LDA GAME_LEVEL ;get level.
 	LDY #$02 ;score index to use.
 	CMP #$06
 	BCC SET_POINTS_FROM_Y ;level < 6
@@ -2598,8 +2598,8 @@ ADD_TO_SCORE_PIGEON: ; 0x000F56
 	BCC SET_POINTS_FROM_Y ;level < 10
 	LDY #$05
 	BNE SET_POINTS_FROM_Y ;commit our custom index to score.
-ADD_TO_SCORE_TARGET: ; 0x000F68
-	LDX LEVEL ;get level
+ADD_TARGET_VALUE_TO_SCORE: ; 0x000F68
+	LDX GAME_LEVEL ;get level
 	LDA #$00
 	CPX #$06 ;increase score at level 6
 	BCC WHICH_SCORES ;if level < 6
@@ -2609,9 +2609,9 @@ ADD_TO_SCORE_TARGET: ; 0x000F68
 	LDA #$06 ;max scores.
 WHICH_SCORES: ; 0x000F78
 	CLC 
-	ADC OBJ_ZP_DUCK_COLOR ;get score for color.
+	ADC OBJ_ZP_DUCK_COLOR ;get color for score.
 	TAX  ;put to index.
-	LDY TBL_DUCK_INDEXES,X ;get value for duck.
+	LDY TBL_DUCK_DATA_INDEXES,X ;get value for duck and level.
 SET_POINTS_FROM_Y: ; 0x000F7F
 	STY OBJ_ZP_POINTS ;save index for score.
 	LDA TBL_DUCK_SCORES,Y ;get score digits BCD.
@@ -2621,26 +2621,26 @@ SET_POINTS_FROM_Y: ; 0x000F7F
 	STA TMP_05 ;score adding XX0000
 	STA TMP_07 ;adding digits 00000XX
 	LDA #$0F ;First group setup val.
-	JSR SCORE_ADD/SUB ;do.
+	JSR SCORE_ADD/SUB_A_GROUP_FROM_TMP ;do.
 	JMP DISP_NEW_SCORE ;put to screen.
 DISP_FLY_AWAY: ; 0x000F96
-	LDA TRGTS_SHOT_DURING_ATTEMPT
-	BNE RTS_12 ;leave if any hits.
+	LDA SCRIPT_FLAG_HIT_DURING_VOLLEY ;Load if any hit.
+	BNE RTS_12 ;If any, yes, leave.
 	LDA #$06
-	JSR DISP_GAME_MESSAGE
+	JSR DISP_GAME_MESSAGE ;Show message.
 	LDA #$30
-	STA FAST_TIMERS ;not sure why.
+	STA FAST_TIMERS ;Set timer.
 	LDA #$06
-	STA PALETTE_UPLOAD_REQUEST ;orange color?
+	STA ENGINE_PALETTE_UPLOAD_REQUEST_FLAG ;Set orange BG for FLY AWAY.
 	LDA #$01
-	STA DYNAMIC_PALETTE_UPLOAD_FLAG ;Upload.
+	STA ENGINE_UPLOAD_DYNAMIC_PALETTE_FLAG ;Upload it.
 	LDA #$36 ;Color.
 	STA RAM_PALETTE_DYNAMIC_FILE+3 ;Store to palette RAM.
 	STA RAM_PALETTE_DYNAMIC_FILE+7
 	STA RAM_PALETTE_DYNAMIC_FILE+11
 	STA RAM_PALETTE_DYNAMIC_FILE+15
 RTS_12: ; 0x000FB9
-	RTS 
+	RTS  ;Leave.
 DISP_SCORE_SPRITES: ; 0x000FBA
 	LDX #$00 ;obj 0
 	LDY #$00 ;spr slot 60
@@ -2695,7 +2695,7 @@ IS_ZER0: ; 0x001001
 	STA SCORE_ANIM_COUNTER,X ;Store score animation length.
 	RTS 
 OBJ_ZP_TO_SCREEN_ROUTINE: ; 0x00101B
-	LDA OBJ_ZP_SPRITE_SLOT_START ;unk
+	LDA OBJ_ZP_SPRITE_PAGE_SLOT_PRIMARY_INDEX ;unk
 	STA SPRITE_INDEX_VAL ;last index of sprite? not sure yet.
 	LDA OBJ_ZP_FRAME ;get frame to show.
 	ASL A ;make index val.
@@ -2763,7 +2763,7 @@ DIRECTION_RIGHT: ; 0x00106D
 	BEQ WRITE_UPDATE_GROUP
 	LDX #$44 ;default
 WRITE_UPDATE_GROUP: ; 0x00108C
-	STX SPRITE_UPDATE_BASE ;index into $2XX to start at.
+	STX SPRITE_UPDATE_BASE/MESSAGE_VAL/PARTICLE_MOD ;index into $2XX to start at.
 ANIM_DATA_NEXT: ; 0x00108E
 	INY  ;next $12 ptr data.
 MORE_ANIM_DATA: ; 0x00108F
@@ -2772,8 +2772,8 @@ MORE_ANIM_DATA: ; 0x00108F
 	BEQ END_FRAME_DATA_CHECK ;goes back to $10 stream data.
 	CMP #$FE
 	BNE $12_NOT_#$FE
-	INC SPRITE_UPDATE_BASE ;FE value skips 1 sprite. 2 point offsets.
-	INC SPRITE_UPDATE_BASE
+	INC SPRITE_UPDATE_BASE/MESSAGE_VAL/PARTICLE_MOD ;FE value skips 1 sprite. 2 point offsets.
+	INC SPRITE_UPDATE_BASE/MESSAGE_VAL/PARTICLE_MOD
 	JMP ANIM_DATA_NEXT ;keep processing $12
 $12_NOT_#$FE: ; 0x0010A0
 	CMP #$FD
@@ -2790,9 +2790,9 @@ $12_NOT_#$FE: ; 0x0010A0
 	STA SPRITE_ATTR_COPY? ;save
 	JMP ANIM_DATA_NEXT ;do more data.
 SPRITE_OUTPUT_FINALLY: ; 0x0010B9
-	LDX SPRITE_UPDATE_BASE ;which index updating.
+	LDX SPRITE_UPDATE_BASE/MESSAGE_VAL/PARTICLE_MOD ;which index updating.
 	LDA SPR_X/Y_OFFSET_SKELETONS,X ;get spr skeleton from base index.
-	INC SPRITE_UPDATE_BASE ;next byte for array.
+	INC SPRITE_UPDATE_BASE/MESSAGE_VAL/PARTICLE_MOD ;next byte for array.
 	CLC 
 	ADC TARGET_Y_COORD_CPY ;add Y copy with data. does it do this to overflow if going to always?
 	JSR MAKE_Y_PROPER ;something to do with Y, proper value, and FF.
@@ -2817,9 +2817,9 @@ DIRECTION_RIGHT_0: ; 0x0010E9
 	LDX SPRITE_INDEX_VAL ;get index.
 	STA SPRITE_PAGE,X ;store sprite attr.
 	INC SPRITE_INDEX_VAL ;next index.
-	LDX SPRITE_UPDATE_BASE ;get group index.
+	LDX SPRITE_UPDATE_BASE/MESSAGE_VAL/PARTICLE_MOD ;get group index.
 	LDA SPR_X/Y_OFFSET_SKELETONS,X ;get value
-	INC SPRITE_UPDATE_BASE ;next data.
+	INC SPRITE_UPDATE_BASE/MESSAGE_VAL/PARTICLE_MOD ;next data.
 	LDX OBJ_ZP_DIRECTION ;get direction.
 	BEQ IS_RIGHT
 	JSR TWO_COMPLIMENT_A_REGISTER ;invert if left. x?
@@ -2858,73 +2858,73 @@ TWO_COMPLIMENT_A_REGISTER: ; 0x00112B
 	CLC 
 	ADC #$01 ;add 1 to correct to 2's compliment.
 	RTS  ;return value.
-PROCESS_ZAPPER_TRIGGER: ; 0x001131
+SCRIPT_PROCESS_ZAPPER_TRIGGER_STATE: ; 0x001131
 	LDA APU_FRAMECOUNTER ;Get zapper
 	AND #$10 ;Read trigger.
-	CMP ZAP_TIGGER_PREVIOUS_STATE ;If curr _ prev
-	BEQ ZAP_TRIGGER_STATES_MATCH ;If ==, goto.
-	STA ZAP_TIGGER_PREVIOUS_STATE ;Update differing read.
+	CMP ZAP_TRIG_PREVIOUS ;If curr _ prev
+	BEQ ZAP_TRIGGER_STATES_MATCH ;If ==, goto. sAME AS BEFORE.
+	STA ZAP_TRIG_PREVIOUS ;Update previous.
 EXIT_RESET_MATCH_COUNT: ; 0x00113C
 	LDA #$00
-	STA ZAP_STATES_MATCHED_COUNT ;Reset clear.
+	STA ZAP_TRIGGER_STATE_MATCH_COUNT ;Reset clear match count.
 RTS_15: ; 0x001140
 	RTS  ;Leave.
 ZAP_TRIGGER_STATES_MATCH: ; 0x001141
-	INC ZAP_STATES_MATCHED_COUNT ;Inc count.
-	LDY ZAP_STATES_MATCHED_COUNT ;Load count.
+	INC ZAP_TRIGGER_STATE_MATCH_COUNT ;Matches++
+	LDY ZAP_TRIGGER_STATE_MATCH_COUNT ;Load it.
 	CPY #$01 ;If _ #$01. Twice in a row.
 	BNE RTS_15 ;RTS if match count only at 1.
 	AND #$10 ;Test zapper trigger state.
-	BEQ NOT_PRESSED ;Not pressed, two in a row.
+	BEQ COUNT_MATCHED_NOT_PRESSED ;Not pressed, two in a row.
 	LDA #$01
-	STA FLAG_ZAPPER_TRIGGER_PULLED ;Set flag true.
+	STA ZAP_FLAG_TRIGGER_PULLED ;Set pulled true.
 	BNE EXIT_RESET_MATCH_COUNT ;Always taken.
-NOT_PRESSED: ; 0x001153
-	LDA FLAG_ZAPPER_TRIGGER_PULLED ;Load flag for pulled.
-	BEQ EXIT_RESET_MATCH_COUNT ;Not set as pulled, just reset count.
+COUNT_MATCHED_NOT_PRESSED: ; 0x001153
+	LDA ZAP_FLAG_TRIGGER_PULLED ;Load flag for pulled.
+	BEQ EXIT_RESET_MATCH_COUNT ;Not set, leave.
 	LDY #$00
-	STY FLAG_ZAPPER_TRIGGER_PULLED ;Clear flag, trigger released.
+	STY ZAP_FLAG_TRIGGER_PULLED ;Clear flag, trigger not pulled now.
 	INY  ;Y = 1
-	STY FLAG_ZAPPER_TRIGGER_RELEASED ;Set flag to process for release.
+	STY ZAP_TRIGGER_RELEASED ;Set flag to signal released.
 	BNE EXIT_RESET_MATCH_COUNT ;Always taken.
 PROCESS_ZAPPER_READING: ; 0x001160
-	LDA ZAP_SHOOTING_ENABLED_FLAG ;Test flag. Also, beware, this routine is an awful mess.
-	BNE SHOOTING_ENABLED ;If flag is set, goto.
-EXIT_TRIGGER_WITHOUT_RELEASE: ; 0x001164
+	LDA SCRIPT_ZAP_SHOOTING_ENABLED_FLAG ;Test flag. Also, beware, this routine is an awful mess.
+	BNE SHOOTING_ENABLED_TEST_RELEASE_FOR_FIRE ;Is set, test.
+EXIT_NO_TRIGGER_RELEASE: ; 0x001164
 	LDA #$00
-	STA FLAG_ZAPPER_TRIGGER_RELEASED ;Don't release if disabled.
+	STA ZAP_TRIGGER_RELEASED ;Not released here.
 RTS_16: ; 0x001168
 	RTS  ;Leave.
-SHOOTING_ENABLED: ; 0x001169
-	LDA FLAG_ZAPPER_TRIGGER_RELEASED ;Load released flag.
+SHOOTING_ENABLED_TEST_RELEASE_FOR_FIRE: ; 0x001169
+	LDA ZAP_TRIGGER_RELEASED ;Load released flag.
 	BEQ RTS_16 ;Not released, leave.
-	LDA SHOTS_REMAINING ;Load shots left.
-	BEQ EXIT_TRIGGER_WITHOUT_RELEASE ;If 0, inject not released.
-	DEC SHOTS_REMAINING ;Shots--
+	LDA SCRIPT_SHOTS_REMAINING ;Load shots left.
+	BEQ EXIT_NO_TRIGGER_RELEASE ;If 0, inject not released. Don't let the trigger release.
+	DEC SCRIPT_SHOTS_REMAINING ;Shots--
 	LDA #$01
-	STA FLAG_UPDATE_BULLETS_DISPLAY ;Set flag true.
+	STA ENGINE_FLAG_UPDATE_BULLETS_DISPLAY/TARGET_FLASH_HELP ;Update bullets display.
 	LDA #$00
-	STA FLAG_ZAPPER_TRIGGER_RELEASED ;Set not released, shooting now.
-	JSR SND_GUNSHOT ;Play sound.
-	LDA #$04 ;Palette 3 for screen, all black BG, white sprite 0.
-	STA PALETTE_UPLOAD_REQUEST ;Set var.
-	JSR CLEAR_SPRITES ;Clear all sprites.
-	JSR PPU_DISABLE_SPRITES/BACKGROUND ;Wait for NMI, screen black after exit here.
-	LDA IN_MENU_FLAG ;Test in-menu.
+	STA ZAP_TRIGGER_RELEASED ;Set not released, shooting now.
+	JSR SND_GUNSHOT ;Play sound of the gunshot.
+	LDA #$04 ;Set palette to upload.
+	STA ENGINE_PALETTE_UPLOAD_REQUEST_FLAG ;Request it.
+	JSR ENGINE_CLEAR_SPRITES_OFFSCREEN ;Clear all sprites off screen.
+	JSR ENGINE_DISABLE_RENDERING ;No rendering for black screen.
+	LDA ENGINE_FLAG_IN_MENU ;Test in-menu.
 	BEQ IN_GAME_SHOT_TESTING ;Do in game.
-	JSR SND_HALT ;Disable all registers.
-	JSR PLAY_SOUNDS ;Forward audio.
-	JSR SND_GUNSHOT ;Init noise+dmc?
+	JSR ENGINE_SOUND_HALT_CURRENT ;Disable all registers.
+	JSR ENGINE_PLAY_SOUNDS ;Forward audio.
+	JSR SND_GUNSHOT ;Do gunshot sound.
 	LDA #$02
 	STA TESTING_FOR_HIT_OBJ_INDEX ;Set testing object to menu index.
 	LDA #$FF ;Scroll screen to white screen.
-	STA PPU_SCROLL_X_RAM ;Store to scroll, white screen area.
+	STA PPU_SCROLL_X_RAM ;Store to scroll, white screen area on 2nd screen.
 	BNE INITIAL_LIGHT_TEST_MENU_ENTRY ;Always taken, goto.
 IN_GAME_SHOT_TESTING: ; 0x00119F
-	LDA #$05 ;Palette 5, game palette black?
-	STA PALETTE_UPLOAD_REQUEST ;Upload.
+	LDA #$05 ;Palette 5. All black.
+	STA ENGINE_PALETTE_UPLOAD_REQUEST_FLAG ;Upload.
 	LDA #$00
-	STA TESTING_FOR_HIT_OBJ_INDEX ;Obj index.
+	STA TESTING_FOR_HIT_OBJ_INDEX ;Testing object index.
 	LDY #$00 ;target origin.
 	LDA TRGT1_STATUS ;Load type.
 	BEQ PRIMARY_DETECT_TARGET_2 ;Not active, do target 2 instead.
@@ -2943,29 +2943,29 @@ PRIMARY_DETECT_TARGET_2: ; 0x0011B5
 INITIAL_LIGHT_TEST_TARGET: ; 0x0011C7
 	JSR OBJ_Y_SKELETON/POS_ZAPPER_HIT_BOX_CREATE ;Display box sprite for target.
 INITIAL_LIGHT_TEST_MENU_ENTRY: ; 0x0011CA
-	JSR CLEAR_NMI_RAN/BLOCK_PPU_UPDATE_FLAGS ;Clear flags.
+	JSR ENGINE_UPDATE_ITERATION_FLAGS ;Clear flags.
 INITIAL_LIGHT_TEST_LOOP: ; 0x0011CD
-	LDA FLAG_NMI_RAN ;Load NMI ran flag.
-	BNE INITIAL_LIGHT_TEST_TIMEOUT ;Was set without detecting light. Success, goto.
+	LDA ENGINE_SCRIPT_ITERATE_FLAG ;Load NMI ran flag.
+	BNE INITIAL_LIGHT_TEST_TIMEOUT/PASS ;If ever set with no light, time out. No light detected, is expected here.
 	LDA APU_FRAMECOUNTER ;get zapper state
 	AND #$08 ;Test light.
 	BNE INITIAL_LIGHT_TEST_LOOP ;Loop if no light yet, loop.
 	LDA TESTING_FOR_HIT_OBJ_INDEX ;Load object testing.
 	JMP EXIT_ZAPPER_MISS ;Was lighted when not expected, missed automatically.
 EXIT_PALETTES_RESTORE: ; 0x0011DD
-	LDA GAME_MODE_IN ;get mode in.
+	LDA SCRIPT_MENU_CURSOR_SELECTED ;get mode in.
 	CMP #$02 ;If _ #$02, pigeons val.
 	BNE DUCKS_PALETTE ;Not pigeons, goto.
 	JMP EXIT_RESTORE_PIGEONS_PALETTE ;Pigeons, goto.
 DUCKS_PALETTE: ; 0x0011E6
 	LDY #$02
-	STY PALETTE_UPLOAD_REQUEST ;palette 2
-	JSR WAIT_FOR_NMI ;wait until palette updated.
+	STY ENGINE_PALETTE_UPLOAD_REQUEST_FLAG ;palette 2
+	JSR ENGINE_WAIT_FOR_NMI ;wait until palette updated.
 	LDY #$01
-	STY DYNAMIC_PALETTE_UPLOAD_FLAG ;Set flag to use RAM copy.
-	JMP EXIT_SPRITES_CLEAR_ENABLE_GFX ;displays the white box.
-INITIAL_LIGHT_TEST_TIMEOUT: ; 0x0011F4
-	JSR CLEAR_NMI_RAN/BLOCK_PPU_UPDATE_FLAGS ;Clear flag.
+	STY ENGINE_UPLOAD_DYNAMIC_PALETTE_FLAG ;Set flag to use RAM copy.
+	JMP EXIT_SPRITES_CLEAR_ENABLE_GFX ;Restores game on failure of light when not expected.
+INITIAL_LIGHT_TEST_TIMEOUT/PASS: ; 0x0011F4
+	JSR ENGINE_UPDATE_ITERATION_FLAGS ;Clear flag.
 	LDA PPU_MASK_RAM ;Load mask.
 	AND #$E7 ;Disable sprites/BG.
 	STA PPU_MASK_RAM
@@ -2975,23 +2975,23 @@ INITIAL_LIGHT_TEST_TIMEOUT: ; 0x0011F4
 	BEQ TESTING_MENU_MASK ;Use val as-is, on menu.
 	LDA #$10 ;Otherwise we want to test targets, not screen.
 TESTING_MENU_MASK: ; 0x001207
-	ORA PPU_MASK_RAM ;Set other bits.
-	STA PPU_MASK_RAM ;Store decided mask.
-	STA PPU_Mask ;Write decided.
-	JSR CLEAR_SPRITES ;Clear sprites.
+	ORA PPU_MASK_RAM ;Set test layer.
+	STA PPU_MASK_RAM ;Store mask.
+	STA PPU_Mask ;Commit it.
+	JSR ENGINE_CLEAR_SPRITES_OFFSCREEN ;Clear sprites.
 	LDA TRGT2_STATUS ;Load target 2 type.
-	BEQ SECONDARY_LIGHT_TEST ;Not active, goto. Huge assuumption here of not-menu.
+	BEQ SECONDARY_LIGHT_TEST_ENTRY ;Not active, goto. Huge assuumption here of not-menu/target enabled.
 	LDA TRGT2_STATE ;Load state for target 2.
 	CMP #$03 ;If _ #$03, In-flight state.
-	BNE SECONDARY_LIGHT_TEST ;Not right mode, goto, no sprites.
+	BNE SECONDARY_LIGHT_TEST_ENTRY ;Not right mode, goto, no sprites.
 	LDY #$50 ;Do target 2 hit test.
 	JSR OBJ_Y_SKELETON/POS_ZAPPER_HIT_BOX_CREATE ;Display box for target 2.
-SECONDARY_LIGHT_TEST: ; 0x001222
-	LDA FLAG_NMI_RAN ;Load flag for frame passed.
+SECONDARY_LIGHT_TEST_ENTRY: ; 0x001222
+	LDA ENGINE_SCRIPT_ITERATE_FLAG ;Load flag for frame passed.
 	BNE SECONDARY_TEST_NO_HIT ;Set, no light all frame.
 	LDA APU_FRAMECOUNTER ;Load zapper.
 	AND #$08 ;Test light.
-	BNE SECONDARY_LIGHT_TEST ;Not detected, loop.
+	BNE SECONDARY_LIGHT_TEST_ENTRY ;Not detected, loop.
 	LDA TESTING_FOR_HIT_OBJ_INDEX ;Load what we're testing. We hit it here.
 	CMP #$02 ;Menu val.
 	BNE GAMEPLAY_TARGET_HIT ;Not menu, goto.
@@ -2999,14 +2999,14 @@ SECONDARY_LIGHT_TEST: ; 0x001222
 ZAPPER_RESULT_COMMIT_FROM_A: ; 0x001235
 	STA ZAPPER_RESULT ;1=Hit, 2=Miss
 	LDA #$01 ;Restore palette.
-	STA PALETTE_UPLOAD_REQUEST
+	STA ENGINE_PALETTE_UPLOAD_REQUEST_FLAG
 	LDA #$00 ;Scroll back to main screen.
 	STA PPU_SCROLL_X_RAM
-	JSR WAIT_FOR_NMI ;Wait frame.
-	JMP PPU_ENABLE_SPRITES/BACKGROUND ;Enable GFX, abuse RTS.
+	JSR ENGINE_WAIT_FOR_NMI ;Wait frame.
+	JMP ENGINE_ENABLE_RENDERING ;Enable GFX, abuse RTS.
 GAMEPLAY_TARGET_HIT: ; 0x001246
-	INC TARGETS_HIT_IN_ROUND ;not sure why inc IN level.
-	INC TRGTS_SHOT_DURING_ATTEMPT ;set to true by INC, so 1 or 2 targets both true.
+	INC SCRIPT_ROUND_TARGETS_HIT_COUNT ;not sure why inc IN level.
+	INC SCRIPT_FLAG_HIT_DURING_VOLLEY ;set to true by INC, so 1 or 2 targets both true.
 	LDX #$04 ;Target state shot.
 	LDA TESTING_FOR_HIT_OBJ_INDEX ;Load index.
 	BNE HIT_TARGET_2 ;Nonzero, goto.
@@ -3015,23 +3015,23 @@ GAMEPLAY_TARGET_HIT: ; 0x001246
 HIT_TARGET_2: ; 0x001256
 	STX TRGT2_STATE ;Switch target 2 state.
 EXIT_RESTORE_PALETTE: ; 0x001259
-	LDA GAME_MODE_IN ;Load game mode.
+	LDA SCRIPT_MENU_CURSOR_SELECTED ;Load game mode.
 	CMP #$02 ;If _ #$02, pigeons val.
 	BEQ EXIT_RESTORE_PIGEONS_PALETTE ;==, yes, pigeons.
 	LDY #$01 ;Ducks palette val.
-	STY DYNAMIC_PALETTE_UPLOAD_FLAG ;Set flag.
+	STY ENGINE_UPLOAD_DYNAMIC_PALETTE_FLAG ;Set flag.
 	INY  ;Y = 2, pigeons palette.
 	BNE EXIT_RESTORE_PASSED_Y_PALETTE ;Put that palette in Y.
 EXIT_RESTORE_PIGEONS_PALETTE: ; 0x001266
 	LDY #$03 ;pallette pigeons.
 EXIT_RESTORE_PASSED_Y_PALETTE: ; 0x001268
-	STY PALETTE_UPLOAD_REQUEST ;store palette.
+	STY ENGINE_PALETTE_UPLOAD_REQUEST_FLAG ;store palette.
 EXIT_SPRITES_CLEAR_ENABLE_GFX: ; 0x00126A
-	JSR CLEAR_SPRITES ;clear.
-	JMP PPU_ENABLE_SPRITES/BACKGROUND ;Show screen again. Abuse RTS.
+	JSR ENGINE_CLEAR_SPRITES_OFFSCREEN ;No sprites.
+	JMP ENGINE_ENABLE_RENDERING ;Show screen again. Abuse RTS.
 SECONDARY_TEST_NO_HIT: ; 0x001270
 	LDA TESTING_FOR_HIT_OBJ_INDEX ;Load testing.
-	BNE EXIT_ZAPPER_MISS ;Target 2 not hit, goto.
+	BNE EXIT_ZAPPER_MISS ;Target 2 not hit, goto miss.
 	LDA TRGT2_STATUS ;Test if target 2 active.
 	BEQ EXIT_RESTORE_PALETTE ;Not active, leave.
 	LDA TRGT2_STATE ;Load state.
@@ -3039,8 +3039,8 @@ SECONDARY_TEST_NO_HIT: ; 0x001270
 	BNE EXIT_RESTORE_PALETTE ;Not correct state, can't hit, leave.
 	LDA #$01
 	STA TESTING_FOR_HIT_OBJ_INDEX ;Test target 2.
-	JSR CLEAR_NMI_RAN/BLOCK_PPU_UPDATE_FLAGS ;Clear flags.
-	JMP SECONDARY_LIGHT_TEST ;Goto.
+	JSR ENGINE_UPDATE_ITERATION_FLAGS ;Clear flags.
+	JMP SECONDARY_LIGHT_TEST_ENTRY ;Goto.
 EXIT_ZAPPER_MISS: ; 0x00128A
 	CMP #$02 ;Test attempt menu?
 	BNE EXIT_RESTORE_PALETTE ;No, in game, no hit. Bad first light read takes this path, too.
@@ -3051,49 +3051,49 @@ OBJ_Y_SKELETON/POS_ZAPPER_HIT_BOX_CREATE: ; 0x001292
 	STA TARGET_Y_COORD_CPY
 	LDA TRGT1_X_COORD,Y ;Move target X to XP.
 	STA TARGET_X_COORD_CPY
-	LDA TRGT1_SKELETON_USING,Y ;Load skeleton.
+	LDA TRGT1_SKELETON_ID,Y ;Load skeleton.
 	STA TMP_0C ;Skeleton to use to TMP_0C.
 	JMP SPRITE_SKELETON_HIT_BOX_CREATE ;Put skeleton to screen.
-SETUP_PASSLINE/VOLLEY: ; 0x0012A4
-	LDY HITS_REQUIRED_RAM_INDEX
+GAME_INIT_PASSLINE_FOR_ROUND: ; 0x0012A4
+	LDY SCRIPT_HITS_REQUIRED_DATA_INDEX ;Load index.
 RELOAD_HITS_REQD: ; 0x0012A6
-	LDA HITS_REQUIRED_FOR_LEVEL,Y
-	CMP #$FF ;if at end
-	BNE NO_MORE_DATA
-	LDY #$13 ;range to end.
-	BNE RELOAD_HITS_REQD ;load again
-NO_MORE_DATA: ; 0x0012B1
-	INY  ;inc for next level.
-	STY HITS_REQUIRED_RAM_INDEX ;store back current index.
-	STA HITS_REQUIRED_RAM ;Store loaded value.
+	LDA HITS_REQUIRED_FOR_LEVEL,Y ;Load needed.
+	CMP #$FF ;EOF
+	BNE VALID_REQUIRED_DATA ;Not, use value.
+	LDY #$13 ;Re-range. Could have used DEY????
+	BNE RELOAD_HITS_REQD ;Load it instead.
+VALID_REQUIRED_DATA: ; 0x0012B1
+	INY  ;Move index for next level.
+	STY SCRIPT_HITS_REQUIRED_DATA_INDEX ;store back current index.
+	STA SCRIPT_HITS_REQUIRED_TO_PASS_LEVEL ;Store loaded value.
 	LDA #$00
-	STA ROUND_TARGETS_SHOWN ;clear idk
-	STA TARGETS_HIT_IN_ROUND ;Reset
+	STA SCRIPT_ROUND_TARGETS_SHOWN_COUNT ;Init shown.
+	STA SCRIPT_ROUND_TARGETS_HIT_COUNT ;No hit.
 	LDA #$01
-	STA TRGT3_TYPE ;Dog type.
-	STA TRGT3_STATE ;State.
+	STA TRGT3_TYPE ;Make Doggo the game master.
+	STA TRGT3_STATE ;And enable him too yanno.
 	LDA #$FF
-	STA DUCK_MOVEMENT_CHANGE? ;Set idk.
+	STA SCRIPT_DUCK_MOVEMENT_CHANGE ;Set no change.
 	RTS 
-STATE_0x04_ROUND_END_SWITCH: ; 0x0012C9
-	LDA SWITCH_END_OF_ROUND
+MULTISTATE_END_OF_ROUND_SWITCH: ; 0x0012C9
+	LDA SCRIPT_END_OF_ROUND_SWITCH
 	JSR SWITCH_TO_CODE_PTRS
 	.LOW END_ROUND_STATE_0_MOVE_DELAY_SETUP ;Wait to shift targets on bottom.
 	.HIGH END_ROUND_STATE_0_MOVE_DELAY_SETUP
-	.LOW END_ROUND_STATE_1_TARGET_SHIFT ;Target switch.
+	.LOW END_ROUND_STATE_1_TARGET_SHIFT ;Target switchY to condense on bottom of screen.
 	.HIGH END_ROUND_STATE_1_TARGET_SHIFT
-	.LOW END_ROUND_STATE_3_BONUS ;Find bonus.
-	.HIGH END_ROUND_STATE_3_BONUS
+	.LOW END_ROUND_STATE_2_BONUS ;Find bonus and display.
+	.HIGH END_ROUND_STATE_2_BONUS
 	.LOW END_ROUND_STATE_3_NEXT_ROUND ;Display bonus.
 	.HIGH END_ROUND_STATE_3_NEXT_ROUND
 END_ROUND_STATE_0_MOVE_DELAY_SETUP: ; 0x0012D6
 	LDA #$10 ;timer for duck counting.
 	STA FAST_TIMERS ;set fast timer.
-	INC SWITCH_END_OF_ROUND ;next round state.
+	INC SCRIPT_END_OF_ROUND_SWITCH ;next round state.
 	RTS 
 END_ROUND_STATE_1_TARGET_SHIFT: ; 0x0012DD
 	LDA FAST_TIMERS
-	BNE RTS_17 ;RTS if timer not 0.
+	BNE RTS_GOOD ;RTS if timer not 0.
 	LDY #$00 ;Y is no changes flag.
 	LDX #$01 ;First check index.
 DUCK_MOVE_LOOP: ; 0x0012E5
@@ -3109,51 +3109,51 @@ SKIP_STATUS_SHIFT: ; 0x0012F7
 	CPX #$0A ;If X _ 0x0A
 	BNE DUCK_MOVE_LOOP ;!=, loop, not done.
 	DEY  ;Test if any swapped.
-	BNE NO_TARGET_HIT_DISPLAY_SWAP ;If rolled to 0xFF, finalized.
+	BNE FINISHED_TARGET_DISPLAY_SWAP ;If rolled to 0xFF, finalized.
 	LDA #$00
-	STA SWITCH_END_OF_ROUND ;Reset to delay state.
+	STA SCRIPT_END_OF_ROUND_SWITCH ;Reset to delay state.
 	JSR SND_TARGET_GROUPING_STEP ;Play sound.
-	JMP PPU_DISP_TARGET_STATUS ;Show new targets marks.
-NO_TARGET_HIT_DISPLAY_SWAP: ; 0x001309
-	LDA TARGETS_HIT_IN_ROUND ;Load val
-	CMP HITS_REQUIRED_RAM ;Test compared to needed.
-	BCC NOT_ENOUGH_TARGETS ;A < REQ'd, goto, game over.
+	JMP PPU_DISP_TARGET_STATUS ;Display new list.
+FINISHED_TARGET_DISPLAY_SWAP: ; 0x001309
+	LDA SCRIPT_ROUND_TARGETS_HIT_COUNT ;Load val
+	CMP SCRIPT_HITS_REQUIRED_TO_PASS_LEVEL ;Test compared to needed.
+	BCC NOT_ENOUGH_TARGETS_GAME_OVER_MESSAGE ;A < REQ'd, goto, game over.
 	JSR SND_ROUND_PASSED_SOUND ;Set success sound.
 	LDA #$00
-	STA FLAG_UPDATE_BULLETS_DISPLAY ;Reset
+	STA ENGINE_FLAG_UPDATE_BULLETS_DISPLAY/TARGET_FLASH_HELP ;Reset
 	LDA #$10 ;Set timer.
 	STA FAST_TIMERS
-	INC SWITCH_END_OF_ROUND ;Next state.
-	LDA LEVEL ;Load level. This code probably left over from port. No message at spot in arcade.
+	INC SCRIPT_END_OF_ROUND_SWITCH ;Next state.
+	LDA GAME_LEVEL ;Load level. This code probably left over from port. No message at spot in arcade.
 	AND #$0F ;Isolate bottom digit.
-	BNE RTS_17 ;Leave if not X0 level.
-	JSR CLEAR_SPRITES ;Clear sprites if X0
+	BNE RTS_GOOD ;Leave if not X0 level.
+	JSR ENGINE_CLEAR_SPRITES_OFFSCREEN ;Clear sprites if X0
 	LDA #$04 ;"Good" message. Probably mistake and was always meant to be shown but forgot about.
 	JMP DISP_GAME_MESSAGE ;Show message on background.
-RTS_17: ; 0x00132A
+RTS_GOOD: ; 0x00132A
 	RTS  ;Leave.
-NOT_ENOUGH_TARGETS: ; 0x00132B
-	JSR CLEAR_SPRITES ;Clear sprites.
+NOT_ENOUGH_TARGETS_GAME_OVER_MESSAGE: ; 0x00132B
+	JSR ENGINE_CLEAR_SPRITES_OFFSCREEN ;Clear sprites.
 	LDA #$08
 	JSR DISP_GAME_MESSAGE ;Game over BG update.
 	JSR SND_GAME_OVER_5X_LOWERING_BEEPS ;Game over sound.
 	LDX #$06 ;Future state.
 	LDA #$0C ;Future timer.
-	JMP SET_GAME_STATE_X_AFTER_TIMER_A_STATE
-END_ROUND_STATE_3_BONUS: ; 0x00133D
+	JMP SCRIPT_SETUP_FUTURE_STATE_HELPER
+END_ROUND_STATE_2_BONUS: ; 0x00133D
 	LDA FAST_TIMERS
-	BNE RTS_17 ;if not 0, RTS.
+	BNE RTS_GOOD ;if not 0, RTS.
 	LDA #$10
 	STA FAST_TIMERS ;reset timer.
-	INC FLAG_UPDATE_BULLETS_DISPLAY ;used different here?
-	LDA FLAG_UPDATE_BULLETS_DISPLAY
-	CMP #$0F
-	BNE SHOW_TRGT_NO_HITS ;pallette changing stuff, i believe.
-	LDA TARGETS_HIT_IN_ROUND
+	INC ENGINE_FLAG_UPDATE_BULLETS_DISPLAY/TARGET_FLASH_HELP ;Used as "show hit version" here to flash at end of round.
+	LDA ENGINE_FLAG_UPDATE_BULLETS_DISPLAY/TARGET_FLASH_HELP
+	CMP #$0F ;If _ #$0F, num flashes.
+	BNE SHOW_TRGT_ALT_NO_HIT/HIT ;!=, goto.
+	LDA SCRIPT_ROUND_TARGETS_HIT_COUNT ;Load count.
 	CMP #$0A ;is perfect?
 	BNE NOT_PERFECT ;not perfect?
 	JSR SND_BONUS_AWARDED ;play perfect sound.
-	LDA LEVEL ;get level
+	LDA GAME_LEVEL ;get level
 	LDX #$00 ;init bonus value.
 	CMP #$11
 	BCC BONUS_FOUND ;10K bonus.
@@ -3167,7 +3167,7 @@ END_ROUND_STATE_3_BONUS: ; 0x00133D
 BONUS_FOUND: ; 0x001369
 	LDA BONUS_SCORES_HIGH,X
 	STA TMP_05 ;store high.
-	STA TMP_0C
+	STA TMP_0C ;TODO why here?
 	LDA BONUS_SCORES_LOW,X
 	STA TMP_06 ;store low
 	LSR A ;shift since only 3 bytes
@@ -3179,35 +3179,35 @@ BONUS_FOUND: ; 0x001369
 	STA TMP_04
 	STA TMP_07 ;clear others.
 	LDA #$0F ;First group setting.
-	JSR SCORE_ADD/SUB
-	JSR DISP_NEW_SCORE
+	JSR SCORE_ADD/SUB_A_GROUP_FROM_TMP ;Adjust score.
+	JSR DISP_NEW_SCORE ;Display it.
 	LDA #$03
-	STA SWITCH_END_OF_ROUND ;end of round state.
+	STA SCRIPT_END_OF_ROUND_SWITCH ;end of round state.
 	LDA #$A0
 	STA FAST_TIMERS ;set timer.
-	JSR CLEAR_SPRITES ;no sprites.
-	LDA #$05
+	JSR ENGINE_CLEAR_SPRITES_OFFSCREEN ;no sprites.
+	LDA #$05 ;"PERFECT" message and bonus.
 	JMP DISP_GAME_MESSAGE ;update and RTS.
 NOT_PERFECT: ; 0x001399
-	LDA #$00 ;2D later.
+	LDA #$00 ;Switch ASAP.
 END_ROUND_STATE_SWITCH: ; 0x00139B
 	LDX #$02 ;future state duck.
-	LDY GAME_MODE_IN ;get mode.
+	LDY SCRIPT_MENU_CURSOR_SELECTED ;get mode.
 	CPY #$02 ;is pigeons?
-	BNE NOT_PIGEONS ;no if taken
+	BNE NOT_PIGEONS ;No, ducks future state.
 	LDX #$09 ;future state pigeons.
 NOT_PIGEONS: ; 0x0013A5
-	JSR SET_GAME_STATE_X_AFTER_TIMER_A_STATE
-	LDA #$00
-	JMP DISP_GAME_MESSAGE
-SHOW_TRGT_NO_HITS: ; 0x0013AD
-	AND #$01 ;which one to show.
-	BNE SHOW_ALL_UNHIT
+	JSR SCRIPT_SETUP_FUTURE_STATE_HELPER ;Setup future change.
+	LDA #$00 ;Clear message box.
+	JMP DISP_GAME_MESSAGE ;Goto.
+SHOW_TRGT_ALT_NO_HIT/HIT: ; 0x0013AD
+	AND #$01 ;Which one to show check.
+	BNE SHOW_ALL_UNHIT ;Set, goto, no hits shown for flash between.
 	JMP PPU_DISP_TARGET_STATUS ;show normal status.
 SHOW_ALL_UNHIT: ; 0x0013B4
 	LDX #$09 ;loop count.
 	LDA #$D6 ;duck not hit tile.
-	LDY GAME_MODE_IN
+	LDY SCRIPT_MENU_CURSOR_SELECTED
 	CPY #$02 ;is pigeons?
 	BNE STORE_TILES_LOOP ;if not pigeons.
 	LDA #$D4 ;pigeon unhit.
@@ -3224,11 +3224,11 @@ END_ROUND_STATE_3_NEXT_ROUND: ; 0x0013C9
 RTS_18: ; 0x0013D1
 	RTS 
 DISP_TARGETS_STATUS: ; 0x0013D2
-	LDA DYNAMIC_PALETTE_UPLOAD_FLAG
-	BNE RTS_19 ;white box displayed, ret.
+	LDA ENGINE_UPLOAD_DYNAMIC_PALETTE_FLAG ;Load flag.
+	BNE RTS_19 ;White box/controlled palette, leave.
 	INC DISPLAY_BLINK_TIMER
 	LDY #$00 ;index, target 1 first.
-	JSR PROCESS_TARGET
+	JSR PROCESS_TARGET ;Process the target.
 	LDY #$50 ;target 2
 PROCESS_TARGET: ; 0x0013DF
 	LDA TRGT1_STATUS,Y
@@ -3254,7 +3254,7 @@ TARGET_ACTIVE: ; 0x0013FB
 TRGT_NOT_KILLED: ; 0x001409
 	LDX #$D4 ;tile for clay pigeon
 OUT_TARGET_STATUS: ; 0x00140B
-	LDA GAME_MODE_IN
+	LDA SCRIPT_MENU_CURSOR_SELECTED
 	CMP #$02
 	BEQ COMMIT_TILE
 	INX  ;get proper char for ducks, D5/D6
@@ -3272,14 +3272,14 @@ COMMIT_TILE: ; 0x001413
 RTS_19: ; 0x001427
 	RTS 
 DISP_WORD_SHOT_HANDLER: ; 0x001428
-	LDA ZAP_SHOOTING_ENABLED_FLAG
+	LDA SCRIPT_ZAP_SHOOTING_ENABLED_FLAG
 	BEQ RTS_19 ;shots disabled
-	LDA SHOTS_REMAINING
+	LDA SCRIPT_SHOTS_REMAINING
 	BNE RTS_19 ;if any remaining, leave.
 	LDA SHOT_BLINK_COUNTER
 	AND #$07
 	BNE INC_BLINK_COUNTER ;if bottom bits set.
-	LDA DYNAMIC_PALETTE_UPLOAD_FLAG
+	LDA ENGINE_UPLOAD_DYNAMIC_PALETTE_FLAG
 	BNE RTS_19 ;if set, leave.
 	LDA SHOT_BLINK_COUNTER
 	AND #$08
@@ -3306,13 +3306,13 @@ INC_BLINK_COUNTER: ; 0x001461
 	RTS 
 DISP_GAME_MESSAGE: ; 0x001464
 	PHA  ;Save A passed.
-	JSR WAIT_FOR_NMI ;NMI
-	JSR PLAY_SOUNDS ;Sounds
+	JSR ENGINE_WAIT_FOR_NMI ;NMI
+	JSR ENGINE_PLAY_SOUNDS ;Sounds
 	PLA  ;Recover
 DISP_MESSAGE_FROM_A: ; 0x00146C
-	STA SPRITE_UPDATE_BASE ;Reuse var. MESSAGE_REQ_VAL
+	STA SPRITE_UPDATE_BASE/MESSAGE_VAL/PARTICLE_MOD ;Reuse var. MESSAGE_REQ_VAL
 	BEQ DISP_CLEAR_FIELD ;If A == 0, clear message on field.
-	ASL A ;*2 to makew into index.
+	ASL A ;Make into word index.
 	TAX  ;Now in X.
 	LDA MESSAGES_LOW,X
 	STA TMP_INDIR_JMP_L ;Store message data low.
@@ -3330,10 +3330,10 @@ MORE_BYTES_IN_BLOCK: ; 0x001485
 	INX  ;Index X++
 	DEC TMP_0F ;Dec size.
 	BNE MORE_BYTES_IN_BLOCK
-	LDA SPRITE_UPDATE_BASE
+	LDA SPRITE_UPDATE_BASE/MESSAGE_VAL/PARTICLE_MOD ;Load.
 	CMP #$01 ;level group?
-	BNE NO_LEVEL_IN_UPDATE ;If not value, no level.
-	LDA LEVEL ;Load level value.
+	BNE NO_LEVEL_PATCH_INTO_MESSAGE ;If not value, no level to patch in here.
+	LDA GAME_LEVEL ;Load level value.
 	LSR A ;Get high digit.
 	LSR A
 	LSR A
@@ -3341,18 +3341,18 @@ MORE_BYTES_IN_BLOCK: ; 0x001485
 	BEQ ONLY_ONE_DIGIT ;If high digit 0, only one digit.
 	STA PPU_BLOCK_BUF+23 ;Upper level digit if exists.
 ONLY_ONE_DIGIT: ; 0x0014A1
-	LDA LEVEL ;Load level again to get lower.
+	LDA GAME_LEVEL ;Load level again to get lower.
 	AND #$0F ;Bottom digit.
 	STA PPU_BLOCK_BUF+24 ;Store to buffer.
-	JMP NO_BONUS_TO_FILL_IN ;Goto.
-NO_LEVEL_IN_UPDATE: ; 0x0014AB
+	JMP NO_BONUS_PATCH_INTO_MESSAGE ;Goto.
+NO_LEVEL_PATCH_INTO_MESSAGE: ; 0x0014AB
 	CMP #$05 ;perfect level bonus?
-	BNE NO_BONUS_TO_FILL_IN
-	LDA TMP_0C ;bonus score for level digits?
+	BNE NO_BONUS_PATCH_INTO_MESSAGE ;!=, no bonus bytes mod.
+	LDA TMP_0C ;Move as bonus fill-in.
 	STA PPU_BLOCK_BUF+32
 	LDA TMP_0D
 	STA PPU_BLOCK_BUF+33
-	JMP NO_BONUS_TO_FILL_IN
+	JMP NO_BONUS_PATCH_INTO_MESSAGE ;Goto.
 DISP_CLEAR_FIELD: ; 0x0014BC
 	LDX #$44 ;68 bytes. DATA: 50 data, 10 addr. should be #60?
 	LDA #$24 ;Tile, clear BG tile.
@@ -3364,18 +3364,18 @@ LOOP_MAKE_BUF: ; 0x0014C0
 	STA PPU_BLOCK_BUF_SETTING ;save the setting to update buf.
 	LDX #$CB ;where putting, $20XX
 	BNE PPU_UPDATE_BLOCK_$20XX ;always taken.
-NO_BONUS_TO_FILL_IN: ; 0x0014CF
-	LDY #$00
-	LDA (TMP_INDIR_JMP_L),Y
+NO_BONUS_PATCH_INTO_MESSAGE: ; 0x0014CF
+	LDY #$00 ;Reset stream.
+	LDA (TMP_INDIR_JMP_L),Y ;Load val.
 	TAX  ;get ppu high addr
 PPU_UPDATE_BLOCK_$20XX: ; 0x0014D4
 	LDY #$20 ;PPU_ADDR high.
 	JMP MAKE_SETUP_PPU_BLOCK ;X set to PPU_ADDR low. PPU_BLOCK_BUF to PPU_UPDATE_BUF
-CLEAR_MEMORIES: ; 0x0014D9
-	JSR CLEAR_SPRITES ;Clear sprites.
-	JSR CLEAR_RAM_$40-$BF ;Clear ZP.
-	JMP CLEAR_0300-03FF_OBJ_DATA_INIT ;Clear obj. Abuse RTS.
-SND_HALT: ; 0x0014E2
+ENGINE_CLEAR_MEMORIES: ; 0x0014D9
+	JSR ENGINE_CLEAR_SPRITES_OFFSCREEN ;Clear sprites.
+	JSR ENGINE_CLEAR_ZP_$40-$BF ;Clear ZP.
+	JMP ENGINE_CLEAR_$300_PAGE ;Clear obj page, abuse RTS.
+ENGINE_SOUND_HALT_CURRENT: ; 0x0014E2
 	LDA #$01 ;disable all registers/sounds.
 	BNE SND_COMBINE_F0
 SND_GUNSHOT: ; 0x0014E6
@@ -3423,7 +3423,7 @@ SND_TARGET_GROUPING_STEP: ; 0x001519
 SND_ROUND_PASSED_SOUND: ; 0x00151D
 	LDA #$40
 	BNE SND_COMBINE_F1
-SND_PAUSE: ; 0x001521
+SCRIPT_PLAY_SOUND_PAUSE: ; 0x001521
 	LDA #$80
 SND_COMBINE_F1: ; 0x001523
 	ORA SND_PLAY_F1
@@ -3455,36 +3455,36 @@ SND_COMBINE_F2: ; 0x001546
 	STA SND_PLAY_F2
 	RTS 
 STATE_0x08_PIGEONS_SCREEN_SETUP: ; 0x00154B
-	JSR WAIT_FOR_NMI ;this is for the pigeons game.
-	LDX #$6C ;ptr $E26C
+	JSR ENGINE_WAIT_FOR_NMI ;this is for the pigeons game.
+	LDX #$6C ;Ptr $226C
 	LDY #$E2
-	JSR UPLOAD_PPU_FILE ;upload file.
+	JSR ENGINE_UPLOAD_PPU_FILE_XY ;upload file.
 	LDA #$03
-	STA PALETTE_UPLOAD_REQUEST ;Upload palette.
+	STA ENGINE_PALETTE_UPLOAD_REQUEST_FLAG ;Upload palette.
 	LDA #$00
 	STA AUTOMESSAGE_DISPLAY_INDEX ;reset update index.
 	LDA #$09
-	STA SWITCH_MAIN_GAME_STATE ;go to next state.
-	JSR SET_PPU_SCROLL
-	JSR PPU_ENABLE_SPRITES/BACKGROUND
+	STA ENGINE_MAIN_GAME_STATE_SWITCH ;go to next state.
+	JSR NMI_COMMIT_SCROLL_TO_PPU_REGISTERS
+	JSR ENGINE_ENABLE_RENDERING
 	JMP SND_PIGEON_ROUND_INTRO ;play sound. TODO:which snd
 STATE_0x09_PIGEON_SETUP_ROUND: ; 0x00156A
-	JSR CLEAR_MEMORIES ;setup memory.
-	JSR SETUP_PASSLINE/VOLLEY ;set up hits for level.
+	JSR ENGINE_CLEAR_MEMORIES ;setup memory.
+	JSR GAME_INIT_PASSLINE_FOR_ROUND ;set up hits for level.
 	JSR MAKE_DISP_BUF_PASS_LINE ;display hits per level.
 	JSR MAKE_DISP_BUF_LEVEL ;display level #
-	JSR WAIT_FOR_NMI
-	JSR PLAY_SOUNDS
+	JSR ENGINE_WAIT_FOR_NMI
+	JSR ENGINE_PLAY_SOUNDS
 	LDA #$01
-	STA FLAG_UPDATE_BULLETS_DISPLAY ;disable shots.
+	STA ENGINE_FLAG_UPDATE_BULLETS_DISPLAY/TARGET_FLASH_HELP ;disable shots.
 	LDA #$03
-	STA SHOTS_REMAINING ;set remaining.
+	STA SCRIPT_SHOTS_REMAINING ;set remaining.
 	JSR DISP_SHOTS_LEFT
 	JSR PPU_DISP_TARGET_STATUS
 	LDA #$06 ;Intro message index.
 	STA AUTOMESSAGE_DISPLAY_INDEX ;Set to intro message index.
 	LDA #$0D
-	STA SWITCH_MAIN_GAME_STATE ;Move to intro message state.
+	STA ENGINE_MAIN_GAME_STATE_SWITCH ;Move to intro message state.
 	RTS 
 STATE_0x0A_PIGEON_VOLLEY: ; 0x001593
 	LDA #$01
@@ -3493,61 +3493,61 @@ STATE_0x0A_PIGEON_VOLLEY: ; 0x001593
 	STA TRGT1_STATE ;target state. pigeons always 1 targets.
 	STA TRGT2_STATE
 	LDA #$30 ;max value from array.
-	LDX LEVEL
+	LDX GAME_LEVEL
 	CPX #$10 ;max level value
 	BCS LEVEL_MAXED ;if X >= 10, skip load.
 	DEX  ;Range 0-8. Level 0 bug here, also. Mistake.
 	LDA PIGEON_LEVEL_DIFFICULTY_LUT,X
 LEVEL_MAXED: ; 0x0015AD
-	STA PIGEON_DIFFICULTY ;not sure
+	STA PIGEON_DIFFICULTY ;Store difficulty.
 	LDA #$80
-	STA COUNTDOWN_TO_ENABLE_TARGETS ;Set target enable countdown.
+	STA SCRIPT_COUNTDOWN_TO_ENABLE_TARGETS ;Set target enable countdown.
 	LDA #$01
-	STA FLAG_UPDATE_BULLETS_DISPLAY ;disable shooting.
+	STA ENGINE_FLAG_UPDATE_BULLETS_DISPLAY/TARGET_FLASH_HELP ;disable shooting.
 	LDA #$03
-	STA SHOTS_REMAINING ;store shots remaining.
+	STA SCRIPT_SHOTS_REMAINING ;store shots remaining.
 	LDA #$02
-	STA NUM_TARGETS_PER_ATTEMPT ;set # trgts
+	STA SCRIPT_TARGETS_PER_ATTEMPT ;set # trgts
 	LDA #$00
-	STA FLAG_ZAPPER_TRIGGER_RELEASED ;disable trigger.
-	STA ZAP_SHOOTING_ENABLED_FLAG ;disable shots.
-	STA TRGTS_SHOT_DURING_ATTEMPT ;clear any hit. unused in pigeons?
+	STA ZAP_TRIGGER_RELEASED ;Disable trigger.
+	STA SCRIPT_ZAP_SHOOTING_ENABLED_FLAG ;No shots.
+	STA SCRIPT_FLAG_HIT_DURING_VOLLEY ;No hits. Unused in pigeons?
 	JSR DISP_SHOTS_LEFT ;show shots.
 	JSR PPU_DISP_TARGET_STATUS ;show targets.
 	LDA #$0B
-	STA SWITCH_MAIN_GAME_STATE ;next state.
-	RTS 
+	STA ENGINE_MAIN_GAME_STATE_SWITCH ;next state.
+	RTS  ;Leave.
 STATE_0x0B_PIGEON_VOLLEY_CONTINUE: ; 0x0015D2
-	JSR PROCESS_ZAPPER_TRIGGER
-	JSR PROCESS_ZAPPER_READING
-	JSR PROCESS_TARGETS_PIGEONS
-	JSR DISP_SHOTS_LEFT
-	JSR DISP_TARGETS_STATUS
-	JSR DISP_TARGETS_HIT
-	JSR DISP_SCORE_SPRITES
-	JSR DISP_WORD_SHOT_HANDLER
+	JSR SCRIPT_PROCESS_ZAPPER_TRIGGER_STATE ;Process trigger.
+	JSR PROCESS_ZAPPER_READING ;Zapper read.
+	JSR PROCESS_TARGETS_PIGEONS ;Process pigeons.
+	JSR DISP_SHOTS_LEFT ;Bullets.
+	JSR DISP_TARGETS_STATUS ;Targets.
+	JSR DISP_TARGETS_HIT ;Hit.
+	JSR DISP_SCORE_SPRITES ;Score for objects shot.
+	JSR DISP_WORD_SHOT_HANDLER ;Shot blink.
 	NOP  ;removed feature?
 	NOP 
 	NOP 
-	RTS 
+	RTS  ;Leave.
 PROCESS_TARGETS_PIGEONS: ; 0x0015EE
 	LDA TRGT1_STATUS
 	BEQ PROCESS_TARGET_2
 	LDY #$00 ;origin $300
-	STY ORIGIN_SLOT_OF_ZP_OBJ_COPY ;save where obj info came from.
-	JSR COPY_OBJ_$3YY_TO_OBJ_ZP ;move obj to RAM.
+	STY ENGINE_OBJ_ZP_SLOT_INDEX ;save where obj info came from.
+	JSR ENGINE_COPY_OBJ_TO_ZP_COPY ;move obj to RAM.
 	JSR PIGEON_TARGET_STATE_SWITCH ;handle target.
-	JSR COPY_OBJ_ZP_BACK_TO_ORIGIN ;move to $500.
+	JSR ENGINE_COPY_OBJ_TO_RAM ;move to $500.
 PROCESS_TARGET_2: ; 0x001600
 	LDA TRGT2_STATUS
 	BEQ PROCESS_OTHER
 	LDY #$50 ;origin $350
-	INC ORIGIN_SLOT_OF_ZP_OBJ_COPY ;to 1.
-	JSR COPY_OBJ_$3YY_TO_OBJ_ZP
+	INC ENGINE_OBJ_ZP_SLOT_INDEX ;to 1.
+	JSR ENGINE_COPY_OBJ_TO_ZP_COPY
 	JSR PIGEON_TARGET_STATE_SWITCH
-	JSR COPY_OBJ_ZP_BACK_TO_ORIGIN ;move to $500.
+	JSR ENGINE_COPY_OBJ_TO_RAM ;move to $500.
 PROCESS_OTHER: ; 0x001612
-	LDA NUM_TARGETS_PER_ATTEMPT
+	LDA SCRIPT_TARGETS_PER_ATTEMPT
 	BNE TARGET_ENABLE_COUNTDOWN_PIGEONS
 	LDX TRGT1_STATE
 	LDY TRGT2_STATE
@@ -3563,30 +3563,30 @@ IS_MOVING: ; 0x001627
 	BNE RTS_20 ;rts if any state.
 	JSR DISP_SHOT_TEXT ;display text always.
 	LDA #$00
-	STA ZAP_SHOOTING_ENABLED_FLAG ;disable shot.
-	LDA ROUND_TARGETS_SHOWN ;end of round?
+	STA SCRIPT_ZAP_SHOOTING_ENABLED_FLAG ;disable shot.
+	LDA SCRIPT_ROUND_TARGETS_SHOWN_COUNT ;end of round?
 	CMP #$0A ;end of targets.
 	BEQ ALL_TARGETS_SHOWN?
 	LDA #$0A ;game state. pigeons main.
 	BNE GAME_STATE_SWITCH
 ALL_TARGETS_SHOWN?: ; 0x001640
 	LDA #$00
-	STA SWITCH_END_OF_ROUND ;reset end round state.
-	LDA #$0C
+	STA SCRIPT_END_OF_ROUND_SWITCH ;Reset end of round switch.
+	LDA #$0C ;Main state.
 GAME_STATE_SWITCH: ; 0x001646
-	STA SWITCH_MAIN_GAME_STATE ;goto state.
-	JMP CLEAR_SPRITES ;clear sprites then RTS.
+	STA ENGINE_MAIN_GAME_STATE_SWITCH ;goto state.
+	JMP ENGINE_CLEAR_SPRITES_OFFSCREEN ;clear sprites then RTS.
 TARGET_ENABLE_COUNTDOWN_PIGEONS: ; 0x00164B
-	LDA COUNTDOWN_TO_ENABLE_TARGETS ;Get timer
+	LDA SCRIPT_COUNTDOWN_TO_ENABLE_TARGETS ;Get timer
 	BEQ RTS_20 ;If 0, RTS.
-	DEC COUNTDOWN_TO_ENABLE_TARGETS ;Otherwise, decrease.
+	DEC SCRIPT_COUNTDOWN_TO_ENABLE_TARGETS ;Otherwise, decrease.
 RTS_20: ; 0x001651
 	RTS  ;Leave.
 PIGEON_TARGET_STATE_SWITCH: ; 0x001652
 	LDA OBJ_ZP_STATE ;target states.
 	JSR SWITCH_TO_CODE_PTRS
-	.LOW STATE_0x01_IDLE ;Uninit'd state.
-	.HIGH STATE_0x01_IDLE
+	.LOW STATE_GENERAL_IDLE ;Uninit'd state.
+	.HIGH STATE_GENERAL_IDLE
 	.LOW TARGET_STATE_1_INIT_BASE
 	.HIGH TARGET_STATE_1_INIT_BASE
 	.LOW TARGET_STATE_2_INIT_SPECIFIC_INFO
@@ -3597,10 +3597,10 @@ PIGEON_TARGET_STATE_SWITCH: ; 0x001652
 	.HIGH TARGET_STATE_4_HIT_EXPLOSION_SETUP
 	.LOW TARGET_STATE_5_EXPLOSION_ANIMATION
 	.HIGH TARGET_STATE_5_EXPLOSION_ANIMATION
-	.LOW STATE_0x01_IDLE
-	.HIGH STATE_0x01_IDLE
-	.LOW STATE_0x01_IDLE
-	.HIGH STATE_0x01_IDLE
+	.LOW STATE_GENERAL_IDLE
+	.HIGH STATE_GENERAL_IDLE
+	.LOW STATE_GENERAL_IDLE
+	.HIGH STATE_GENERAL_IDLE
 	.LOW TARGET_STATE_8_REMOVE_OBJ_0
 	.HIGH TARGET_STATE_8_REMOVE_OBJ_0
 TARGET_STATE_1_INIT_BASE: ; 0x001669
@@ -3614,24 +3614,24 @@ LOOP_INIT_DATA: ; 0x00166B
 	STA PIGEON_FLAG_NEEDS_CLEARED? ;set something to true.
 	RTS 
 TARGET_STATE_2_INIT_SPECIFIC_INFO: ; 0x001678
-	LDA COUNTDOWN_TO_ENABLE_TARGETS
+	LDA SCRIPT_COUNTDOWN_TO_ENABLE_TARGETS
 	BNE RTS_21 ;not ready to enable.
 	LDA #$01
-	STA ZAP_SHOOTING_ENABLED_FLAG ;enable shots.
-	JSR RNG_ADVANCE ;get random number.
+	STA SCRIPT_ZAP_SHOOTING_ENABLED_FLAG ;enable shots.
+	JSR ENGINE_RNG_ADVANCE ;get random number.
 	AND #$3F ;get %0011 1111
 	TAY 
 	INY 
-	STY COUNTDOWN_TO_ENABLE_TARGETS ;store countdown to enable.
-	JSR RNG_ADVANCE ;get new random number.
+	STY SCRIPT_COUNTDOWN_TO_ENABLE_TARGETS ;store countdown to enable.
+	JSR ENGINE_RNG_ADVANCE ;get new random number.
 	AND #$0F ;range
-	CMP DUCK_MOVEMENT_CHANGE?
+	CMP SCRIPT_DUCK_MOVEMENT_CHANGE
 	BNE NO_MATCH_9C ;not equal.
 	CLC 
 	ADC #$01 ;add 1
 	AND #$0F ;range
 NO_MATCH_9C: ; 0x001697
-	STA DUCK_MOVEMENT_CHANGE? ;store back index value.
+	STA SCRIPT_DUCK_MOVEMENT_CHANGE ;store back index value.
 	ASL A ;index * 2
 	STA TMP_0C ;store value.
 	ASL A ;index * 4
@@ -3650,10 +3650,10 @@ NO_MATCH_9C: ; 0x001697
 	STA OBJ_ZP_EXTRA_PTR/DATA_INDEX_STORAGE
 	LDA PIGEON_DATA_FLYAWAY_COUNTDOWN,X
 	STA OBJ_ZP_COPY_FLYAWAY_COUNTDOWN
-	INC ROUND_TARGETS_SHOWN ;targets_shown++
-	LDA ROUND_TARGETS_SHOWN
+	INC SCRIPT_ROUND_TARGETS_SHOWN_COUNT ;targets_shown++
+	LDA SCRIPT_ROUND_TARGETS_SHOWN_COUNT
 	STA OBJ_ZP_TARGET_NUMBER ;store target this is.
-	DEC NUM_TARGETS_PER_ATTEMPT
+	DEC SCRIPT_TARGETS_PER_ATTEMPT
 	LDA #$FF
 	STA OBJ_ZP_$47_PIGEON_UNK
 	JSR SND_PIGEON_LAUNCH_SOUND ;Set rising sound?
@@ -3686,7 +3686,7 @@ LESS_THAN_7: ; 0x0016EE
 	ADC PIGEON_DIFFICULTY ;adc with wtf this is.
 	TAX  ;is now index.
 	LDA PIGEON_DATA_DIFFICULTY,X
-	STA OBJ_ZP_DUCK_DIFF
+	STA OBJ_ZP_DUCK_DIFFICULTY
 IS_EQ: ; 0x0016FD
 	JSR GET_DUCK_DIFFICULTY ;get difficulty data, aka speed per frame.
 DIFFICULTY_LOOP: ; 0x001700
@@ -3715,7 +3715,7 @@ DIFFICULTY_LOOP: ; 0x001700
 	SEC 
 	SBC #$18
 	STA OBJ_ZP_COPY_PIGEON_FRAME_INDEX?
-	LDX LEVEL ;get level.
+	LDX GAME_LEVEL ;get level.
 	LDA #$00
 	CPX #$12
 	BCC SWITCH_DONE ;if level < 12, A=0
@@ -3739,7 +3739,7 @@ TARGET_STATE_4_HIT_EXPLOSION_SETUP: ; 0x001752
 	LDX OBJ_ZP_TARGET_NUMBER ;get target index.
 	LDA #$01
 	STA DUCKS_HIT_ARRAY-1,X ;mark hit.
-	STA FLAG_UPDATE_TARGETS_HIT ;update graphics bottom of screen.
+	STA ENGINE_FLAG_UPDATE_TARGETS_HIT ;update graphics bottom of screen.
 	LDA OBJ_ZP_COPY_PIGEON_FRAME_INDEX? ;get index.
 	ASL A
 	ASL A ;mul * 4
@@ -3765,14 +3765,14 @@ LOOP_COORD_STUFF: ; 0x001774
 	CPX #$20 ;final.
 	BNE LOOP_COORD_STUFF ;loop 16 times.
 	JSR ADD_TO_SCORE_PIGEON ;add to score.
-	LDX OBJ_ZP_SPRITE_SLOT_START
+	LDX OBJ_ZP_SPRITE_PAGE_SLOT_PRIMARY_INDEX
 	JSR OBJ_ZP_SPRITE_OFF_SCREEN ;take off screen.
 	INC OBJ_ZP_STATE ;next state.
 	RTS 
 TARGET_STATE_5_EXPLOSION_ANIMATION: ; 0x00178F
 	JSR PIGEON_CLEAR_OBJ_SPRITES+MOVE_START? ;clear the sprites, reassign location.
 	JSR PROCESS_PIGEON_PARTICLES ;process particles.
-	LDA OBJ_ZP_SPRITE_SLOT_START
+	LDA OBJ_ZP_SPRITE_PAGE_SLOT_PRIMARY_INDEX
 	STA SPRITE_INDEX_VAL ;reset index writing.
 	LDY OBJ_ZP_PARTICLE_TIMER_1 ;get timer?
 	INY  ;next
@@ -3802,7 +3802,7 @@ CLEAR_PARTICLE_DISABLE: ; 0x0017BE
 TARGET_STATE_8_REMOVE_OBJ_0: ; 0x0017C5
 	LDA #$00 ;no hit, disable.
 	STA OBJ_ZP_STATE
-	LDX OBJ_ZP_SPRITE_SLOT_START ;get where spr index starts.
+	LDX OBJ_ZP_SPRITE_PAGE_SLOT_PRIMARY_INDEX ;get where spr index starts.
 	JMP OBJ_ZP_SPRITE_OFF_SCREEN ;move off screen. abuse RTS.
 PIGEON_UPDATE_PARTICLES: ; 0x0017CE
 	STA TMP_0D ;if set, remove sprites.
@@ -3842,28 +3842,28 @@ PIGEON_CLEAR_OBJ_SPRITES+MOVE_START?: ; 0x001805
 	BEQ RTS_22 ;RTS if 0
 	LDA #$00
 	STA PIGEON_FLAG_NEEDS_CLEARED? ;clear
-	LDX OBJ_ZP_SPRITE_SLOT_START ;get obj index start
+	LDX OBJ_ZP_SPRITE_PAGE_SLOT_PRIMARY_INDEX ;get obj index start
 	JSR OBJ_ZP_SPRITE_OFF_SCREEN ;clear sprite.
 	LDA #$50
-	STA OBJ_ZP_SPRITE_SLOT_START ;modify start index.
+	STA OBJ_ZP_SPRITE_PAGE_SLOT_PRIMARY_INDEX ;modify start index.
 	LDA #$9F
 	STA OBJ_ZP_SPRITE_SLOT_END ;modify final index. not sure why either trgt?
 RTS_22: ; 0x00181A
 	RTS 
 GET_DUCK_DIFFICULTY: ; 0x00181B
-	LDX OBJ_ZP_DUCK_DIFF
+	LDX OBJ_ZP_DUCK_DIFFICULTY ;Load index.
 	LDA OBJ_DUCK_DIFF_VALS_GRP,X ;from difficulty.
 	PHA  ;save value.
 	INX  ;next index.
 	TXA 
-	AND #$03 ;get %0000 00**
-	BNE GROUP_NO_SPILL
+	AND #$03 ;Keep 0x3.
+	BNE GROUP_NO_SPILL ;!= 0, goto.
 	DEX  ;loop group difficult values.
 	DEX 
 	DEX 
 	DEX 
 GROUP_NO_SPILL: ; 0x00182B
-	STX OBJ_ZP_DUCK_DIFF ;store next arr value.
+	STX OBJ_ZP_DUCK_DIFFICULTY ;store next arr value.
 	PLA  ;pull value saved from array.
 	RTS  ;return it.
 PIGEON_X/Y_ROUTINE: ; 0x00182F
@@ -4143,12 +4143,12 @@ RTS_23: ; 0x0019F5
 PROCESS_PIGEON_BLOWUP_SWITCH: ; 0x0019F6
 	LDA OBJ_ZP_ADD'L_STATE ;last table. pigeons something.
 	AND #$03 ;bottom 3 bits.
-	STA SPRITE_UPDATE_BASE ;index of working on?
+	STA SPRITE_UPDATE_BASE/MESSAGE_VAL/PARTICLE_MOD ;index of working on?
 	LDA TMP_0E ;Value used in switch.
 PIGEON_BREAKUP_SWITCH: ; 0x0019FE
 	JSR SWITCH_TO_CODE_PTRS ;moves the particles.
-	.LOW STATE_0x01_IDLE
-	.HIGH STATE_0x01_IDLE
+	.LOW STATE_GENERAL_IDLE
+	.HIGH STATE_GENERAL_IDLE
 	.LOW PARTICLE_MOVE_+X,-Y_F>X,C>Y
 	.HIGH PARTICLE_MOVE_+X,-Y_F>X,C>Y
 	.LOW PARTICLE_MOVE_+X,-Y,C>XY_DEPENDENT
@@ -4163,8 +4163,8 @@ PIGEON_BREAKUP_SWITCH: ; 0x0019FE
 	.HIGH PARTICLE_MOVE_+Y,+X_?>Y,C>X_DEPENDENT
 	.LOW PARTICLE_MOVE_+X,+Y_F>X,C>Y
 	.HIGH PARTICLE_MOVE_+X,+Y_F>X,C>Y
-	.LOW STATE_0x01_IDLE
-	.HIGH STATE_0x01_IDLE
+	.LOW STATE_GENERAL_IDLE
+	.HIGH STATE_GENERAL_IDLE
 	.LOW PARTICLE_MOVE_-X,+Y_F>X,C>Y
 	.HIGH PARTICLE_MOVE_-X,+Y_F>X,C>Y
 	.LOW PARTICLE_MOVE_-X,+Y_?>Y,C>X
@@ -4180,97 +4180,97 @@ PIGEON_BREAKUP_SWITCH: ; 0x0019FE
 	.LOW PARTICLE_MOVE_-X,-Y_F>X,C>Y
 	.HIGH PARTICLE_MOVE_-X,-Y_F>X,C>Y
 PARTICLE_MOVE_+X,-Y_F>X,C>Y: ; 0x001A21
-	LDA TMP_0F
-	JSR PARTICLE_MOD_X_COORD
+	LDA TMP_0F ;Load amount to mod.
+	JSR PARTICLE_MOD_X_COORD ;Do sub.
 PARTICLE_MOVE_-Y_C>Y: ; 0x001A26
-	LDA TMP_0C
-	JSR TWO_COMPLIMENT_A_REGISTER ;invert
+	LDA TMP_0C ;Load amount to mod.
+	JSR TWO_COMPLIMENT_A_REGISTER ;Invert it.
 	JMP PARTICLE_MOD_Y_COORD ;abuse RTS.
 PARTICLE_MOVE_+X,-Y,C>XY_DEPENDENT: ; 0x001A2E
-	LDA SPRITE_UPDATE_BASE
+	LDA SPRITE_UPDATE_BASE/MESSAGE_VAL/PARTICLE_MOD ;Load.
 	BEQ PARTICLE_MOVE_-Y_C>Y ;if eq, only -Y.
 	JSR PARTICLE_MOVE_-Y_C>Y ;otherwise, JSR.
 	JMP PARTICLE_MOVE_+X_C>X
 PARTICLE_MOVE_+X,-Y_F>Y,C>X: ; 0x001A38
-	LDA TMP_0F
-	JSR TWO_COMPLIMENT_A_REGISTER
-	JSR PARTICLE_MOD_Y_COORD
+	LDA TMP_0F ;Load.
+	JSR TWO_COMPLIMENT_A_REGISTER ;Invert it.
+	JSR PARTICLE_MOD_Y_COORD ;Mod Y.
 PARTICLE_MOVE_+X_C>X: ; 0x001A40
-	LDA TMP_0C
-	JMP PARTICLE_MOD_X_COORD
+	LDA TMP_0C ;Load.
+	JMP PARTICLE_MOD_X_COORD ;Mod X.
 PARTICLE_MOVE_+X,+Y_C>X,F>Y: ; 0x001A45
-	JSR PARTICLE_MOVE_+X_C>X
+	JSR PARTICLE_MOVE_+X_C>X ;Do other.
 PARTICLE_MOVE_+Y_F>Y: ; 0x001A48
-	LDA TMP_0F
-	JMP PARTICLE_MOD_Y_COORD
+	LDA TMP_0F ;Load TMP.
+	JMP PARTICLE_MOD_Y_COORD ;Mod Y with.
 PARTICLE_MOVE_+Y,+X_?>Y,C>X_DEPENDENT: ; 0x001A4D
-	LDA SPRITE_UPDATE_BASE
+	LDA SPRITE_UPDATE_BASE/MESSAGE_VAL/PARTICLE_MOD
 	BEQ PARTICLE_MOVE_+Y_F>Y ;if base 0, do only.
-	JSR PARTICLE_MOVE_+Y,C>Y
-	JMP PARTICLE_MOVE_+X_C>X
+	JSR PARTICLE_MOVE_+Y,C>Y ;Do sub.
+	JMP PARTICLE_MOVE_+X_C>X ;Goto.
 PARTICLE_MOVE_+X,+Y_F>X,C>Y: ; 0x001A57
-	LDA TMP_0F
-	JSR PARTICLE_MOD_X_COORD
+	LDA TMP_0F ;Load TMPF
+	JSR PARTICLE_MOD_X_COORD ;Do sub on X.
 PARTICLE_MOVE_+Y,C>Y: ; 0x001A5C
-	LDA TMP_0C
-	JMP PARTICLE_MOD_Y_COORD
+	LDA TMP_0C ;Load TMPC
+	JMP PARTICLE_MOD_Y_COORD ;Mod Y.
 PARTICLE_MOVE_-X,+Y_F>X,C>Y: ; 0x001A61
-	LDA TMP_0F
-	JSR TWO_COMPLIMENT_A_REGISTER
-	JSR PARTICLE_MOD_X_COORD
-	JMP PARTICLE_MOVE_+Y,C>Y
+	LDA TMP_0F ;Load.
+	JSR TWO_COMPLIMENT_A_REGISTER ;Compliment it.
+	JSR PARTICLE_MOD_X_COORD ;Mod X.
+	JMP PARTICLE_MOVE_+Y,C>Y ;Goto other.
 PARTICLE_MOVE_-X,+Y_?>Y,C>X: ; 0x001A6C
-	LDA SPRITE_UPDATE_BASE
-	BEQ PARTICLE_MOVE_+Y_F>Y
-	LDA TMP_0C
-	JSR PARTICLE_MOD_Y_COORD
+	LDA SPRITE_UPDATE_BASE/MESSAGE_VAL/PARTICLE_MOD ;Load.
+	BEQ PARTICLE_MOVE_+Y_F>Y ;== 0, goto.
+	LDA TMP_0C ;Load TMP.
+	JSR PARTICLE_MOD_Y_COORD ;Mod Y with.
 PARTICLE_MOVE_-X_C>X: ; 0x001A75
-	LDA TMP_0C
-	JSR TWO_COMPLIMENT_A_REGISTER
-	JMP PARTICLE_MOD_X_COORD
+	LDA TMP_0C ;Load C.
+	JSR TWO_COMPLIMENT_A_REGISTER ;Invert it.
+	JMP PARTICLE_MOD_X_COORD ;Mod X with.
 PARTICLE_MOVE_-X,+Y_C>X,F>Y: ; 0x001A7D
-	LDA TMP_0F
-	JSR PARTICLE_MOD_Y_COORD
-	JMP PARTICLE_MOVE_-X_C>X
+	LDA TMP_0F ;Load TMP.
+	JSR PARTICLE_MOD_Y_COORD ;Do sub.
+	JMP PARTICLE_MOVE_-X_C>X ;Goto.
 PARTICLE_MOVE_-X,-Y_C>X,F>Y: ; 0x001A85
-	JSR PARTICLE_MOVE_-X_C>X
+	JSR PARTICLE_MOVE_-X_C>X ;Do sub.
 PARTICLE_MOVE_-Y_F>Y: ; 0x001A88
-	LDA TMP_0F
-	JSR TWO_COMPLIMENT_A_REGISTER
-	JMP PARTICLE_MOD_Y_COORD
+	LDA TMP_0F ;Load TMP.
+	JSR TWO_COMPLIMENT_A_REGISTER ;Invert it.
+	JMP PARTICLE_MOD_Y_COORD ;Mod Y with.
 PARTICLE_MOVE_-X,-Y_?>Y,C>X_DEPENDENT: ; 0x001A90
-	LDA SPRITE_UPDATE_BASE
-	BEQ PARTICLE_MOVE_-Y_F>Y
-	JSR PARTICLE_MOVE_-X_C>X
-	JMP PARTICLE_MOVE_-Y_C>Y
+	LDA SPRITE_UPDATE_BASE/MESSAGE_VAL/PARTICLE_MOD ;Load.
+	BEQ PARTICLE_MOVE_-Y_F>Y ;== 0, goto.
+	JSR PARTICLE_MOVE_-X_C>X ;Do sub.
+	JMP PARTICLE_MOVE_-Y_C>Y ;Goto.
 PARTICLE_MOVE_-X,-Y_F>X,C>Y: ; 0x001A9A
-	LDA TMP_0F
-	JSR TWO_COMPLIMENT_A_REGISTER
-	JSR PARTICLE_MOD_X_COORD
-	JMP PARTICLE_MOVE_-Y_C>Y
+	LDA TMP_0F ;Load ??
+	JSR TWO_COMPLIMENT_A_REGISTER ;Compliment.
+	JSR PARTICLE_MOD_X_COORD ;Do X mod.
+	JMP PARTICLE_MOVE_-Y_C>Y ;Goto.
 PARTICLE_MOD_Y_COORD: ; 0x001AA5
-	CLC  ;not sure for existence of this subroutine.
-	ADC OBJ_ZP_COPY_PARTICLES_Y_BASE,X ;add with this+X
-	CMP #$07
-	BCC CLEAR_A ;<7, store 0.
-	CMP #$C7
-	BCC STORE_A ;<C7, store val.
-CLEAR_A: ; 0x001AB0
-	LDA #$00 ;reset to 0.
-STORE_A: ; 0x001AB2
-	STA OBJ_ZP_COPY_PARTICLES_Y_BASE,X ;store.
-	RTS 
+	CLC  ;Prep add.
+	ADC OBJ_ZP_COPY_PARTICLES_Y_BASE,X ;Add with Xobj.
+	CMP #$07 ;If _ #$07
+	BCC STORE_RESET ;<, reset.
+	CMP #$C7 ;If _ #$C7
+	BCC STORE_NEW_VAL ;<, valid, store.
+STORE_RESET: ; 0x001AB0
+	LDA #$00 ;Reset.
+STORE_NEW_VAL: ; 0x001AB2
+	STA OBJ_ZP_COPY_PARTICLES_Y_BASE,X ;Store val.
+	RTS  ;Leave.
 PARTICLE_MOD_X_COORD: ; 0x001AB5
-	CLC  ;not sure for existence of this subroutine.
-	ADC OBJ_ZP_COPY_PARTICLES_X_BASE,X ;add with.
-	CMP #$07
-	BCC CLEAR_A_0 ;<7, store 0.
-	CMP #$F8
-	BCC STORE_A_0 ;<F8, store val.
-CLEAR_A_0: ; 0x001AC0
-	LDA #$00 ;reset to 0
-STORE_A_0: ; 0x001AC2
-	STA OBJ_ZP_COPY_PARTICLES_X_BASE,X ;store.
+	CLC  ;Prep add.
+	ADC OBJ_ZP_COPY_PARTICLES_X_BASE,X ;Add with, particles X base.
+	CMP #$07 ;If _ #$07
+	BCC STORE_X_RESET ;<, goto.
+	CMP #$F8 ;If _ #$F8
+	BCC STORE_A_AS_VAL ;< valid, goto.
+STORE_X_RESET: ; 0x001AC0
+	LDA #$00 ;Reset.
+STORE_A_AS_VAL: ; 0x001AC2
+	STA OBJ_ZP_COPY_PARTICLES_X_BASE,X ;Store back to obj.
 	RTS 
 ANIMATION_FILES: ; 0x001AC5
 	.LOW ANIM_FRAME_FILE_PTR_00 ;Animation file ptrs. Ptrs to ptr arrays. DAC5
@@ -4512,8 +4512,8 @@ ANIM_FRAME_FILE_PTR_0D: ; 0x001B9C
 	.LOW FRAME_11_DATA_05
 	.HIGH FRAME_F_DATA_04
 	.LOW FRAME_F_DATA_04
-	.HIGH FRAME_11_DATA_07
-	.LOW FRAME_11_DATA_07
+	.HIGH SCREEN_FILE_MAIN_MENU?
+	.LOW SCREEN_FILE_MAIN_MENU?
 	.db #$00
 ANIM_FRAME_FILE_PTR_0E: ; 0x001BA9
 	.HIGH FRAME_F_DATA_00
@@ -4540,8 +4540,8 @@ ANIM_FRAME_FILE_PTR_0F: ; 0x001BB6
 	.LOW FRAME_11_DATA_05
 	.HIGH FRAME_F_DATA_04
 	.LOW FRAME_F_DATA_04
-	.HIGH FRAME_11_DATA_07
-	.LOW FRAME_11_DATA_07
+	.HIGH SCREEN_FILE_MAIN_MENU?
+	.LOW SCREEN_FILE_MAIN_MENU?
 	.db #$00
 ANIM_FRAME_FILE_PTR_10: ; 0x001BC3
 	.HIGH FRAME_10_DATA_00
@@ -4684,8 +4684,8 @@ ANIM_FRAME_FILE_PTR_11: ; 0x001C3A
 	.LOW FRAME_11_DATA_05
 	.HIGH FRAME_11_DATA_06
 	.LOW FRAME_11_DATA_06
-	.HIGH FRAME_11_DATA_07
-	.LOW FRAME_11_DATA_07
+	.HIGH SCREEN_FILE_MAIN_MENU?
+	.LOW SCREEN_FILE_MAIN_MENU?
 	.db #$00
 ANIM_FRAME_FILE_PTR_18: ; 0x001C4B
 	.HIGH FRAME_18_DATA_00
@@ -5788,7 +5788,7 @@ FRAME_24_DATA_00: ; 0x00203C
 	.db #$ED
 	.db #$EE
 	.db #$FF
-DUCK_HUNT_PPU_FILE: ; 0x002042
+SCREEN_FILE_DUCK_HUNT: ; 0x002042
 	.db #$23
 	.db #$00
 	.db #$60
@@ -5963,7 +5963,7 @@ DUCK_HUNT_PPU_FILE: ; 0x002042
 	.db #$4F
 	.db #$4D
 	.db #$4E
-FRAME_11_DATA_07: ; 0x0020F0
+SCREEN_FILE_MAIN_MENU?: ; 0x0020F0
 	.db #$4F
 	.db #$49
 	.db #$4A
@@ -6343,7 +6343,8 @@ FRAME_11_DATA_07: ; 0x0020F0
 	.db #$11
 	.db #$12
 	.db #$1D
-	.db #$00
+	.db #$00 ;EOF
+FILE_PIGEON_SCREEN: ; 0x00226C
 	.db #$22
 	.db #$20
 	.db #$60
@@ -7235,13 +7236,13 @@ PALETTE_PPU_FILE_05: ; 0x0025C7
 	.db #$16
 	.db #$00
 BONUS_ADDR_HIGH: ; 0x0025DB
-	.db #$23
+	.db #$23 ;Address to show score.
 BONUS_ADDR_LOW: ; 0x0025DC
 	.db #$58
 	.db #$06
 	.db #$00
-DEFAULT_HIGH_SCORES: ; 0x0025DF
-	.db #$00 ;goes to 0x5F0
+ROM_DATA_DEFAULT_HIGH_SCORES_ARR: ; 0x0025DF
+	.db #$00 ;Default high score digits. Moved to 0x5F0.
 	.db #$01
 	.db #$20
 	.db #$00
@@ -7352,31 +7353,31 @@ OBJ_DATA_UNK_LOW: ; 0x00260C
 	.HIGH UNK_OBJ_DATA_OBJ_STATE_2_1E
 	.LOW UNK_OBJ_DATA_OBJ_STATE_2_1F
 	.HIGH UNK_OBJ_DATA_OBJ_STATE_2_1F
-MOVESETS_INITIAL_INDEX_LUT: ; 0x00264B
+MOVESETS_FILE_INDEX_SEED: ; 0x00264B
 	.db #$00
 	.db #$03
 	.db #$10
-	.db #$17
+	.db #$17 ;0x03
 	.db #$24
 	.db #$27
 	.db #$34
-	.db #$3B
+	.db #$3B ;0x07
 	.db #$48
 	.db #$4B
 	.db #$58
-	.db #$5F
+	.db #$5F ;0x0B
 	.db #$6C
 	.db #$6F
 	.db #$7C
-	.db #$83
-	.db #$90
+	.db #$83 ;0xF
+	.db #$90 ;0x10
 	.db #$95
 	.db #$98
-	.db #$9B
+	.db #$9B ;0x13
 	.db #$9E
 	.db #$A1
 DUCK_MOVESETS?: ; 0x002661
-	.db #$FF
+	.db #$FF ;FMT: [Y_DELTA,X_DELTA] AA=Reload.
 	.db #$00
 	.db #$AA
 	.db #$FF
@@ -7950,7 +7951,7 @@ OBJ3_ANIMATION_SCRIPT_STATE_A: ; 0x002846
 	.db #$FF
 	.db #$0F
 	.db #$20
-OBJ3_ANIMATION_SCRIPT_STATE_C_2: ; 0x002894
+OBJ3_ANIMATION_SCRIPT_STATE_C_2_SINGLE_DUCK_DOG: ; 0x002894
 	.db #$14
 	.db #$82
 	.db #$14
@@ -7966,7 +7967,7 @@ OBJ3_ANIMATION_SCRIPT_STATE_C_2: ; 0x002894
 	.db #$FF
 	.db #$0F
 	.db #$20
-OBJ3_ANIMATION_SCRIPT_STATE_C_2_0: ; 0x0028A3
+OBJ3_ANIMATION_SCRIPT_STATE_C_2_0_TWO_DUCKS_DOG: ; 0x0028A3
 	.db #$14
 	.db #$82
 	.db #$15
@@ -7982,7 +7983,7 @@ OBJ3_ANIMATION_SCRIPT_STATE_C_2_0: ; 0x0028A3
 	.db #$FF
 	.db #$0F
 	.db #$20
-OBJ3_ANIMATION_SCRIPT_STATE_10: ; 0x0028B2
+OBJ3_ANIMATION_SCRIPT_STATE_10_DOG_LAUGH_LOOPED: ; 0x0028B2
 	.db #$04
 	.db #$81
 	.db #$16
@@ -8642,7 +8643,7 @@ PIGEON_PARTICLE_SWITCH_DATA_2: ; 0x002B28
 	.db #$0D
 	.db #$0F
 SKELETON_DATA_PTR_L: ; 0x002B30
-	.LOW SKELETON_0x0 ;I call these "skeletons"
+	.LOW SKELETON_0x0 ;I call these "skeletons", XY offsets of the sprites used for the GFX.
 SKELETON_DATA_PTR_H: ; 0x002B31
 	.HIGH SKELETON_0x0 ;0x0
 	.LOW SKELETON_0x1
@@ -8849,7 +8850,7 @@ BONUS_SCORES_LOW: ; 0x002BED
 	.db #$50
 	.db #$00
 	.db #$00
-TBL_DUCK_INDEXES: ; 0x002BF1
+TBL_DUCK_DATA_INDEXES: ; 0x002BF1
 	.db #$00 ;FMT: [BLK_VAL,BLUE_VAL/DISK_VAL,RED_VAL]
 	.db #$02
 	.db #$03
@@ -8930,21 +8931,21 @@ MESSAGES_LOW: ; 0x002C38
 MESSAGES_HIGH: ; 0x002C39
 	.db #$AA ;EOF.
 	.LOW MESSAGE_ROUND ;actual first index. 0 does different in this code, takes off screen.
-	.HIGH MESSAGE_ROUND
+	.HIGH MESSAGE_ROUND ;0x01
 	.LOW MESSAGE_GO
-	.HIGH MESSAGE_GO
+	.HIGH MESSAGE_GO ;0x02
 	.LOW MESSAGE_GO_BLANK
-	.HIGH MESSAGE_GO_BLANK
+	.HIGH MESSAGE_GO_BLANK ;0x03
 	.LOW MESSAGE_GOOD
-	.HIGH MESSAGE_GOOD
+	.HIGH MESSAGE_GOOD ;0x04
 	.LOW MESSAGE_PERFECT
-	.HIGH MESSAGE_PERFECT
+	.HIGH MESSAGE_PERFECT ;0x05
 	.LOW MESSAGE_FLYAWAY
-	.HIGH MESSAGE_FLYAWAY
+	.HIGH MESSAGE_FLYAWAY ;0x06
 	.LOW MESSAGE_PAUSE
-	.HIGH MESSAGE_PAUSE
+	.HIGH MESSAGE_PAUSE ;0x07
 	.LOW MESSAGE_GAME_OVER
-	.HIGH MESSAGE_GAME_OVER
+	.HIGH MESSAGE_GAME_OVER ;0x08
 MESSAGE_ROUND: ; 0x002C4A
 	.db #$CD
 	.db #$24
@@ -10834,35 +10835,35 @@ SND_SETUP_RTN: ; 0x00336C
 	STX SND_PTR_REG_WRITE_DATA ;low
 	STY SND_PTR_REG_WRITE_DATA+1 ;high
 	LDY #$00
-LOOP_4_BYTES: ; 0x003378
+LOOP_SOUND_WRITE: ; 0x003378
 	LDA (SND_PTR_REG_WRITE_DATA),Y ;Get data.
 	STA (SND_PTR_REG_WRITE),Y ;Write to reg.
 	INY  ;++
 	TYA  ;Put to A?
 	CMP #$04 ;Compare to #$04
-	BNE LOOP_4_BYTES ;Not done, need to write 4 bytes.
+	BNE LOOP_SOUND_WRITE ;Not done, need to write 4 bytes.
 	RTS  ;Leave
 SOUND_SETUP_MUSIC_STREAMS: ; 0x003383
 	STA SND_E6_SONG_PLAYING? ;Store passed.
-	LDA L_3846,Y ;Get A from ADDR+Y
+	LDA DATA_POS_A,Y ;Get A from ADDR+Y
 	TAY  ;Replace Y index.
-	LDA L_3846,Y ;Get value.
+	LDA DATA_POS_A,Y ;Get value.
 	STA SND_E5_ADDITION ;Store
-	LDA L_3847,Y ;Val..
+	LDA DATA_POS_B,Y ;Val..
 	STA SND_F8_STREAM_INDIRECT ;Store.
-	LDA L_3848,Y ;Val
+	LDA DATA_POS_C,Y ;Val
 	STA SND_F9_FLAG_UNK ;Store
-	LDA L_3849,Y ;Val
+	LDA DATA_POS_D,Y ;Val
 	STA SND_FA_STREAM_PTR ;Store
-	LDA L_384A,Y ;Val
+	LDA DATA_POS_E,Y ;Val
 	STA SND_FB_FLAG_UNK ;Store
-	LDA L_384B,Y ;Val
+	LDA DATAPOS_F,Y ;Val
 	STA SND_FC_IND_PTR ;Store
-	LDA L_384C,Y ;Val
+	LDA DATA_POS_G,Y ;Val
 	STA SND_FD_FLAG_UNK ;Store
-	LDA L_384D,Y ;Val
+	LDA DATA_POS_H,Y ;Val
 	STA SND_FE_INDIR_PTR ;Store
-	LDA L_384E,Y ;Val
+	LDA DATA_POS_I,Y ;Val
 	STA SND_FF_FLAG_UNK ;Store
 	LDA #$01 ;Enable?
 	STA SND_D8_CHANNEL_TIMER
@@ -11139,7 +11140,7 @@ SQ2_TIMER_WRITE: ; 0x003564
 TRI_TIMER_WRITE: ; 0x003568
 	LDX #$08
 	BNE LOOP_WRITE_TIMER
-PLAY_SOUNDS: ; 0x00356C
+ENGINE_PLAY_SOUNDS: ; 0x00356C
 	LDA #$C0 ;enable 5-step, disable irq.
 	STA APU_FRAMECOUNTER
 	JSR SND_PLAY_F0/F3_0
@@ -11147,13 +11148,13 @@ PLAY_SOUNDS: ; 0x00356C
 	JSR SND_PLAY_F1/F2
 	JSR SND_PLAY_DMC ;DMC
 	LDA #$00 ;Clear
-	BEQ SET_F0/F1/F2_FROM_A ;Always taken.
-INIT_SOUND_PTR_TO_CODE_VARS_HIGH_ADDR_BYTE: ; 0x003581
+	BEQ ENGINE_SOUND_SET_ALL_PLAY_REQUEST_TO_A ;Always taken.
+ENGINE_SOUND_INIT_INDIRECT_CODE_PTR_HIGH_BYTE: ; 0x003581
 	LDA #$F4 ;This sets up the pointer high byte.
 	STA SND_PTR_RUN_CODE_0612+1
 	STA SND_PTR_RUN_CODE_0610+1
 	RTS 
-SET_F0/F1/F2_FROM_A: ; 0x00358A
+ENGINE_SOUND_SET_ALL_PLAY_REQUEST_TO_A: ; 0x00358A
 	STA SND_PLAY_F0 ;Set all.
 	STA SND_PLAY_F1
 	STA SND_PLAY_F2
@@ -11616,23 +11617,23 @@ SOUND_SETUP_A=EF,Y=9_C0: ; 0x003840
 	LDY #$09 ;Data set
 	LDA #$EF
 	BNE SOUND_SETUP_C0
-L_3846: ; 0x003846
+DATA_POS_A: ; 0x003846
 	.db #$0A
-L_3847: ; 0x003847
+DATA_POS_B: ; 0x003847
 	.db #$13
-L_3848: ; 0x003848
+DATA_POS_C: ; 0x003848
 	.db #$1C
-L_3849: ; 0x003849
+DATA_POS_D: ; 0x003849
 	.db #$25
-L_384A: ; 0x00384A
+DATA_POS_E: ; 0x00384A
 	.db #$2E
-L_384B: ; 0x00384B
+DATAPOS_F: ; 0x00384B
 	.db #$37
-L_384C: ; 0x00384C
+DATA_POS_G: ; 0x00384C
 	.db #$40
-L_384D: ; 0x00384D
+DATA_POS_H: ; 0x00384D
 	.db #$49
-L_384E: ; 0x00384E
+DATA_POS_I: ; 0x00384E
 	.db #$52
 	.db #$5B
 	.db #$07
